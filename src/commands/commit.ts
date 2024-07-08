@@ -16,7 +16,7 @@ export default () => {
     const rawCommitMessage = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
 
     // Split the commit message on '###' and take the last part
-    const commitMessageParts = rawCommitMessage.split("\n###")
+    const commitMessageParts = rawCommitMessage.split('###')
     const commitMessage = commitMessageParts[commitMessageParts.length - 1].trim()  // trim to remove any leading/trailing whitespace
 
     // Write the commit message to a temporary file
@@ -24,7 +24,12 @@ export default () => {
     fs.writeFileSync(tempCommitFilePath, commitMessage)
 
     // Commit the changes using the generated commit message
-    execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], { stdio: 'inherit' })
+    try {
+      execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], { stdio: 'inherit' })
+    } catch (commitError) {
+      // If commit is canceled (non-zero exit), handle it here
+      console.log('Commit was canceled or failed.')
+    }
 
     // Remove the temporary file using fs
     fs.unlink(tempCommitFilePath, (err) => {
