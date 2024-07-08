@@ -6,11 +6,13 @@ export function generateCommitMessagePrompt(): string {
 
 An example of the output for this should look like the following:
 
-Update dependencies and package versions
+### Update dependencies and package versions
 
 - Upgrade Ruby gems including aws-sdk, honeybadger, irb, and rubocop
 - Update Node.js packages including esbuild, tinymce, and trix
 - Bump TypeScript and ESLint related packages to latest versions
+
+====
 
 Here is the diff to help you write the commit message:
 

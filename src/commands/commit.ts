@@ -13,7 +13,11 @@ export default () => {
     const model = getModel()
 
     // Get the commit message from the AI chat model
-    const commitMessage = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
+    const rawCommitMessage = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
+
+    // Split the commit message on '###' and take the last part
+    const commitMessageParts = rawCommitMessage.split('###')
+    const commitMessage = commitMessageParts[commitMessageParts.length - 1].trim()  // trim to remove any leading/trailing whitespace
 
     // Write the commit message to a temporary file
     const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
