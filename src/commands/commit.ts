@@ -28,11 +28,7 @@ export default () => {
 
     // Remove the temporary file using fs
     fs.unlink(tempCommitFilePath, (err) => {
-      if (err) {
-        console.error(`Failed to delete ${tempCommitFilePath}:`, err.message)
-      } else {
-        console.log(`Successfully deleted ${tempCommitFilePath}`)
-      }
+      if (err) throw err;
     })
 
   } catch (error) {
