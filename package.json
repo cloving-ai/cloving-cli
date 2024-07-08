@@ -1,0 +1,38 @@
+{
+  "name": "cloving",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "bin": {
+    "cloving": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "!**/test/**"
+  ],
+  "keywords": [],
+  "author": "Lucas Carlson",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-raine": "^0.5.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsdoc": "^48.2.4",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.1.1",
+    "vite": "^5.3.3",
+    "vite-node": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3"
+  }
+}
