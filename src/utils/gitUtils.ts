@@ -4,7 +4,7 @@ export function generateCommitMessagePrompt(): string {
   const diff = execSync('git diff').toString();
   return `Generate a concise and meaningful commit message based on a diff.
 
-  Do not add any commentary or context to the message other than the commit message itself.
+Do not add any commentary or context to the message other than the commit message itself.
 
 An example of the output for this should look like the following:
 
