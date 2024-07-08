@@ -1,8 +1,9 @@
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { getGitDiff } from '../utils/git_utils'
+import { getModel } from '../utils/model_utils'
 
 // Function to estimate token count
 const estimateTokens = async (text: string): Promise<number> => {
@@ -13,7 +14,6 @@ const estimateTokens = async (text: string): Promise<number> => {
 
 // Main function for the unit_tests command
 const unitTests = async () => {
-
   // Generate a temporary file path
   const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
 
@@ -23,13 +23,13 @@ const unitTests = async () => {
     const prompt = `Here is a list of all my model files:
 
 ==== begin list of models ====
-${execSync('find app/models -type f').toString().trim()}
+${execFileSync('find', ['app/models', '-type', 'f']).toString().trim()}
 ==== end list of models ====
 
 Here is a list of all my test files:
 
 ==== begin list of test files ====
-${execSync('find spec -type f').toString().trim()}
+${execFileSync('find', ['spec', '-type', 'f']).toString().trim()}
 ==== end list of test files ====
 
 Please enumerate all the files in this git diff as well as the file names of any models that
@@ -56,11 +56,11 @@ test/models/foo_test.rb
 test/controllers/baz_controller_test.rb`
 
     // Estimate and print token count
-    let tokenCount = estimateTokens(prompt)
+    let tokenCount = await estimateTokens(prompt)
     console.log(`Estimated token count: ${tokenCount}`)
 
     // Get AI chat response and write to temporary file
-    const aiChatResponse = execSync(`aichat "${prompt}"`).toString()
+    const aiChatResponse = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
     fs.writeFileSync(tempFilePath, aiChatResponse)
 
     // Handle "files" argument
@@ -101,20 +101,23 @@ test/controllers/baz_controller_test.rb`
     // Generate the message for unit test creation
     const message = `please create unit tests for these changes:
 
-${getGitDiff()}
+${await getGitDiff()}
 
 ## context
 
 ${fs.readFileSync(tempFilePath, 'utf-8')}`
 
-    tokenCount = estimateTokens(message)
+    tokenCount = await estimateTokens(message)
     console.log(`Estimated token count: ${tokenCount}`)
 
     // Clean up
     fs.unlinkSync(tempFilePath)
 
+    // Get the model and analysis using execFileSync
+    const analysis = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', message]).toString()
+
     // Print the output
-    console.log(execSync(`echo "${message}" | aichat -m "$(model)" -r coder`).toString())
+    console.log(analysis)
   } catch (error) {
     console.error('Error processing unit tests:', (error as Error).message)
   }
