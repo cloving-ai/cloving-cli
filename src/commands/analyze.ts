@@ -34,8 +34,6 @@ ${gitDiff}`
         } catch (error) {
           console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
         }
-      } else {
-        console.log('Analysis was not copied to clipboard.')
       }
       rl.close()
     })
