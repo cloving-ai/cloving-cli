@@ -12,8 +12,8 @@ export default () => {
     // Get the commit message from the AI chat model
     const rawCommitMessage = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
 
-    // Split the commit message on '# ' and take the last part
-    const commitMessageParts = rawCommitMessage.split("\n# ")
+    // Split the commit message on lines that start with one or more `# ` characters
+    const commitMessageParts = rawCommitMessage.split(/\n#+\s/)
     const commitMessage = commitMessageParts[commitMessageParts.length - 1].trim()  // trim to remove any leading/trailing whitespace
 
     // Write the commit message to a temporary file

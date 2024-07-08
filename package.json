@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "watch": "tsc -w",
+    "check": "bash -c 'npx tsc --noEmit --skipLibCheck'",
     "test": "jest",
     "prepare": "husky"
   },
@@ -23,15 +24,15 @@
   "description": "",
   "lint-staged": {
     "*.ts": [
-      "tsc --noEmit --skipLibCheck"
+      "yarn run check"
     ]
   },
   "lint-prepush": {
     "base": "main",
     "tasks": {
       "*.ts": [
-        "test",
-        "tsc --noEmit --skipLibCheck"
+        "yarn run check",
+        "yarn run test"
       ]
     }
   },
