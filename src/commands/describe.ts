@@ -42,9 +42,13 @@ const describe = async () => {
     const limitedFileList = fileList.slice(0, 100)
 
     // Include package.json content if it exists
-    let packageJsonContent = ''
+    let packageJson = {} as Record<string, unknown> | string
     if (fs.existsSync('package.json')) {
-      packageJsonContent = fs.readFileSync('package.json', 'utf-8')
+      try {
+        packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
+      } catch (error) {
+        packageJson = fs.readFileSync('package.json', 'utf-8')
+      }
     }
 
     // Include Gemfile content if it exists
@@ -56,7 +60,7 @@ const describe = async () => {
     // Generate the JSON object for the AI chat model
     const projectDetails = {
       files: limitedFileList,
-      packageJson: packageJsonContent ? JSON.parse(packageJsonContent) : null,
+      packageJson,
       gemfile: gemfileContent || null
     }
 
