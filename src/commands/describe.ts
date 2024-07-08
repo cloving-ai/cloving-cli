@@ -5,14 +5,14 @@ import path from 'path'
 import { getModel } from '../utils/model_utils'
 
 // Function to estimate token count
-const estimateTokens = async (text: string): Promise<number> => {
+export const estimateTokens = async (text: string): Promise<number> => {
   const charCount = text.length
   const tokenCount = Math.ceil(charCount / 4)
   return tokenCount
 }
 
 // Function to extract JSON metadata from the AI response
-const extractJsonMetadata = (response: string): string | null => {
+export const extractJsonMetadata = (response: string): string | null => {
   const jsonBlockStart = response.indexOf('```json')
   const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 6)
 
@@ -30,7 +30,7 @@ const extractJsonMetadata = (response: string): string | null => {
 }
 
 // Main function for the describe command
-const describe = async () => {
+export const describe = async () => {
   // Generate a temporary file path
   const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
 
