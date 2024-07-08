@@ -2,7 +2,7 @@ import { execSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { getGitDiff } from '../utils/gitUtils'
+import { getGitDiff } from '../utils/git_utils'
 
 // Function to estimate token count
 const estimateTokens = (text: string): number => {

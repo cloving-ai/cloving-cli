@@ -1,4 +1,4 @@
-import { getModel } from '../../src/utils/modelUtils'
+import { getModel } from '../../src/utils/model_utils'
 
 describe('modelUtils', () => {
   test('getModel should work correctly', () => {

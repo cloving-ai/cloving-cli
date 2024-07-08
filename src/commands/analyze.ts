@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import readline from 'readline'
-import { getGitDiff } from '../utils/gitUtils'
-import { getModel } from '../utils/modelUtils'
+import { getGitDiff } from '../utils/git_utils'
+import { getModel } from '../utils/model_utils'
 
 const analyze = () => {
   try {

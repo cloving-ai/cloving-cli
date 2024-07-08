@@ -1,4 +1,17 @@
 import { execSync } from 'child_process'
+import readline from 'readline'
+
+const askQuestion = (question: string): Promise<string> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  return new Promise(resolve => rl.question(question, answer => {
+    rl.close()
+    resolve(answer)
+  }))
+}
 
 export const generateCommitMessagePrompt = (): string => {
   const diff = execSync('git diff').toString()
@@ -21,25 +34,30 @@ Here is the diff to help you write the commit message:
 ${diff}`
 }
 
-export const getGitDiff = (): string => {
+export const getGitDiff = async (): Promise<string> => {
   try {
     let mainBranchName: string
 
     mainBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
       .toString()
       .trim()
-    console.log('Initial mainBranchName:', mainBranchName)
 
     if (mainBranchName === '') {
-      console.error('Error determining default branch. Attempting to set it automatically...')
-      execSync('git remote set-head origin -a')
-      mainBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
-        .toString()
-        .trim()
-      console.log('Updated mainBranchName after setting head:', mainBranchName)
+      console.error('Could not determine the default branch.')
 
-      if (mainBranchName === '') {
-        throw new Error('Error: Could not determine the default branch (main or master)')
+      const answer = await askQuestion('Do you want to run `git remote set-head origin -a`? [Y/n] ')
+
+      if (answer.toLowerCase() === 'y' || answer === '') {
+        execSync('git remote set-head origin -a')
+        mainBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
+          .toString()
+          .trim()
+
+        if (mainBranchName === '') {
+          throw new Error('Error: Could not determine the default branch (main or master)')
+        }
+      } else {
+        throw new Error('Operation aborted by user.')
       }
     }
 

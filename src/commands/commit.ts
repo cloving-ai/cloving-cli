@@ -1,8 +1,8 @@
 import { execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { generateCommitMessagePrompt } from '../utils/gitUtils'
-import { getModel } from '../utils/modelUtils'
+import { generateCommitMessagePrompt } from '../utils/git_utils'
+import { getModel } from '../utils/model_utils'
 
 export default () => {
   try {
