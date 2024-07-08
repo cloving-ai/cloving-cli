@@ -9,11 +9,8 @@ export default () => {
     // Generate the prompt for commit message
     const prompt = generateCommitMessagePrompt()
 
-    // Get the model to use
-    const model = getModel()
-
     // Get the commit message from the AI chat model
-    const rawCommitMessage = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
+    const rawCommitMessage = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
 
     // Split the commit message on '# ' and take the last part
     const commitMessageParts = rawCommitMessage.split("\n# ")
