@@ -7,7 +7,7 @@ const analyze = async () => {
   try {
     // Define the prompt for analysis
     const gitDiff = await getGitDiff()
-    const model = getModel(); // Await if this returns a Promise
+    const model = getModel()
 
     const prompt = `Explain why the change is being made and document a description of these changes.
 Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
