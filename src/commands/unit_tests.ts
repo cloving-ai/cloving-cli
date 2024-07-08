@@ -5,19 +5,21 @@ import path from 'path'
 import { getGitDiff } from '../utils/git_utils'
 
 // Function to estimate token count
-const estimateTokens = (text: string): number => {
+const estimateTokens = async (text: string): Promise<number> => {
   const charCount = text.length
   const tokenCount = Math.ceil(charCount / 4)
   return tokenCount
 }
 
 // Main function for the unit_tests command
-const unitTests = () => {
+const unitTests = async () => {
+
   // Generate a temporary file path
   const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
 
   try {
     // Generate the prompt for the AI chat model
+    const gitDiff = await getGitDiff()
     const prompt = `Here is a list of all my model files:
 
 ==== begin list of models ====
@@ -34,7 +36,7 @@ Please enumerate all the files in this git diff as well as the file names of any
 this code interacts with. Also, list any test files that might be relevant to these changes:
 
 ==== begin git diff ====
-${getGitDiff()}
+${gitDiff}
 ==== end git diff ====
 
 Give me this output format for your answer:

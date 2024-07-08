@@ -3,16 +3,19 @@ import readline from 'readline'
 import { getGitDiff } from '../utils/git_utils'
 import { getModel } from '../utils/model_utils'
 
-const analyze = () => {
+const analyze = async () => {
   try {
     // Define the prompt for analysis
+    const gitDiff = await getGitDiff()
+    const model = getModel(); // Await if this returns a Promise
+
     const prompt = `Explain why the change is being made and document a description of these changes.
 Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
 
-${getGitDiff()}`
+${gitDiff}`
 
     // Get the analysis from the AI chat model
-    const analysis = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
+    const analysis = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
 
     // Print the analysis to the console
     console.log(analysis)
