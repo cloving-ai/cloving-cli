@@ -17,7 +17,7 @@ program
   .action(commit)
 
 program
-  .command('unit_tests')
+  .command('unit-tests')
   .description('Generate unit tests for the changes')
   .action(unitTests)
 
