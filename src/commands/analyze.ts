@@ -1,4 +1,5 @@
 import { execFileSync } from 'child_process'
+import readline from 'readline'
 import { getGitDiff } from '../utils/gitUtils'
 import { getModel } from '../utils/modelUtils'
 
@@ -13,13 +14,28 @@ ${getGitDiff()}`
     // Get the analysis from the AI chat model
     const analysis = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
 
-    // Try to copy the analysis to clipboard using pbcopy
-    try {
-      execFileSync('pbcopy', { input: analysis })
-      console.log('Analysis copied to clipboard')
-    } catch (error) {
-      // could not copy to clipboard
-    }
+    // Print the analysis to the console
+    console.log(analysis)
+
+    // Prompt the user to copy the analysis to the clipboard
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+
+    rl.question('Do you want to copy the analysis to the clipboard? [Y/n] ', (answer) => {
+      if (answer.toLowerCase() === 'y' || answer === '') {
+        try {
+          execFileSync('pbcopy', { input: analysis })
+          console.log('Analysis copied to clipboard')
+        } catch (error) {
+          console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
+        }
+      } else {
+        console.log('Analysis was not copied to clipboard.')
+      }
+      rl.close()
+    })
   } catch (error) {
     console.error('Error during analysis:', (error as Error).message)
   }
