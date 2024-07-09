@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import commit from './commands/commit'
 import unitTests from './commands/unit_tests'
 import analyze from './commands/analyze'
+import describe from './commands/describe'
 
 const program = new Command()
 
@@ -26,5 +27,10 @@ program
   .command('analyze')
   .description('Analyze the changes and document the reasons')
   .action(analyze)
+
+program
+  .command('describe')  // Add the describe command
+  .description('Describe the current project, including the language, framework, and language version')
+  .action(describe)
 
 program.parse(process.argv)
