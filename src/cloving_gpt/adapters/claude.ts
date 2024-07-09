@@ -1,3 +1,4 @@
+// claude.ts
 import { Adapter } from './Adapter'
 import { GPTRequest } from '../../utils/types'
 
@@ -5,9 +6,24 @@ export class ClaudeAdapter implements Adapter {
   private model: string
   private anthropicVersion: string
 
+  static supportedModels: string[] = [
+    'claude:claude-3-5-sonnet-20240620',
+    'claude:claude-3-opus-20240229',
+    'claude:claude-3-sonnet-20240229',
+    'claude:claude-3-haiku-20240307',
+    // Add more supported models here as needed
+  ]
+
   constructor(model: string) {
     this.model = model
     this.anthropicVersion = '2023-06-01'
+  }
+
+  static listSupportedModels(): void {
+    console.log('  - Anthropic Claude:')
+    ClaudeAdapter.supportedModels.forEach(model => {
+      console.log(`    - ${model}`)
+    })
   }
 
   getEndpoint(): string {
@@ -25,7 +41,7 @@ export class ClaudeAdapter implements Adapter {
   getPayload(request: GPTRequest): Record<string, any> {
     return {
       model: this.model,
-      system: 'You are using the Messages API',
+      system: 'You are a computer programmer giving advice on how to write better code.',
       messages: [
         { role: 'user', content: request.prompt }
       ],
@@ -48,3 +64,6 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 }
+
+// Example usage:
+// ClaudeAdapter.listSupportedModels()

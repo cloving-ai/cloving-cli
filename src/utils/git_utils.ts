@@ -14,7 +14,7 @@ const askQuestion = (question: string): Promise<string> => {
 }
 
 export const generateCommitMessagePrompt = (): string => {
-  const diff = execSync('git diff').toString()
+  const diff = execSync('git diff HEAD').toString()
   return `Generate a concise and meaningful commit message based on a diff.
 
 Do not add any commentary or context to the message other than the commit message itself.

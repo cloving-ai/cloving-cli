@@ -4,6 +4,21 @@ import { GPTRequest } from '../../utils/types'
 export class OpenAIAdapter implements Adapter {
   private model: string
 
+  static supportedModels: string[] = [
+    'openai:gpt-4o',
+    'openai:gpt-4-turbo',
+    'openai:gpt-3.5-turbo',
+    'openai:text-embedding-3-large',
+    // Add more supported models here as needed
+  ]
+
+  static listSupportedModels(): void {
+    console.log('  - OpenAI ChatGPT:')
+    OpenAIAdapter.supportedModels.forEach(model => {
+      console.log(`    - ${model}`)
+    })
+  }
+
   constructor(model: string) {
     this.model = model
   }
