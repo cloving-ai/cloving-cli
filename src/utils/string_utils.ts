@@ -40,10 +40,10 @@ export const extractMarkdown = (response: string): string => {
 
   // Extract the ```markdown block from the response
   const jsonBlockStart = response.indexOf('```markdown') || response.indexOf('```plaintext')
-  const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 6)
+  const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 12)
 
   if (jsonBlockStart !== -1 && jsonBlockEnd !== -1) {
-    markdownString = response.substring(jsonBlockStart + 6, jsonBlockEnd).trim()
+    markdownString = response.substring(jsonBlockStart + 12, jsonBlockEnd).trim()
   } else {
     markdownString = response
   }
