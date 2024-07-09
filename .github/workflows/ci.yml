@@ -23,10 +23,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        run: npm install
+        run: yarn install
 
       - name: Run TypeScript checks
-        run: npm run check
+        run: yarn run check
 
       - name: Run tests
-        run: npm test
+        run: yarn run test
