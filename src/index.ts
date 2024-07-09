@@ -37,7 +37,7 @@ program
 
 program
   .command('init')
-  .description('Setup cloving in the current project, including the language, framework, and language version')
+  .description('Setup cloving in the current project, generating a cloving.json file that includes a GPT genrated project overview with details like the language, framework, and language version')
   .action(init)
 
 program
