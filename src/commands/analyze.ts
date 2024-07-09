@@ -1,7 +1,9 @@
-import { execFileSync } from 'child_process'
 import readline from 'readline'
+import { execFileSync } from 'child_process'
+
 import { getGitDiff } from '../utils/git_utils'
 import { getModel } from '../utils/model_utils'
+import ClovingGPT from '../cloving_gpt'
 
 const analyze = async () => {
   try {
@@ -14,8 +16,9 @@ Also list any bugs in the new code as well as recommended fixes for those bugs w
 
 ${gitDiff}`
 
-    // Get the analysis from the AI chat model
-    const analysis = execFileSync('aichat', ['-m', model, '-r', 'coder', prompt]).toString()
+    // Instantiate ClovingGPT and get the analysis
+    const gpt = new ClovingGPT()
+    const analysis = await gpt.generateText({ prompt })
 
     // Print the analysis to the console
     console.log(analysis)

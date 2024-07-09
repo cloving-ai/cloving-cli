@@ -5,6 +5,7 @@ import commit from './commands/commit'
 import unitTests from './commands/unit_tests'
 import analyze from './commands/analyze'
 import describe from './commands/describe'
+import models from './commands/models'
 
 const program = new Command()
 
@@ -22,6 +23,11 @@ program
   .command('unit-tests')
   .description('Generate unit tests for the changes')
   .action(unitTests)
+
+program
+  .command('models')
+  .description('List available models')
+  .action(models)
 
 program
   .command('analyze')

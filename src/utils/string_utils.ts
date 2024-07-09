@@ -22,8 +22,14 @@ export const extractJsonMetadata = (response: string): string | null => {
   // Remove any data before the first '{'
   const jsonStartIndex = jsonString.indexOf('{')
   if (jsonStartIndex !== -1) {
-    return jsonString.substring(jsonStartIndex)
+    jsonString = jsonString.substring(jsonStartIndex)
   }
 
-  return null
+  // Remove any data after the last '}'
+  const jsonEndIndex = jsonString.lastIndexOf('}')
+  if (jsonEndIndex !== -1) {
+    jsonString = jsonString.substring(0, jsonEndIndex + 1)
+  }
+
+  return jsonString
 }

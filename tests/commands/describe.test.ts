@@ -1,78 +1,124 @@
-import { execFileSync } from 'child_process'
-import fs from 'fs'
-import os from 'os'
-import describeFunction from '../../src/commands/describe'
+import nock from 'nock';
+import ClovingGPT from '../../src/cloving_gpt';
+import readline from 'readline';
 
-// Mock child_process.execFileSync
-jest.mock('child_process', () => ({
-  execFileSync: jest.fn(),
-}))
+jest.mock('readline');
 
-// Mock fs methods
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  unlinkSync: jest.fn(),
-}))
-
-// Mock os.tmpdir
-jest.spyOn(os, 'tmpdir').mockReturnValue('/tmp')
-
-// Mock getModel
-jest.mock('../../src/utils/model_utils', () => ({
-  getModel: jest.fn().mockReturnValue('test-model'),
-}))
-
-describe('describe', () => {
-  const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>
-  const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>
-  const mockReadFileSync = fs.readFileSync as jest.MockedFunction<typeof fs.readFileSync>
-  const mockWriteFileSync = fs.writeFileSync as jest.MockedFunction<typeof fs.writeFileSync>
-  const mockUnlinkSync = fs.unlinkSync as jest.MockedFunction<typeof fs.unlinkSync>
+describe('ClovingGPT', () => {
+  const OLD_ENV = process.env;
+  const mockReadline = readline.createInterface as jest.Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks()
-  })
+    jest.resetModules();
+    process.env = { ...OLD_ENV };
+  });
 
-  it('should describe the project and handle AI response correctly', async () => {
-    mockExecFileSync.mockReturnValueOnce(Buffer.from('file1\nfile2\nfile3')) // Mock file list
-      .mockReturnValueOnce(Buffer.from('{"result": "test"}')) // Mock AI response
-    mockExistsSync.mockReturnValueOnce(true) // Mock package.json exists
-    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ name: 'test-project' })) // Mock package.json content
-    mockExistsSync.mockReturnValueOnce(false) // Mock Gemfile does not exist
+  afterEach(() => {
+    process.env = OLD_ENV;
+  });
 
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+  it('should throw an error if CLOVING_MODEL is not set', () => {
+    process.env.CLOVING_MODEL = '';
+    process.env.CLOVING_API_KEY = 'test_api_key';
 
-    await describeFunction()
+    expect(() => new ClovingGPT()).toThrow("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set");
+  });
 
-    // Check that execFileSync was called correctly
-    expect(mockExecFileSync).toHaveBeenCalledTimes(2)
-    expect(mockExecFileSync).toHaveBeenCalledWith('sh', ['-c', 'find . | grep -v .git | grep -v node_modules'], { maxBuffer: 10 * 1024 * 1024 })
-    expect(mockExecFileSync).toHaveBeenCalledWith('aichat', ['-m', 'test-model', '-r', 'coder', expect.any(String)])
+  it('should throw an error if CLOVING_API_KEY is not set', () => {
+    process.env.CLOVING_MODEL = 'claude:claude-3-5-sonnet-20240620';
+    process.env.CLOVING_API_KEY = '';
 
-    // Check that fs methods were called correctly
-    expect(mockWriteFileSync).toHaveBeenCalledWith(expect.any(String), '{"result": "test"}')
-    expect(mockUnlinkSync).toHaveBeenCalledWith(expect.any(String))
+    expect(() => new ClovingGPT()).toThrow("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set");
+  });
 
-    // Check console output
-    expect(consoleLogSpy).toHaveBeenCalledWith('{"result": "test"}')
+  it('should return text from openai API', async () => {
+    process.env.CLOVING_MODEL = 'openai:text-davinci-003';
+    process.env.CLOVING_API_KEY = 'test_api_key';
 
-    // Clean up spies
-    consoleLogSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
-  })
+    nock('https://api.openai.com')
+      .post('/v1/engines/text-davinci-003/completions')
+      .reply(200, {
+        choices: [{ text: 'Hello, world!' }]
+      });
 
-  it('should handle errors gracefully', async () => {
-    mockExecFileSync.mockImplementationOnce(() => { throw new Error('Test error') })
+    const gpt = new ClovingGPT();
 
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+    // Mock readline to simulate user inputs
+    mockReadline.mockImplementation(() => ({
+      question: jest.fn((_, cb) => cb('y')),
+      close: jest.fn()
+    }));
 
-    await describeFunction()
+    const result = await gpt.generateText({ prompt: 'Say hello' });
+    expect(result).toBe('Hello, world!');
+  });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error describing the project:', 'Test error')
+  it('should return text from claude API', async () => {
+    process.env.CLOVING_MODEL = 'claude:claude-3-5-sonnet-20240620';
+    process.env.CLOVING_API_KEY = 'test_api_key';
 
-    consoleErrorSpy.mockRestore()
-  })
-})
+    nock('https://api.anthropic.com')
+      .post('/v1/claude/claude-3-5-sonnet-20240620')
+      .reply(200, {
+        completion: 'Hello, Claude!'
+      });
+
+    const gpt = new ClovingGPT();
+
+    // Mock readline to simulate user inputs
+    mockReadline.mockImplementation(() => ({
+      question: jest.fn((_, cb) => cb('y')),
+      close: jest.fn()
+    }));
+
+    const result = await gpt.generateText({ prompt: 'Say hello' });
+    expect(result).toBe('Hello, Claude!');
+  });
+
+  it('should return text from gpt4all API', async () => {
+    process.env.CLOVING_MODEL = 'gpt4all:gpt4all-v1';
+    process.env.CLOVING_API_KEY = 'test_api_key';
+
+    nock('https://api.gpt4all.io')
+      .post('/v1/models/gpt4all-v1/completions')
+      .reply(200, {
+        text: 'Hello, GPT-4-All!'
+      });
+
+    const gpt = new ClovingGPT();
+
+    // Mock readline to simulate user inputs
+    mockReadline.mockImplementation(() => ({
+      question: jest.fn((_, cb) => cb('y')),
+      close: jest.fn()
+    }));
+
+    const result = await gpt.generateText({ prompt: 'Say hello' });
+    expect(result).toBe('Hello, GPT-4-All!');
+  });
+
+  it('should cancel the operation if user chooses not to continue', async () => {
+    process.env.CLOVING_MODEL = 'openai:text-davinci-003';
+    process.env.CLOVING_API_KEY = 'test_api_key';
+
+    const gpt = new ClovingGPT();
+
+    let promptCount = 0;
+
+    // Mock readline to simulate user inputs
+    mockReadline.mockImplementation(() => ({
+      question: jest.fn((_, cb) => {
+        if (promptCount === 0) {
+          cb('y'); // First prompt: show the prompt
+        } else {
+          cb('n'); // Second prompt: do not continue
+        }
+        promptCount++;
+      }),
+      close: jest.fn()
+    }));
+
+    const result = await gpt.generateText({ prompt: 'Say hello' });
+    expect(result).toBe('');
+  });
+});

@@ -1,0 +1,47 @@
+{
+  "languages": [
+    {
+      "name": "TypeScript",
+      "version": "5.5.3",
+      "primary": true
+    },
+    {
+      "name": "JavaScript",
+      "version": "ES6+"
+    }
+  ],
+  "frameworks": [
+    {
+      "name": "Node.js",
+      "type": "Runtime environment",
+      "primary": true
+    }
+  ],
+  "testingFrameworks": [
+    {
+      "name": "Jest",
+      "type": "Testing framework",
+      "version": "29.7.0",
+      "directory": "tests"
+    }
+  ],
+  "buildTools": [
+    {
+      "name": "TypeScript Compiler (tsc)",
+      "type": "Transpiler"
+    },
+    {
+      "name": "Vite",
+      "type": "Build tool",
+      "version": "5.3.3"
+    }
+  ],
+  "packageManager": "Yarn",
+  "linters": [
+    {
+      "name": "ESLint",
+      "version": "9.6.0"
+    }
+  ],
+  "projectType": "Command-line tool"
+}

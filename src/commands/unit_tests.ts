@@ -1,9 +1,9 @@
-import { execFileSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
-import { getModel } from '../utils/model_utils'
+import ClovingGPT from '../cloving_gpt'  // Adjust the import path as needed
 
 // Function to estimate token count
 const estimateTokens = async (text: string): Promise<number> => {
@@ -20,16 +20,18 @@ const unitTests = async () => {
   try {
     // Generate the prompt for the AI chat model
     const gitDiff = await getGitDiff()
+    const modelFiles = execFileSync('find', ['app/models', '-type', 'f']).toString().trim()
+    const testFiles = execFileSync('find', ['spec', '-type', 'f']).toString().trim()
     const prompt = `Here is a list of all my model files:
 
 ==== begin list of models ====
-${execFileSync('find', ['app/models', '-type', 'f']).toString().trim()}
+${modelFiles}
 ==== end list of models ====
 
 Here is a list of all my test files:
 
 ==== begin list of test files ====
-${execFileSync('find', ['spec', '-type', 'f']).toString().trim()}
+${testFiles}
 ==== end list of test files ====
 
 Please enumerate all the files in this git diff as well as the file names of any models that
@@ -59,8 +61,9 @@ test/controllers/baz_controller_test.rb`
     let tokenCount = await estimateTokens(prompt)
     console.log(`Estimated token count: ${tokenCount}`)
 
-    // Get AI chat response and write to temporary file
-    const aiChatResponse = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
+    // Instantiate ClovingGPT and get the AI chat response
+    const gpt = new ClovingGPT()
+    const aiChatResponse = await gpt.generateText({ prompt })
     fs.writeFileSync(tempFilePath, aiChatResponse)
 
     // Handle "files" argument
@@ -113,8 +116,8 @@ ${fs.readFileSync(tempFilePath, 'utf-8')}`
     // Clean up
     fs.unlinkSync(tempFilePath)
 
-    // Get the model and analysis using execFileSync
-    const analysis = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', message]).toString()
+    // Get the model and analysis using ClovingGPT
+    const analysis = await gpt.generateText({ prompt: message })
 
     // Print the output
     console.log(analysis)
