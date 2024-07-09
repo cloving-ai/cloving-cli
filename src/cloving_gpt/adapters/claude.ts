@@ -20,9 +20,8 @@ export class ClaudeAdapter implements Adapter {
   }
 
   static listSupportedModels(): void {
-    console.log('  - Anthropic Claude:')
     ClaudeAdapter.supportedModels.forEach(model => {
-      console.log(`    - ${model}`)
+      console.log(model)
     })
   }
 

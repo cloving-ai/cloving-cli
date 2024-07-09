@@ -13,9 +13,8 @@ export class OpenAIAdapter implements Adapter {
   ]
 
   static listSupportedModels(): void {
-    console.log('  - OpenAI ChatGPT:')
     OpenAIAdapter.supportedModels.forEach(model => {
-      console.log(`    - ${model}`)
+      console.log(model)
     })
   }
 

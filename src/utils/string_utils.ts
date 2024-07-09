@@ -6,7 +6,7 @@ export const estimateTokens = async (text: string): Promise<number> => {
 }
 
 // Function to extract JSON metadata from the AI response
-export const extractJsonMetadata = (response: string): string | null => {
+export const extractJsonMetadata = (response: string): string => {
   let jsonString
 
   // Extract the ```json block from the response
@@ -32,4 +32,36 @@ export const extractJsonMetadata = (response: string): string | null => {
   }
 
   return jsonString
+}
+
+// Function to extract markdown from the AI response
+export const extractMarkdown = (response: string): string => {
+  let markdownString
+
+  // Extract the ```markdown block from the response
+  const markdownBlockStart = response.indexOf('```markdown')
+  const markdownBlockEnd = response.indexOf('```', markdownBlockStart + 11)
+
+  if (markdownBlockStart !== -1 && markdownBlockEnd !== -1) {
+    markdownString = response.substring(markdownBlockStart + 11, markdownBlockEnd).trim()
+  } else {
+    markdownString = response
+  }
+
+  const plaintextBlockStart = response.indexOf('```plaintext')
+  const plaintextBlockEnd = response.indexOf('```', plaintextBlockStart + 12)
+
+  if (plaintextBlockStart !== -1 && plaintextBlockEnd !== -1) {
+    markdownString = response.substring(plaintextBlockStart + 12, plaintextBlockEnd).trim()
+  } else {
+    markdownString = response
+  }
+
+  // Remove any data before the first '#'
+  const jsonStartIndex = markdownString.indexOf('#')
+  if (jsonStartIndex !== -1) {
+    markdownString = markdownString.substring(jsonStartIndex)
+  }
+
+  return markdownString
 }

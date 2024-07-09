@@ -64,7 +64,7 @@ cloving review
 To generate unit tests for a specific file or function:
 
 ```
-cloving generate test [file_path_to_test]
+cloving unit-tests [file_path_to_test]
 ```
 
 ## Contributing
