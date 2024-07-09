@@ -39,7 +39,7 @@ export const extractMarkdown = (response: string): string => {
   let markdownString
 
   // Extract the ```markdown block from the response
-  const jsonBlockStart = response.indexOf('```markdown')
+  const jsonBlockStart = response.indexOf('```markdown') || response.indexOf('```plaintext')
   const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 6)
 
   if (jsonBlockStart !== -1 && jsonBlockEnd !== -1) {
