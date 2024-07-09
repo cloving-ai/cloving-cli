@@ -1,4 +1,4 @@
-import { Adapter } from './Adapter'
+import { Adapter } from '.'
 import { GPTRequest } from '../../utils/types'
 
 export class OpenAIAdapter implements Adapter {
