@@ -86,7 +86,8 @@ class ClovingGPT {
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
-    const shouldContinue = await this.askUserToConfirm(request.prompt, 'Do you want to see the prompt before it is sent to the GPT? [Yn]: ')
+    const tokenCount = Math.ceil(request.prompt.length / 4).toLocaleString()
+    const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to GPT? [Yn]: `)
 
     if (!shouldContinue) {
       console.log('Operation cancelled by the user.')
