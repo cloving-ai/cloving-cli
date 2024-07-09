@@ -3,8 +3,9 @@
 import { Command } from 'commander'
 import commit from './commands/commit'
 import unitTests from './commands/unit_tests'
-import analyze from './commands/analyze'
-import describe from './commands/describe'
+import analyze from './commands/review'
+import init from './commands/init'
+import config from './commands/config'
 import models from './commands/models'
 
 const program = new Command()
@@ -30,13 +31,18 @@ program
   .action(models)
 
 program
-  .command('analyze')
-  .description('Analyze the changes and document the reasons')
+  .command('review')
+  .description('Review the changes and propose ')
   .action(analyze)
 
 program
-  .command('describe')  // Add the describe command
-  .description('Describe the current project, including the language, framework, and language version')
-  .action(describe)
+  .command('init')
+  .description('Setup cloving in the current project, including the language, framework, and language version')
+  .action(init)
+
+program
+  .command('config')
+  .description('Configure cloving with your API key and model')
+  .action(config)
 
 program.parse(process.argv)

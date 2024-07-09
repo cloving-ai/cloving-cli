@@ -2,12 +2,13 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { spawn } from 'child_process'
-import { estimateTokens, extractJsonMetadata } from '../utils/string_utils'
+import { estimateTokens } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 import readline from 'readline'
 import ignore from 'ignore'
+import { extractJsonMetadata } from '../utils/string_utils'
+import type { ClovingConfig } from '../utils/types'
 
-// List of special files to check
 const specialFiles = [
   'package.json',
   'Gemfile',
@@ -93,13 +94,107 @@ const collectSpecialFileContents = (): Record<string, string | Record<string, un
   return specialFileContents
 }
 
+const checkForSpecialFiles = (): boolean => {
+  return specialFiles.some(file => fs.existsSync(file))
+}
+
+const getConfig = (): ClovingConfig | null => {
+  const configPath = path.join(os.homedir(), '.cloving.json')
+  if (fs.existsSync(configPath)) {
+    const rawConfig = fs.readFileSync(configPath, 'utf-8')
+    return JSON.parse(rawConfig)
+  }
+  return null
+}
+
+const saveConfig = (config: ClovingConfig) => {
+  const configPath = path.join(os.homedir(), '.cloving.json')
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+}
+
+const promptUser = (question: string): Promise<string> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close()
+      resolve(answer.trim())
+    })
+  })
+}
+
+const fetchModels = async (): Promise<string[]> => {
+  try {
+    const modelsOutput = await runCommand('cloving', ['models'])
+    return modelsOutput
+  } catch (error) {
+    console.error('Error fetching models:', (error as Error).message)
+    return []
+  }
+}
+
 // Main function for the describe command
-export const describe = async () => {
-  // Generate a temporary file path
+export const init = async () => {
+  const specialFileContents = collectSpecialFileContents()
+  const specialFileNames = Object.keys(specialFileContents).map(file => ' - ' + file)
+
+  if (specialFileNames.length > 0) {
+    console.log(`Cloving will analyze the list of files and the contents of the following files:
+
+${specialFileNames.join("\n")}
+
+Cloving will send AI a request to summarize the technologies used in this project.
+
+This will provide better context for future Cloving requests.
+
+For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model so that this data is not sent to an AI service provider.
+`)
+  } else {
+    console.log(`
+This script will analyze the list of files in the current directory using GPT to summarize the
+technologies used. This will provide better context for future Cloving requests.
+    `)
+  }
+
+  const config = getConfig()
+  if (!config) {
+    const models = await fetchModels()
+    if (models.length === 0) {
+      console.error('No models available.')
+      return
+    }
+
+    console.log('Available models:')
+    models.forEach((model, index) => console.log(`${index + 1}. ${model}`))
+
+    const modelIndex = parseInt(await promptUser('Select a model by number: '), 10) - 1
+    if (modelIndex < 0 || modelIndex >= models.length) {
+      console.error('Invalid selection.')
+      return
+    }
+
+    const selectedModel = models[modelIndex]
+    const apiKey = await promptUser('Enter your API key: ')
+
+    saveConfig({ CLOVING_MODEL: selectedModel, CLOVING_API_KEY: apiKey })
+
+    console.log(`Configuration saved to ${path.join(os.homedir(), '.cloving.json')}`)
+  }
+
+  if (!checkForSpecialFiles()) {
+    const continueAnswer = await promptUser('No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process? [Yn] ')
+    if (continueAnswer.toLowerCase() !== 'y' && continueAnswer.trim() !== '') {
+      console.log('Operation aborted by the user.')
+      return
+    }
+  }
+
   const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
 
   try {
-    // Read .gitignore and create ignore instance
     const gitignorePath = path.join(process.cwd(), '.gitignore')
     const ig = ignore()
     if (fs.existsSync(gitignorePath)) {
@@ -107,7 +202,6 @@ export const describe = async () => {
       ig.add(gitignoreContent)
     }
 
-    // Generate the file list excluding .git, node_modules and matching .gitignore patterns
     const fileList = await generateFileList()
     const filteredFileList = fileList.filter(file => {
       try {
@@ -117,13 +211,13 @@ export const describe = async () => {
       }
     })
 
-    // Limit the file list to the first 100 files
     const limitedFileList = filteredFileList.slice(0, 100)
 
-    // Collect the contents of special files
-    const specialFileContents = collectSpecialFileContents()
+    if (specialFileNames.length === 0) {
+      console.error('No special files found.')
+      return
+    }
 
-    // Generate the JSON object for the AI chat model
     const projectDetails = {
       files: limitedFileList,
       specialFiles: specialFileContents
@@ -194,50 +288,33 @@ Here is an example response:
   "projectType": "Command-line tool",
 }`
 
-    // Estimate and print token count if DEBUG=1
     if (process.env.DEBUG === '1') {
       estimateTokens(prompt).then(tokenCount => {
         console.log(`Estimated token count: ${tokenCount}`)
       })
     }
 
-    // Instantiate ClovingGPT and get the AI chat response
     const gpt = new ClovingGPT()
     const aiChatResponse = await gpt.generateText({ prompt })
+    const cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
 
-    // Write the AI chat response to a temporary file
-    fs.writeFileSync(tempFilePath, aiChatResponse)
+    fs.writeFileSync(tempFilePath, cleanAiChatResponse)
 
-    // Extract JSON metadata from the AI response
-    const jsonMetadata = extractJsonMetadata(aiChatResponse)
-    if (jsonMetadata) {
-      console.log(jsonMetadata)
-    } else {
-      console.log(aiChatResponse)
+    // Save the AI chat response to cloving.json
+    fs.writeFileSync('cloving.json', cleanAiChatResponse)
+    console.log('[done] Project data saved to cloving.json')
+
+    // Prompt the user if they want to review the generated cloving.json
+    const reviewAnswer = await promptUser('Do you want to review the generated data? [Yn] ')
+    if (reviewAnswer.toLowerCase() === 'y' || reviewAnswer.trim() === '') {
+      console.log(cleanAiChatResponse)
     }
-    const response = jsonMetadata || aiChatResponse
 
     // Clean up
     fs.unlinkSync(tempFilePath)
-
-    // Ask user if they want to save the result to cloving.json
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-
-    rl.question('Do you want to save this file to cloving.json to improve the context of future cloving requests? [Yn] ', (answer) => {
-      rl.close()
-      if (answer.toLowerCase() === 'y' || answer.trim() === '') {
-        fs.writeFileSync('cloving.json', response)
-        console.log('File saved to cloving.json')
-      } else {
-        console.log('File not saved.')
-      }
-    })
   } catch (error) {
     console.error('Error describing the project:', (error as Error).message)
   }
 }
 
-export default describe
+export default init

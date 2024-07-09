@@ -6,7 +6,7 @@ export const estimateTokens = async (text: string): Promise<number> => {
 }
 
 // Function to extract JSON metadata from the AI response
-export const extractJsonMetadata = (response: string): string | null => {
+export const extractJsonMetadata = (response: string): string => {
   let jsonString
 
   // Extract the ```json block from the response

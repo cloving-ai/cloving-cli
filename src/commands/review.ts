@@ -5,7 +5,7 @@ import { getGitDiff } from '../utils/git_utils'
 import { getModel } from '../utils/model_utils'
 import ClovingGPT from '../cloving_gpt'
 
-const analyze = async () => {
+const review = async () => {
   try {
     // Define the prompt for analysis
     const gitDiff = await getGitDiff()
@@ -45,4 +45,4 @@ ${gitDiff}`
   }
 }
 
-export default analyze
+export default review

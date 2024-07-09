@@ -1,27 +1,33 @@
 import axios from 'axios'
-import type { GPTRequest } from '../utils/types'
+import type { GPTRequest, ClovingConfig } from '../utils/types'
 import readline from 'readline'
 import { spawn } from 'child_process'
 import process from 'process'
+import fs from 'fs'
+import path from 'path'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
 import { GPT4AllAdapter } from './adapters/gpt4all'
+import { OllamaAdapter } from './adapters/ollama' // Import the OllamaAdapter
 
 class ClovingGPT {
   private adapter: Adapter
   private apiKey: string
 
   constructor() {
-    const clovingModel = process.env.CLOVING_MODEL
-    this.apiKey = (process.env.CLOVING_API_KEY || '').trim()
+    const config = this.loadConfig()
 
-    if (!clovingModel || !this.apiKey) {
-      throw new Error("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set")
+    const clovingModel = process.env.CLOVING_MODEL || config.CLOVING_MODEL
+    this.apiKey = (process.env.CLOVING_API_KEY || config.CLOVING_API_KEY || '').trim()
+
+    if (!clovingModel) {
+      throw new Error("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set or available in ~/.cloving.json")
     }
 
-    const [provider, model] = clovingModel.split(':')
-    switch (provider) {
+    const parts = clovingModel.split(':')
+    const model = parts.slice(1).join(':')
+    switch (parts[0]) {
       case 'claude':
         this.adapter = new ClaudeAdapter(model)
         break
@@ -31,9 +37,21 @@ class ClovingGPT {
       case 'gpt4all':
         this.adapter = new GPT4AllAdapter(model)
         break
+      case 'ollama':
+        this.adapter = new OllamaAdapter(model)
+        break
       default:
-        throw new Error(`Unsupported provider: ${provider}`)
+        throw new Error(`Unsupported provider: ${parts[0]}`)
     }
+  }
+
+  private loadConfig(): ClovingConfig {
+    const configPath = path.resolve(process.env.HOME || process.env.USERPROFILE || '', '.cloving.json')
+    if (fs.existsSync(configPath)) {
+      const rawConfig = fs.readFileSync(configPath, 'utf-8')
+      return JSON.parse(rawConfig)
+    }
+    return { CLOVING_MODEL: '', CLOVING_API_KEY: '' }
   }
 
   private async askUserToConfirm(prompt: string, message: string): Promise<boolean> {
@@ -86,17 +104,16 @@ class ClovingGPT {
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
+    const endpoint = this.adapter.getEndpoint()
+    const payload = this.adapter.getPayload(request)
+    const headers = this.adapter.getHeaders(this.apiKey)
     const tokenCount = Math.ceil(request.prompt.length / 4).toLocaleString()
-    const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to GPT? [Yn]: `)
+    const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}? [Yn]: `)
 
     if (!shouldContinue) {
       console.log('Operation cancelled by the user.')
       process.exit(0)
     }
-
-    const endpoint = this.adapter.getEndpoint()
-    const payload = this.adapter.getPayload(request)
-    const headers = this.adapter.getHeaders(this.apiKey)
 
     try {
       const response = await axios.post(endpoint, payload, { headers })
