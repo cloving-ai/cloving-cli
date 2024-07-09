@@ -102,6 +102,7 @@ Here is an example response:
       "name": "Jest",
       "type": "Testing framework",
       "version": "29.7.0"
+      "directory": "tests"
     }
   ],
   "buildTools": [
