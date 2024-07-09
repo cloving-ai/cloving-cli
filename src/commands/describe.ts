@@ -215,6 +215,7 @@ Here is an example response:
     } else {
       console.log(aiChatResponse)
     }
+    const response = jsonMetadata || aiChatResponse
 
     // Clean up
     fs.unlinkSync(tempFilePath)
@@ -228,7 +229,7 @@ Here is an example response:
     rl.question('Do you want to save this file to cloving.json to improve the context of future cloving requests? [Yn] ', (answer) => {
       rl.close()
       if (answer.toLowerCase() === 'y' || answer.trim() === '') {
-        fs.writeFileSync('cloving.json', jsonMetadata ? JSON.stringify(jsonMetadata, null, 2) : aiChatResponse)
+        fs.writeFileSync('cloving.json', response)
         console.log('File saved to cloving.json')
       } else {
         console.log('File not saved.')
