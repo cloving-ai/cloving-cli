@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
-import describeFunction, { estimateTokens, extractJsonMetadata } from '../../src/commands/describe'
+import describeFunction from '../../src/commands/describe'
 
 // Mock child_process.execFileSync
 jest.mock('child_process', () => ({
@@ -23,28 +23,6 @@ jest.spyOn(os, 'tmpdir').mockReturnValue('/tmp')
 jest.mock('../../src/utils/model_utils', () => ({
   getModel: jest.fn().mockReturnValue('test-model'),
 }))
-
-describe('estimateTokens', () => {
-  it('should estimate token count based on character count', async () => {
-    const text = 'This is a test string.'
-    const tokenCount = await estimateTokens(text)
-    expect(tokenCount).toBe(Math.ceil(text.length / 4))
-  })
-})
-
-describe('extractJsonMetadata', () => {
-  it('should extract JSON metadata from a response containing a JSON block', () => {
-    const response = 'Some text before\n```json\n{"key": "value"}\n```\nSome text after'
-    const jsonMetadata = extractJsonMetadata(response)
-    expect(jsonMetadata).toBe('{"key": "value"}')
-  })
-
-  it('should return null if JSON block is not found', () => {
-    const response = 'Some text without JSON block'
-    const jsonMetadata = extractJsonMetadata(response)
-    expect(jsonMetadata).toBeNull()
-  })
-})
 
 describe('describe', () => {
   const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>

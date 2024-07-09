@@ -3,31 +3,41 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { getModel } from '../utils/model_utils'
+import { estimateTokens, extractJsonMetadata } from '../utils/string_utils'
 
-// Function to estimate token count
-export const estimateTokens = async (text: string): Promise<number> => {
-  const charCount = text.length
-  const tokenCount = Math.ceil(charCount / 4)
-  return tokenCount
-}
-
-// Function to extract JSON metadata from the AI response
-export const extractJsonMetadata = (response: string): string | null => {
-  const jsonBlockStart = response.indexOf('```json')
-  const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 6)
-
-  if (jsonBlockStart !== -1 && jsonBlockEnd !== -1) {
-    const jsonString = response.substring(jsonBlockStart + 6, jsonBlockEnd).trim()
-
-    // Remove any data before the first '{'
-    const jsonStartIndex = jsonString.indexOf('{')
-    if (jsonStartIndex !== -1) {
-      return jsonString.substring(jsonStartIndex)
-    }
-  }
-
-  return null
-}
+// List of special files to check
+const specialFiles = [
+  'package.json',
+  'Gemfile',
+  'requirements.txt',
+  'Pipfile',
+  'pyproject.toml',
+  'pom.xml',
+  'build.gradle',
+  '.csproj',
+  'packages.config',
+  'composer.json',
+  'CMakeLists.txt',
+  'conanfile.txt',
+  'conanfile.py',
+  'go.mod',
+  'Cargo.toml',
+  'Package.swift',
+  'build.gradle.kts',
+  'Podfile',
+  'Cartfile',
+  'cpanfile',
+  'DESCRIPTION',
+  'mix.exs',
+  'build.sbt',
+  'pubspec.yaml',
+  'stack.yaml',
+  'cabal.project',
+  'Project.toml',
+  'rockspec',
+  'rebar.config',
+  'project.clj'
+]
 
 // Main function for the describe command
 export const describe = async () => {
@@ -41,27 +51,23 @@ export const describe = async () => {
     // Limit the file list to the first 100 files
     const limitedFileList = fileList.slice(0, 100)
 
-    // Include package.json content if it exists
-    let packageJson = {} as Record<string, unknown> | string
-    if (fs.existsSync('package.json')) {
-      try {
-        packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
-      } catch (error) {
-        packageJson = fs.readFileSync('package.json', 'utf-8')
+    // Collect the contents of special files
+    const specialFileContents: Record<string, string | Record<string, unknown>> = {}
+    for (const file of specialFiles) {
+      if (fs.existsSync(file)) {
+        try {
+          const content = fs.readFileSync(file, 'utf-8')
+          specialFileContents[file] = file.endsWith('.json') ? JSON.parse(content) : content
+        } catch (error) {
+          specialFileContents[file] = fs.readFileSync(file, 'utf-8')
+        }
       }
-    }
-
-    // Include Gemfile content if it exists
-    let gemfileContent = ''
-    if (fs.existsSync('Gemfile')) {
-      gemfileContent = fs.readFileSync('Gemfile', 'utf-8')
     }
 
     // Generate the JSON object for the AI chat model
     const projectDetails = {
       files: limitedFileList,
-      packageJson,
-      gemfile: gemfileContent || null
+      specialFiles: specialFileContents
     }
 
     const prompt = `Here is a JSON object describing my project:
@@ -70,7 +76,61 @@ ${JSON.stringify(projectDetails, null, 2)}
 Please return JSON-formatted metadata about the project, including:
 - The programming language(s) used
 - The detected framework(s) (if any)
-- The version of the language(s)`
+- The version of the language(s)
+
+Here is an example response:
+
+{
+  "languages": [
+    {
+      "name": "TypeScript",
+      "version": "~> 5.5.3"
+      "primary": true
+    },
+    {
+      "name": "JavaScript",
+      "version": "ES6+"
+    }
+  ],
+  "frameworks": [
+    {
+      "name": "Node.js",
+      "type": "Runtime environment",
+      "primary": true
+    },
+    {
+      "name": "Jest",
+      "type": "Testing framework",
+      "version": "29.7.0"
+    }
+  ],
+  "buildTools": [
+    {
+      "name": "TypeScript Compiler (tsc)",
+      "type": "Transpiler"
+    },
+    {
+      "name": "Vite",
+      "type": "Build tool",
+      "version": "5.3.3"
+    }
+  ],
+  "packageManager": "Yarn",
+  "linters": [
+    {
+      "name": "ESLint",
+      "version": "9.6.0"
+    }
+  ],
+  "databases": [
+    {
+      "name": "MongoDB",
+      "version": "5.0.3",
+      "primary": true
+    }
+  ],
+  "projectType": "Command-line tool",
+}`
 
     // Estimate and print token count if DEBUG=1
     if (process.env.DEBUG === '1') {
