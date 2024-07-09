@@ -24,7 +24,7 @@ export class OpenAIAdapter implements Adapter {
   }
 
   getEndpoint(): string {
-    return `https://api.openai.com/v1/engines/${this.model}/completions`
+    return `https://api.openai.com/v1/chat/completions`
   }
 
   getHeaders(apiKey: string): Record<string, string> {
@@ -37,13 +37,13 @@ export class OpenAIAdapter implements Adapter {
   getPayload(request: GPTRequest): Record<string, any> {
     return {
       model: this.model,
-      prompt: request.prompt,
+      messages: [{ role: "user", content: request.prompt }],
       max_tokens: request.maxTokens,
       temperature: request.temperature || 0.7
     }
   }
 
   extractResponse(data: any): string {
-    return data.choices[0].text
+    return data.choices[0].message.content
   }
 }
