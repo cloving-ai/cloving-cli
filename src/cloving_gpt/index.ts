@@ -47,7 +47,7 @@ class ClovingGPT {
         rl.close()
         answer = answer.trim().toLowerCase()
         if (answer === 'y' || answer === '') {
-          const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] }) // Ensure stdio is correctly piped
+          const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
 
           less.stdin.write(prompt)
           less.stdin.end()
@@ -68,6 +68,16 @@ class ClovingGPT {
               confirmAnswer = confirmAnswer.trim().toLowerCase()
               resolve(confirmAnswer === 'y' || confirmAnswer === '')
             })
+          })
+
+          less.stdin.on('error', (err) => {
+            if (isNodeError(err) && err.code === 'EPIPE') {
+              console.error('Pipeline error: Broken pipe.')
+              resolve(false)
+            } else {
+              console.error('Pipeline error:', err)
+              resolve(false)
+            }
           })
         } else {
           resolve(true)
@@ -101,6 +111,10 @@ class ClovingGPT {
       throw error
     }
   }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error
 }
 
 export default ClovingGPT
