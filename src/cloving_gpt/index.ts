@@ -72,8 +72,7 @@ class ClovingGPT {
 
           less.stdin.on('error', (err) => {
             if (isNodeError(err) && err.code === 'EPIPE') {
-              console.error('Pipeline error: Broken pipe.')
-              resolve(false)
+              resolve(true)
             } else {
               console.error('Pipeline error:', err)
               resolve(false)
