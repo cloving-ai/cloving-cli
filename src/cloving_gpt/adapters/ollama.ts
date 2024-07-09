@@ -1,6 +1,6 @@
-// ollama.ts
 import { Adapter } from '.'
 import { GPTRequest } from '../../utils/types'
+import axios from 'axios'
 
 export class OllamaAdapter implements Adapter {
   private model: string
@@ -12,29 +12,26 @@ export class OllamaAdapter implements Adapter {
   }
 
   static async listSupportedModels(): Promise<void> {
-    const endpoint = 'http://localhost:11434/api/tags'
-    const headers = {
-      'Content-Type': 'application/json'
-    }
+    try {
+      const endpoint = 'http://localhost:11434/api/tags'
+      const headers = {
+        'Content-Type': 'application/json'
+      }
 
-    await fetch(endpoint, {
-      method: 'GET',
-      headers
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data && Array.isArray(data.models)) {
-          OllamaAdapter.supportedModels = data.models.map((model: any) => `ollama:${model.name}`)
-          OllamaAdapter.supportedModels.forEach(model => {
-            console.log(model)
-          })
-        } else {
-          console.error('Unexpected response structure:', data)
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching supported models:', error)
-      })
+      const response = await axios.get(endpoint, { headers })
+      const data = response.data
+
+      if (data && Array.isArray(data.models)) {
+        OllamaAdapter.supportedModels = data.models.map((model: any) => `ollama:${model.name}`)
+        OllamaAdapter.supportedModels.forEach(model => {
+          console.log(model)
+        })
+      } else {
+        console.error('Unexpected response structure:', data)
+      }
+    } catch (error) {
+      // do nothing, no ollama server running
+    }
   }
 
   getEndpoint(): string {

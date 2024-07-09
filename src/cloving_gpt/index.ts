@@ -22,7 +22,7 @@ class ClovingGPT {
     this.apiKey = (process.env.CLOVING_API_KEY || config.CLOVING_API_KEY || '').trim()
 
     if (!clovingModel) {
-      throw new Error("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set or available in ~/.cloving.json")
+      throw new Error("CLOVING_MODEL must be set as an environmental variable or available in ~/.cloving.json")
     }
 
     const parts = clovingModel.split(':')
@@ -119,12 +119,11 @@ class ClovingGPT {
       const response = await axios.post(endpoint, payload, { headers })
       return this.adapter.extractResponse(response.data)
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('Error generating or committing the message:', error.response.status, error.response.statusText)
-        console.error('Response data:', error.response.data)
-      } else {
-        console.error('Error generating or committing the message:', (error as Error).message)
+      let errorMessage = error instanceof Error ? error.message : 'connection error'
+      if (errorMessage === '') {
+        errorMessage = 'connection error'
       }
+      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint()}):`, errorMessage)
       throw error
     }
   }
