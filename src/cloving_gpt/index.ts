@@ -1,35 +1,38 @@
-import axios from 'axios';
-import type { Provider, GPTRequest } from '../utils/types';
-import readline from 'readline';
+import axios from 'axios'
+import type { GPTRequest } from '../utils/types'
+import readline from 'readline'
+import { spawn } from 'child_process'
+import process from 'process'
+import { Adapter } from './adapters/Adapter'
+import { ClaudeAdapter } from './adapters/claude'
+import { OpenAIAdapter } from './adapters/openai'
+import { GPT4AllAdapter } from './adapters/gpt4all'
 
 class ClovingGPT {
-  private provider: Provider;
-  private model: string;
-  private apiKey: string;
+  private adapter: Adapter
+  private apiKey: string
 
   constructor() {
-    const clovingModel = process.env.CLOVING_MODEL;
-    this.apiKey = process.env.CLOVING_API_KEY || '';
+    const clovingModel = process.env.CLOVING_MODEL
+    this.apiKey = (process.env.CLOVING_API_KEY || '').trim()
 
     if (!clovingModel || !this.apiKey) {
-      throw new Error("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set");
+      throw new Error("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set")
     }
 
-    const [provider, model] = clovingModel.split(':');
-    this.provider = provider as Provider;
-    this.model = model;
-  }
-
-  private getEndpoint(): string {
-    switch (this.provider) {
-      case 'openai':
-        return `https://api.openai.com/v1/engines/${this.model}/completions`;
+    const [provider, model] = clovingModel.split(':')
+    switch (provider) {
       case 'claude':
-        return `https://api.anthropic.com/v1/claude/${this.model}`;
+        this.adapter = new ClaudeAdapter(model)
+        break
+      case 'openai':
+        this.adapter = new OpenAIAdapter(model)
+        break
       case 'gpt4all':
-        return `https://api.gpt4all.io/v1/models/${this.model}/completions`;
+        this.adapter = new GPT4AllAdapter(model)
+        break
       default:
-        throw new Error(`Unsupported provider: ${this.provider}`);
+        throw new Error(`Unsupported provider: ${provider}`)
     }
   }
 
@@ -37,53 +40,67 @@ class ClovingGPT {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
-    });
+    })
 
     return new Promise((resolve) => {
       rl.question(message, (answer) => {
-        rl.close();
-        resolve(answer.toLowerCase() === 'y');
-      });
-    });
+        rl.close()
+        answer = answer.trim().toLowerCase()
+        if (answer === 'y' || answer === '') {
+          const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] }) // Ensure stdio is correctly piped
+
+          less.stdin.write(prompt)
+          less.stdin.end()
+
+          less.on('close', (code) => {
+            if (code !== 0) {
+              console.error('less command exited with an error.')
+              resolve(false)
+              return
+            }
+
+            const rlConfirm = readline.createInterface({
+              input: process.stdin,
+              output: process.stdout
+            })
+            rlConfirm.question('Do you still want to continue? [Yn]: ', (confirmAnswer) => {
+              rlConfirm.close()
+              confirmAnswer = confirmAnswer.trim().toLowerCase()
+              resolve(confirmAnswer === 'y' || confirmAnswer === '')
+            })
+          })
+        } else {
+          resolve(true)
+        }
+      })
+    })
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
-    const shouldShowPrompt = await this.askUserToConfirm(request.prompt, 'Do you want to see the prompt before it is sent to the GPT? [yN]: ');
+    const shouldContinue = await this.askUserToConfirm(request.prompt, 'Do you want to see the prompt before it is sent to the GPT? [Yn]: ')
 
-    if (shouldShowPrompt) {
-      console.log('Prompt being sent to GPT:', request.prompt);
-      const shouldContinue = await this.askUserToConfirm(request.prompt, 'Do you still want to continue? [Yn]: ');
-      if (!shouldContinue) {
-        console.log('Operation cancelled by the user.');
-        return '';
-      }
+    if (!shouldContinue) {
+      console.log('Operation cancelled by the user.')
+      process.exit(0)
     }
 
-    const endpoint = this.getEndpoint();
+    const endpoint = this.adapter.getEndpoint()
+    const payload = this.adapter.getPayload(request)
+    const headers = this.adapter.getHeaders(this.apiKey)
 
-    const response = await axios.post(endpoint, {
-      model: this.model,
-      prompt: request.prompt,
-      max_tokens: request.maxTokens || 100,
-      temperature: request.temperature || 0.7
-    }, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
+    try {
+      const response = await axios.post(endpoint, payload, { headers })
+      return this.adapter.extractResponse(response.data)
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Error generating or committing the message:', error.response.status, error.response.statusText)
+        console.error('Response data:', error.response.data)
+      } else {
+        console.error('Error generating or committing the message:', (error as Error).message)
       }
-    });
-
-    switch (this.provider) {
-      case 'openai':
-        return response.data.choices[0].text;
-      case 'claude':
-        return response.data.completion;
-      case 'gpt4all':
-        return response.data.text;
-      default:
-        throw new Error(`Unsupported provider: ${this.provider}`);
+      throw error
     }
   }
 }
 
-export default ClovingGPT;
+export default ClovingGPT
