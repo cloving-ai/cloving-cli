@@ -1,16 +1,17 @@
-import { execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import { execFileSync } from 'child_process'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
-import { getModel } from '../utils/model_utils'
+import ClovingGPT from '../cloving_gpt'
 
-export default () => {
+const generateAndCommitMessage = async () => {
   try {
     // Generate the prompt for commit message
     const prompt = generateCommitMessagePrompt()
 
-    // Get the commit message from the AI chat model
-    const rawCommitMessage = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
+    // Instantiate ClovingGPT and get the commit message
+    const gpt = new ClovingGPT()
+    const rawCommitMessage = await gpt.generateText({ prompt })
 
     // Split the commit message on lines that start with one or more `# ` characters
     const commitMessageParts = rawCommitMessage.split(/\n#+\s/)
@@ -30,10 +31,12 @@ export default () => {
 
     // Remove the temporary file using fs
     fs.unlink(tempCommitFilePath, (err) => {
-      if (err) throw err;
+      if (err) throw err
     })
 
   } catch (error) {
     console.error('Error generating or committing the message:', (error as Error).message)
   }
 }
+
+export default generateAndCommitMessage

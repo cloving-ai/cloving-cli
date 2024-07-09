@@ -1,9 +1,9 @@
-import { execFileSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { getModel } from '../utils/model_utils'
+import { execFileSync } from 'child_process'
 import { estimateTokens, extractJsonMetadata } from '../utils/string_utils'
+import ClovingGPT from '../cloving_gpt'
 
 // List of special files to check
 const specialFiles = [
@@ -138,8 +138,11 @@ Here is an example response:
       console.log(`Estimated token count: ${tokenCount}`)
     }
 
-    // Get AI chat response and write to temporary file
-    const aiChatResponse = execFileSync('aichat', ['-m', getModel(), '-r', 'coder', prompt]).toString()
+    // Instantiate ClovingGPT and get the AI chat response
+    const gpt = new ClovingGPT()
+    const aiChatResponse = await gpt.generateText({ prompt })
+
+    // Write the AI chat response to a temporary file
     fs.writeFileSync(tempFilePath, aiChatResponse)
 
     // Extract JSON metadata from the AI response
