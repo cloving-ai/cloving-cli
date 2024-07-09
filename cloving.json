@@ -2,7 +2,7 @@
   "languages": [
     {
       "name": "TypeScript",
-      "version": "5.5.3",
+      "version": "~> 5.5.3",
       "primary": true
     },
     {

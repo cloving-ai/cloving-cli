@@ -33,3 +33,26 @@ export const extractJsonMetadata = (response: string): string => {
 
   return jsonString
 }
+
+// Function to extract markdown from the AI response
+export const extractMarkdown = (response: string): string => {
+  let markdownString
+
+  // Extract the ```markdown block from the response
+  const jsonBlockStart = response.indexOf('```markdown')
+  const jsonBlockEnd = response.indexOf('```', jsonBlockStart + 6)
+
+  if (jsonBlockStart !== -1 && jsonBlockEnd !== -1) {
+    markdownString = response.substring(jsonBlockStart + 6, jsonBlockEnd).trim()
+  } else {
+    markdownString = response
+  }
+
+  // Remove any data before the first '#'
+  const jsonStartIndex = markdownString.indexOf('#')
+  if (jsonStartIndex !== -1) {
+    markdownString = markdownString.substring(jsonStartIndex)
+  }
+
+  return markdownString
+}

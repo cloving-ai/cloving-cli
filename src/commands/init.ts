@@ -150,7 +150,7 @@ Cloving will send AI a request to summarize the technologies used in this projec
 
 This will provide better context for future Cloving requests.
 
-For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model so that this data is not sent to an AI service provider.
+For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model (llama3:70b-instruct currently works well for this) so that this data is not sent to an AI service provider.
 `)
   } else {
     console.log(`
