@@ -2,7 +2,6 @@ import readline from 'readline'
 import { execFileSync } from 'child_process'
 
 import { getGitDiff } from '../utils/git_utils'
-import { getModel } from '../utils/model_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 

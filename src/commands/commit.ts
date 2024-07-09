@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { execFileSync } from 'child_process'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
+import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 
 const generateAndCommitMessage = async () => {
@@ -13,9 +14,8 @@ const generateAndCommitMessage = async () => {
     const gpt = new ClovingGPT()
     const rawCommitMessage = await gpt.generateText({ prompt })
 
-    // Split the commit message on lines that start with one or more `# ` characters
-    const commitMessageParts = rawCommitMessage.split(/\n#+\s/)
-    const commitMessage = commitMessageParts[commitMessageParts.length - 1].trim()  // trim to remove any leading/trailing whitespace
+    // Clean the commit message using extractMarkdown
+    const commitMessage = extractMarkdown(rawCommitMessage)
 
     // Write the commit message to a temporary file
     const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
