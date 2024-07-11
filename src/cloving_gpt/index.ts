@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { GPTRequest, ClovingConfig } from '../utils/types'
+import type { GPTRequest, ClovingConfig, ClovingGPTOptions } from '../utils/types'
 import readline from 'readline'
 import { spawn } from 'child_process'
 import process from 'process'
@@ -14,12 +14,14 @@ import { OllamaAdapter } from './adapters/ollama' // Import the OllamaAdapter
 class ClovingGPT {
   private adapter: Adapter
   private apiKey: string
+  private silent: boolean
 
-  constructor() {
+  constructor(options: ClovingGPTOptions = { silent: false }) {
     const config = this.loadConfig()
 
     const clovingModel = process.env.CLOVING_MODEL || config.CLOVING_MODEL
     this.apiKey = (process.env.CLOVING_API_KEY || config.CLOVING_API_KEY || '').trim()
+    this.silent = options.silent
 
     if (!clovingModel) {
       throw new Error("CLOVING_MODEL must be set as an environmental variable or available in ~/.cloving.json")
@@ -55,6 +57,8 @@ class ClovingGPT {
   }
 
   private async askUserToConfirm(prompt: string, message: string): Promise<boolean> {
+    if (this.silent) return true
+
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout

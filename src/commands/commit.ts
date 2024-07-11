@@ -5,8 +5,8 @@ import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 
-const generateAndCommitMessage = async () => {
-  const gpt = new ClovingGPT()
+const generateAndCommitMessage = async (options: { silent: boolean }) => {
+  const gpt = new ClovingGPT(options)
   try {
     // Generate the prompt for commit message
     const prompt = generateCommitMessagePrompt()

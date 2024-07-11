@@ -18,6 +18,7 @@ program
 program
   .command('commit')
   .description('Generate a commit message and commit the changes')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .action(commit)
 
 program

@@ -11,3 +11,8 @@ export interface ClovingConfig {
   CLOVING_MODEL: string
   CLOVING_API_KEY: string
 }
+
+export interface ClovingGPTOptions {
+  silent: boolean
+}
+
