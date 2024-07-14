@@ -3,7 +3,7 @@ import readline from 'readline'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import type { ClovingConfig, ClovingGPTOptions } from '../utils/types'
+import type { ClovingConfig, ClovingGPTOptions, ClovingGPTConfig } from '../utils/types'
 
 export const CONFIG_PATH = path.join(os.homedir(), '.cloving.json')
 export const SPECIAL_FILES = [
@@ -149,11 +149,11 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
   }
 }
 
-export const readClovingConfig = (): any => {
+export const readClovingConfig = (): ClovingGPTConfig => {
   const configPath = path.resolve(process.cwd(), 'cloving.json')
   if (fs.existsSync(configPath)) {
     const configFile = fs.readFileSync(configPath, 'utf-8')
-    return JSON.parse(configFile)
+    return JSON.parse(configFile) as ClovingGPTConfig
   } else {
     throw new Error('cloving.json file not found')
   }

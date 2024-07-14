@@ -1,11 +1,9 @@
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
+import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
 import ClovingGPT from '../cloving_gpt'
 import { readClovingConfig } from '../utils/command_utils'
-import type { ClovingGPTOptions } from '../utils/types'
+import type { ClovingGPTOptions, ClovingGPTConfig } from '../utils/types'
 
 const extractChangedFiles = (gitDiff: string): string[] => {
   const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g
@@ -17,6 +15,21 @@ const extractChangedFiles = (gitDiff: string): string[] => {
   }
 
   return Array.from(files)
+}
+
+const setupTestingPrompt = async (gpt: ClovingGPT, config: ClovingGPTConfig) => {
+  const prompt = `I have the following cloving.json configuration file:
+
+==== begin cloving.json ====
+${JSON.stringify(config, null, 2)}
+==== end cloving.json ====
+
+Please provide instructions on how to set up testing for this project.`
+
+  const setupInstructions = await gpt.generateText({ prompt })
+
+  console.log(setupInstructions)
+  process.exit(0)
 }
 
 const generatePrompt = (files: string[], srcFiles: string, testFiles: string, gitDiff?: string) => {
@@ -66,10 +79,11 @@ const unitTests = async (options: ClovingGPTOptions) => {
 
   // Read the cloving.json file
   const config = readClovingConfig()
-  const testingDirectory = config.testingFrameworks.find((framework: any) => framework.directory)?.directory || 'spec'
+  const testingDirectory = config.testingFrameworks?.find((framework: any) => framework.directory)?.directory
 
-  // Generate a temporary file path
-  const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
+  if (!testingDirectory) {
+    await setupTestingPrompt(gpt, config)
+  }
 
   let allSrcFiles: string[] = []
 
@@ -84,8 +98,8 @@ const unitTests = async (options: ClovingGPTOptions) => {
   // Ensure allSrcFiles is unique
   allSrcFiles = Array.from(new Set(allSrcFiles))
 
-  if (allSrcFiles.length === 0) {
-    console.error('Could not find any source files to generate unit tests. Please run: cloving init')
+  if (allSrcFiles.length === 0 || !testingDirectory) {
+    console.error('Could not find any source files to generate unit tests. Please run: cloving init. Then try again.')
     process.exit(1)
   }
 
@@ -107,18 +121,18 @@ const unitTests = async (options: ClovingGPTOptions) => {
   const context: string[] = []
 
   // Read input from temporary file
-  contextFiles.split("\n").forEach((line) => {
+  contextFiles.split('\n').forEach((line) => {
     if (line.trim()) {
       lines.push(line.trim())
     }
   })
 
-  lines.forEach((codeFile) => {
-    if (fs.existsSync(codeFile) && fs.statSync(codeFile).isFile()) {
-      const fileContents = fs.readFileSync(codeFile, 'utf-8')
+  for (const codeFile of lines) {
+    if (await fs?.stat(codeFile).then(stat => stat.isFile()).catch(() => false)) {
+      const fileContents = await fs.readFile(codeFile, 'utf-8')
       context.push(`### **Contents of ${codeFile}**\n\n${fileContents}\n\n### **End of ${codeFile}**`)
     }
-  })
+  }
 
   // Generate the message for unit test creation
   let analysis = ''
@@ -127,11 +141,11 @@ const unitTests = async (options: ClovingGPTOptions) => {
     const message = `please create unit tests for these files:
 
 ## begin list of files
-${(files || []).join("\n")}
+${(files || []).join('\n')}
 ## end list of files
 
 ## context
-${context.join("\n\n")}`
+${context.join('\n\n')}`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
@@ -144,7 +158,7 @@ ${await getGitDiff()}
 
 ## context
 
-${context.join("\n\n")}`
+${context.join('\n\n')}`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
