@@ -8,7 +8,7 @@ import { getConfig } from '../utils/command_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig().silent || false
+  options.silent = getConfig(options).silent || false
   const gpt = new ClovingGPT(options)
 
   try {

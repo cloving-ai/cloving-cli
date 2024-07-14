@@ -1,7 +1,7 @@
 import { promptUser, fetchModels, getConfig, saveConfig } from '../utils/command_utils'
 
 export const config = async () => {
-  let currentConfig = getConfig()
+  let currentConfig = getConfig({})
 
   // Ensure models is initialized properly
   if (!currentConfig.models) {

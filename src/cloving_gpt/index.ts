@@ -16,14 +16,15 @@ class ClovingGPT {
   private silent: boolean
 
   constructor(options: ClovingGPTOptions = { silent: false }) {
-    const config = getConfig()
+    const config = getConfig(options)
     if (!config || !config.primaryModel || !config.models) {
-      throw new Error('No cloving configuration found. Please run `cloving config`')
+      console.log('No cloving configuration found. Please run: cloving config')
+      process.exit(1)
     }
 
     const clovingModel = config.primaryModel
     this.apiKey = config.models[config?.primaryModel || ''].trim()
-    this.silent = options.silent
+    this.silent = options.silent || false
 
     const parts = clovingModel.split(':')
     const model = parts.slice(1).join(':')
