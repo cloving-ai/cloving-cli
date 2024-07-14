@@ -4,11 +4,11 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 
 ## Features
 
-- AI-powered Git commit message generation
-- Automated code reviews with AI insights
-- AI-assisted unit test generation
-- Seamless integration with existing development workflows
-- Customizable AI prompts for different tasks
+- **AI-powered Git commit message generation**
+- **Automated code reviews with AI insights**
+- **AI-assisted unit test generation**
+- **Seamless integration with existing development workflows**
+- **Customizable AI prompts for different tasks**
 
 ## Prerequisites
 
@@ -19,53 +19,91 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 ## Installation
 
 1. Clone this repository:
-   ```
+   ```bash
    git clone https://github.com/clovingai/cloving-cli.git
    ```
 
 2. Navigate to the project directory:
-   ```
+   ```bash
    cd cloving-cli
    ```
 
 3. Install dependencies:
-   ```
+   ```bash
    yarn install
    ```
 
-4. Set up your AI chat model environment variable:
-   ```
+4. Set up your AI chat model environment variables:
+   ```bash
    export CLOVING_MODEL=your_preferred_model
    export CLOVING_API_KEY=your_api_key
    ```
 
 ## Usage
 
+Cloving provides several commands to help integrate AI into your development workflow:
+
 ### Generating Commit Messages
 
 Run the following command in your Git repository:
-
-```
+```bash
 cloving commit
 ```
-
 This will generate an AI-powered commit message based on your recent changes, allow you to review and edit it, and then commit your changes.
 
 ### Code Reviews
 
 To get an AI-powered code review for your latest changes:
-
-```
+```bash
 cloving review
 ```
 
 ### Generating Unit Tests
 
 To generate unit tests for a specific file or function:
-
-```
+```bash
 cloving unit-tests [file_path_to_test]
 ```
+
+### Initial Setup
+
+To set up Cloving in the current project, generating a `cloving.json` file that includes a GPT-generated project overview with details like the language, framework, and language version:
+```bash
+cloving init
+```
+
+### Configuration
+
+To configure Cloving with your API key and model:
+```bash
+cloving config
+```
+
+### Listing Available Models
+
+To list the available AI models:
+```bash
+cloving models
+```
+
+## Command Line Options
+
+Usage: `cloving [options] [command]`
+
+Integrate AI into your development workflow for generating commit messages, code reviews, and unit tests.
+
+Options:
+- `-V, --version`   output the version number
+- `-h, --help`      display help for command
+
+Commands:
+- `commit`          Generate a commit message and commit the changes
+- `unit-tests`      Generate unit tests for the changes
+- `models`          List available models
+- `review`          Review the changes and propose
+- `init`            Setup Cloving in the current project
+- `config`          Configure Cloving with your API key and model
+- `help [command]`  Display help for command
 
 ## Contributing
 
