@@ -20,7 +20,7 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/clovingai/cloving-cli.git
+   git clone https://github.com/cloving-ai/cloving-cli.git
    ```
 
 2. Navigate to the project directory:
@@ -28,15 +28,15 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
    cd cloving-cli
    ```
 
-3. Install dependencies:
+3. Install dependencies and link the package:
    ```bash
    yarn install
+   yarn link
    ```
 
-4. Set up your AI chat model environment variables:
+4. Configure Cloving with your API key and model:
    ```bash
-   export CLOVING_MODEL=your_preferred_model
-   export CLOVING_API_KEY=your_api_key
+   cloving config
    ```
 
 ## Usage
