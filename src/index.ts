@@ -41,6 +41,7 @@ program
 program
   .command('init')
   .description('Setup cloving in the current project, including the language, framework, and language version')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .action(init)
 
 program

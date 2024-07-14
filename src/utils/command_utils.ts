@@ -6,6 +6,71 @@ import path from 'path'
 import type { ClovingConfig } from '../utils/types'
 
 export const CONFIG_PATH = path.join(os.homedir(), '.cloving.json')
+export const SPECIAL_FILES = [
+  'package.json',
+  'Gemfile',
+  'requirements.txt',
+  'Pipfile',
+  'pyproject.toml',
+  'pom.xml',
+  'build.gradle',
+  '.csproj',
+  'packages.config',
+  'composer.json',
+  'CMakeLists.txt',
+  'conanfile.txt',
+  'conanfile.py',
+  'go.mod',
+  'Cargo.toml',
+  'Package.swift',
+  'build.gradle.kts',
+  'Podfile',
+  'Cartfile',
+  'cpanfile',
+  'DESCRIPTION',
+  'mix.exs',
+  'build.sbt',
+  'pubspec.yaml',
+  'stack.yaml',
+  'cabal.project',
+  'Project.toml',
+  'rockspec',
+  'rebar.config',
+  'project.clj'
+]
+
+export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {
+  const specialFileContents: Record<string, string | Record<string, unknown>> = {}
+  for (const file of SPECIAL_FILES) {
+    if (fs.existsSync(file)) {
+      try {
+        const content = fs.readFileSync(file, 'utf-8')
+        specialFileContents[file] = file.endsWith('.json') ? JSON.parse(content) : content
+      } catch (error) {
+        specialFileContents[file] = fs.readFileSync(file, 'utf-8')
+      }
+    }
+  }
+  return specialFileContents
+}
+
+export const checkForSpecialFiles = (): boolean => {
+  return SPECIAL_FILES.some(file => fs.existsSync(file))
+}
+
+export const generateFileList = async (): Promise<string[]> => {
+  try {
+    const lsOutput = await runCommand('ls', [])
+    const findOutput = await runCommand('find', ['.'])
+    const cleanedFindOutput = findOutput.map(file => file.startsWith('./') ? file.slice(2) : file)
+    const files = [...lsOutput, ...cleanedFindOutput]
+    const uniqueFiles = Array.from(new Set(files))
+    return uniqueFiles.filter(file => file && !file.includes('.git') && !file.includes('node_modules') && !file.includes('tmp'))
+  } catch (error) {
+    console.error('Error generating file list:', (error as Error).message)
+    return []
+  }
+}
 
 export const runCommand = (command: string, args: string[]): Promise<string[]> => {
   return new Promise((resolve, reject) => {
@@ -59,7 +124,7 @@ export const saveConfig = (config: ClovingConfig) => {
   console.log(`Configuration saved to ${CONFIG_PATH}`)
 }
 
-export const getConfig = (): ClovingConfig | null => {
+export const getConfig = (): ClovingConfig => {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const rawConfig = fs.readFileSync(CONFIG_PATH, 'utf-8')
@@ -71,9 +136,10 @@ export const getConfig = (): ClovingConfig | null => {
   if (process.env.CLOVING_MODEL) {
     return {
       models: { [`${process.env.CLOVING_MODEL}`]: process.env.CLOVING_API_KEY ?? '' },
-      primaryModel: process.env.CLOVING_MODEL
+      primaryModel: process.env.CLOVING_MODEL,
+      silent: false
     }
   } else {
-    return { models: {}, primaryModel: null }
+    return { models: {}, primaryModel: null, silent: false }
   }
 }

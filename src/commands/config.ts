@@ -1,8 +1,7 @@
 import { promptUser, fetchModels, getConfig, saveConfig } from '../utils/command_utils'
-import type { ClovingConfig } from '../utils/types'
 
 export const config = async () => {
-  let currentConfig: ClovingConfig = await getConfig() || { models: {}, primaryModel: null }
+  let currentConfig = getConfig()
 
   // Ensure models is initialized properly
   if (!currentConfig.models) {
