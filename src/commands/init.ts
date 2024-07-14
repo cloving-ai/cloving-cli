@@ -95,18 +95,24 @@ Here is an example response:
     {
       "name": "TypeScript",
       "version": "~> 5.5.3"
-      "primary": true
+      "primary": true,
+      "directory": "src",
+      "extension": ".ts"
     },
     {
       "name": "JavaScript",
-      "version": "ES6+"
+      "version": "ES6+",
+      "directory": "src",
+      "extension": ".js"
     }
   ],
   "frameworks": [
     {
       "name": "Node.js",
       "type": "Runtime environment",
-      "primary": true
+      "primary": true,
+      "directory": "src",
+      "extension": ".js"
     }
   ],
   "testingFrameworks": [

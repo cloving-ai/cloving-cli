@@ -25,6 +25,7 @@ program
   .command('unit-tests')
   .description('Generate unit tests for the changes')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
   .action(unitTests)
 
 program

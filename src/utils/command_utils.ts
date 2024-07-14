@@ -148,3 +148,13 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
     return { models: {}, primaryModel: null, silent: options.silent || false }
   }
 }
+
+export const readClovingConfig = (): any => {
+  const configPath = path.resolve(process.cwd(), 'cloving.json')
+  if (fs.existsSync(configPath)) {
+    const configFile = fs.readFileSync(configPath, 'utf-8')
+    return JSON.parse(configFile)
+  } else {
+    throw new Error('cloving.json file not found')
+  }
+}

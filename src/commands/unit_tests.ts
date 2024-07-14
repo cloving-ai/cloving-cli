@@ -4,32 +4,36 @@ import path from 'path'
 import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
 import ClovingGPT from '../cloving_gpt'
+import { readClovingConfig } from '../utils/command_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
-// Function to estimate token count
-const estimateTokens = async (text: string): Promise<number> => {
-  const charCount = text.length
-  const tokenCount = Math.ceil(charCount / 4)
-  return tokenCount
+const extractChangedFiles = (gitDiff: string): string[] => {
+  const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g
+  const files = new Set<string>()
+  let match
+
+  while ((match = fileRegex.exec(gitDiff)) !== null) {
+    files.add(match[1])
+  }
+
+  return Array.from(files)
 }
 
-// Main function for the unit_tests command
-const unitTests = async (options: ClovingGPTOptions) => {
-  const gpt = new ClovingGPT(options)
+const generatePrompt = (files: string[], srcFiles: string, testFiles: string, gitDiff?: string) => {
+  const filesList = files.length > 0 ? files.join('\n') : 'No files provided'
+  const diffSection = gitDiff ? `Here is my git diff:\n\n==== begin git diff ====\n${gitDiff}\n==== end git diff ====\n` : ''
 
-  // Generate a temporary file path
-  const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
+  return `Here is a list of code files I want to generate unit tests for:
 
-  try {
-    // Generate the prompt for the AI chat model
-    const gitDiff = await getGitDiff()
-    const modelFiles = execFileSync('find', ['app/models', '-type', 'f']).toString().trim()
-    const testFiles = execFileSync('find', ['spec', '-type', 'f']).toString().trim()
-    const prompt = `Here is a list of all my model files:
+==== begin list of files ====
+${filesList}
+==== end list of files ====
 
-==== begin list of models ====
-${modelFiles}
-==== end list of models ====
+Here is a list of all my source files:
+
+==== begin list of source files ====
+${srcFiles}
+==== end list of source files ====
 
 Here is a list of all my test files:
 
@@ -37,12 +41,11 @@ Here is a list of all my test files:
 ${testFiles}
 ==== end list of test files ====
 
-Please enumerate all the files in this git diff as well as the file names of any models that
-this code interacts with. Also, list any test files that might be relevant to these changes:
+${diffSection}
 
-==== begin git diff ====
-${gitDiff}
-==== end git diff ====
+Please enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
+
+Also, list any test files that might be relevant to these files.
 
 Give me this output format for your answer:
 
@@ -51,79 +54,105 @@ Give me this output format for your answer:
 app/models/foo.rb
 app/views/baz/bar.html.erb
 
-## interacted models
-
-app/models/pop.rb
-
 ## relevant test files
 
 test/models/foo_test.rb
 test/controllers/baz_controller_test.rb`
+}
 
-    // Estimate and print token count
-    let tokenCount = await estimateTokens(prompt)
-    console.log(`Estimated token count: ${tokenCount}`)
+const unitTests = async (options: ClovingGPTOptions) => {
+  const { files } = options
+  const gpt = new ClovingGPT(options)
 
-    // Instantiate ClovingGPT and get the AI chat response
-    const gpt = new ClovingGPT()
-    const aiChatResponse = await gpt.generateText({ prompt })
-    fs.writeFileSync(tempFilePath, aiChatResponse)
+  // Read the cloving.json file
+  const config = readClovingConfig()
+  const testingDirectory = config.testingFrameworks.find((framework: any) => framework.directory)?.directory || 'spec'
 
-    // Handle "files" argument
-    if (process.argv.includes('files')) {
-      console.log(aiChatResponse)
-      fs.unlinkSync(tempFilePath)
-      process.exit(0)
+  // Generate a temporary file path
+  const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
+
+  try {
+    let allSrcFiles: string[] = []
+
+    // Collect srcFiles for each language with specified directory and extension
+    for (const language of config.languages) {
+      if (language.directory && language.extension) {
+        const srcFiles = execFileSync('find', [language.directory, '-type', 'f', '-name', `*${language.extension}`]).toString().trim().split('\n')
+        allSrcFiles = allSrcFiles.concat(srcFiles)
+      }
+    }
+
+    // Ensure allSrcFiles is unique
+    allSrcFiles = Array.from(new Set(allSrcFiles))
+
+    if (allSrcFiles.length === 0) {
+      console.error('Could not find any source files to generate unit tests. Please run: cloving init')
+      process.exit(1)
+    }
+
+    const testFiles = execFileSync('find', [testingDirectory, '-type', 'f']).toString().trim()
+    let contextFiles: string
+
+    if (files) {
+      const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
+      contextFiles = await gpt.generateText({ prompt })
+    } else {
+      const gitDiff = await getGitDiff()
+      const changedFiles = extractChangedFiles(gitDiff)
+      const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff)
+      contextFiles = await gpt.generateText({ prompt })
     }
 
     // Initialize variables
     const lines: string[] = []
+    const context: string[] = []
 
     // Read input from temporary file
-    const fileContent = fs.readFileSync(tempFilePath, 'utf-8')
-    fileContent.split('\n').forEach((line) => {
+    contextFiles.split("\n").forEach((line) => {
       if (line.trim()) {
         lines.push(line.trim())
       }
     })
 
-    // Generate output
-    fs.writeFileSync(tempFilePath, '## files\n\n')
-
-    lines.forEach((line) => {
-      if (fs.existsSync(line) && fs.statSync(line).isFile()) {
-        const fileContents = fs.readFileSync(line, 'utf-8')
-        fs.appendFileSync(tempFilePath, `### **Contents of ${line}**\n\n${fileContents}\n\n`)
+    lines.forEach((codeFile) => {
+      if (fs.existsSync(codeFile) && fs.statSync(codeFile).isFile()) {
+        const fileContents = fs.readFileSync(codeFile, 'utf-8')
+        context.push(`### **Contents of ${codeFile}**\n\n${fileContents}\n\n### **End of ${codeFile}**`)
       }
     })
 
-    // Handle "code" argument
-    if (process.argv.includes('code')) {
-      console.log(fs.readFileSync(tempFilePath, 'utf-8'))
-      fs.unlinkSync(tempFilePath)
-      process.exit(0)
-    }
-
     // Generate the message for unit test creation
-    const message = `please create unit tests for these changes:
+    let analysis = ''
 
+    if ((files || []).length > 0) {
+      const message = `please create unit tests for these files:
+
+## begin list of files
+${(files || []).join("\n")}
+## end list of files
+
+## context
+${context.join("\n\n")}`
+
+      // Get the model and analysis using ClovingGPT
+      analysis = await gpt.generateText({ prompt: message })
+    } else {
+      const message = `please create unit tests for these changes:
+
+## begin diff
 ${await getGitDiff()}
+## end diff
 
 ## context
 
-${fs.readFileSync(tempFilePath, 'utf-8')}`
+  ${context.join("\n\n")}`
 
-    tokenCount = await estimateTokens(message)
-    console.log(`Estimated token count: ${tokenCount}`)
+      // Get the model and analysis using ClovingGPT
+      analysis = await gpt.generateText({ prompt: message })
+    }
 
-    // Clean up
-    fs.unlinkSync(tempFilePath)
-
-    // Get the model and analysis using ClovingGPT
-    const analysis = await gpt.generateText({ prompt: message })
-
-    // Print the output
     console.log(analysis)
+
   } catch (error) {
     console.error('Error processing unit tests:', (error as Error).message)
   }
