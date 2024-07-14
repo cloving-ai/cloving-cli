@@ -3,7 +3,8 @@ import os from 'os'
 import path from 'path'
 import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
-import ClovingGPT from '../cloving_gpt'  // Adjust the import path as needed
+import ClovingGPT from '../cloving_gpt'
+import type { ClovingGPTOptions } from '../utils/types'
 
 // Function to estimate token count
 const estimateTokens = async (text: string): Promise<number> => {
@@ -13,7 +14,9 @@ const estimateTokens = async (text: string): Promise<number> => {
 }
 
 // Main function for the unit_tests command
-const unitTests = async () => {
+const unitTests = async (options: ClovingGPTOptions) => {
+  const gpt = new ClovingGPT(options)
+
   // Generate a temporary file path
   const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
 

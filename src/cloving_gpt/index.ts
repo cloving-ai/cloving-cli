@@ -1,15 +1,14 @@
 import axios from 'axios'
-import type { GPTRequest, ClovingConfig, ClovingGPTOptions } from '../utils/types'
 import readline from 'readline'
 import { spawn } from 'child_process'
 import process from 'process'
-import fs from 'fs'
-import path from 'path'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
 import { GPT4AllAdapter } from './adapters/gpt4all'
-import { OllamaAdapter } from './adapters/ollama' // Import the OllamaAdapter
+import { OllamaAdapter } from './adapters/ollama'
+import { getConfig } from '../utils/command_utils'
+import type { GPTRequest, ClovingGPTOptions } from '../utils/types'
 
 class ClovingGPT {
   private adapter: Adapter
@@ -17,15 +16,14 @@ class ClovingGPT {
   private silent: boolean
 
   constructor(options: ClovingGPTOptions = { silent: false }) {
-    const config = this.loadConfig()
-
-    const clovingModel = process.env.CLOVING_MODEL || config.CLOVING_MODEL
-    this.apiKey = (process.env.CLOVING_API_KEY || config.CLOVING_API_KEY || '').trim()
-    this.silent = options.silent
-
-    if (!clovingModel) {
-      throw new Error("CLOVING_MODEL must be set as an environmental variable or available in ~/.cloving.json")
+    const config = getConfig()
+    if (!config || !config.primaryModel || !config.models) {
+      throw new Error('No cloving configuration found. Please run `cloving config`')
     }
+
+    const clovingModel = config.primaryModel
+    this.apiKey = config.models[config?.primaryModel || ''].trim()
+    this.silent = options.silent
 
     const parts = clovingModel.split(':')
     const model = parts.slice(1).join(':')
@@ -45,15 +43,6 @@ class ClovingGPT {
       default:
         throw new Error(`Unsupported provider: ${parts[0]}`)
     }
-  }
-
-  private loadConfig(): ClovingConfig {
-    const configPath = path.resolve(process.env.HOME || process.env.USERPROFILE || '', '.cloving.json')
-    if (fs.existsSync(configPath)) {
-      const rawConfig = fs.readFileSync(configPath, 'utf-8')
-      return JSON.parse(rawConfig)
-    }
-    return { CLOVING_MODEL: '', CLOVING_API_KEY: '' }
   }
 
   private async askUserToConfirm(prompt: string, message: string): Promise<boolean> {
@@ -115,8 +104,7 @@ class ClovingGPT {
     const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}? [Yn]: `)
 
     if (!shouldContinue) {
-      console.log('Operation cancelled by the user.')
-      process.exit(0)
+      throw 'Operation cancelled by the user.'
     }
 
     try {

@@ -3,9 +3,12 @@ import path from 'path'
 import { execFileSync } from 'child_process'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { extractMarkdown } from '../utils/string_utils'
+import { getConfig } from '../utils/command_utils'
 import ClovingGPT from '../cloving_gpt'
+import type { ClovingGPTOptions } from '../utils/types'
 
-const generateAndCommitMessage = async (options: { silent: boolean }) => {
+const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
+  options.silent = getConfig().silent || false
   const gpt = new ClovingGPT(options)
   try {
     // Generate the prompt for commit message

@@ -7,12 +7,12 @@ export interface GPTRequest {
   stream?: boolean
 }
 
-export interface ClovingConfig {
-  CLOVING_MODEL: string
-  CLOVING_API_KEY: string
-}
-
 export interface ClovingGPTOptions {
   silent: boolean
 }
 
+export type ClovingConfig = {
+  models: Record<string, string>
+  primaryModel?: string | null
+  silent?: boolean
+}
