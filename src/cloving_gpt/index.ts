@@ -21,8 +21,8 @@ class ClovingGPT {
       throw new Error('No cloving configuration found. Please run `cloving config`')
     }
 
-    const clovingModel = process.env.CLOVING_MODEL || config?.primaryModel
-    this.apiKey = (process.env.CLOVING_API_KEY || config?.models[config?.primaryModel || ''] || '').trim()
+    const clovingModel = config.primaryModel
+    this.apiKey = config.models[config?.primaryModel || ''].trim()
     this.silent = options.silent
 
     const parts = clovingModel.split(':')

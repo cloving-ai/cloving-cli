@@ -68,5 +68,12 @@ export const getConfig = (): ClovingConfig | null => {
   } catch (err) {
     console.error('Error reading configuration:', err)
   }
-  return { models: {}, primaryModel: null }
+  if (process.env.CLOVING_MODEL) {
+    return {
+      models: { [`${process.env.CLOVING_MODEL}`]: process.env.CLOVING_API_KEY ?? '' },
+      primaryModel: process.env.CLOVING_MODEL
+    }
+  } else {
+    return { models: {}, primaryModel: null }
+  }
 }

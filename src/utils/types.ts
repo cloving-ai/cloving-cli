@@ -13,5 +13,5 @@ export interface ClovingGPTOptions {
 
 export type ClovingConfig = {
   models: Record<string, string>
-  primaryModel: string | null
+  primaryModel?: string | null
 }
