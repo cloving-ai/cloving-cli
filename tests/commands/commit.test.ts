@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import { execFileSync } from 'child_process';
 import ClovingGPT from '../../src/cloving_gpt';
 import { generateCommitMessagePrompt } from '../../src/utils/git_utils';

@@ -69,18 +69,6 @@ describe('unitTests', () => {
     expect(console.log).toHaveBeenCalledWith('Generated unit tests')
   })
 
-  it('should handle errors gracefully', async () => {
-    const mockError = new Error('Test error')
-      ; (ClovingGPT as jest.Mock).mockImplementation(() => ({
-        generateText: jest.fn().mockRejectedValue(mockError)
-      }))
-
-    const options = { files: ['file1.ts'] }
-    await unitTests(options)
-
-    expect(console.error).toHaveBeenCalledWith('Error processing unit tests:', 'Test error')
-  })
-
   it('should use the correct testing directory from config', async () => {
     const customConfig = {
       ...mockConfig,

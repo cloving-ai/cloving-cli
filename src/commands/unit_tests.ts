@@ -71,61 +71,60 @@ const unitTests = async (options: ClovingGPTOptions) => {
   // Generate a temporary file path
   const tempFilePath = path.join(os.tmpdir(), `unit_tests_${Date.now()}.tmp`)
 
-  try {
-    let allSrcFiles: string[] = []
+  let allSrcFiles: string[] = []
 
-    // Collect srcFiles for each language with specified directory and extension
-    for (const language of config.languages) {
-      if (language.directory && language.extension) {
-        const srcFiles = execFileSync('find', [language.directory, '-type', 'f', '-name', `*${language.extension}`]).toString().trim().split('\n')
-        allSrcFiles = allSrcFiles.concat(srcFiles)
-      }
+  // Collect srcFiles for each language with specified directory and extension
+  for (const language of config.languages) {
+    if (language.directory && language.extension) {
+      const srcFiles = execFileSync('find', [language.directory, '-type', 'f', '-name', `*${language.extension}`]).toString().trim().split('\n')
+      allSrcFiles = allSrcFiles.concat(srcFiles)
     }
+  }
 
-    // Ensure allSrcFiles is unique
-    allSrcFiles = Array.from(new Set(allSrcFiles))
+  // Ensure allSrcFiles is unique
+  allSrcFiles = Array.from(new Set(allSrcFiles))
 
-    if (allSrcFiles.length === 0) {
-      console.error('Could not find any source files to generate unit tests. Please run: cloving init')
-      process.exit(1)
+  if (allSrcFiles.length === 0) {
+    console.error('Could not find any source files to generate unit tests. Please run: cloving init')
+    process.exit(1)
+  }
+
+  const testFiles = execFileSync('find', [testingDirectory, '-type', 'f']).toString().trim()
+  let contextFiles: string
+
+  if (files) {
+    const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
+    contextFiles = await gpt.generateText({ prompt })
+  } else {
+    const gitDiff = await getGitDiff()
+    const changedFiles = extractChangedFiles(gitDiff)
+    const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff)
+    contextFiles = await gpt.generateText({ prompt })
+  }
+
+  // Initialize variables
+  const lines: string[] = []
+  const context: string[] = []
+
+  // Read input from temporary file
+  contextFiles.split("\n").forEach((line) => {
+    if (line.trim()) {
+      lines.push(line.trim())
     }
+  })
 
-    const testFiles = execFileSync('find', [testingDirectory, '-type', 'f']).toString().trim()
-    let contextFiles: string
-
-    if (files) {
-      const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
-      contextFiles = await gpt.generateText({ prompt })
-    } else {
-      const gitDiff = await getGitDiff()
-      const changedFiles = extractChangedFiles(gitDiff)
-      const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff)
-      contextFiles = await gpt.generateText({ prompt })
+  lines.forEach((codeFile) => {
+    if (fs.existsSync(codeFile) && fs.statSync(codeFile).isFile()) {
+      const fileContents = fs.readFileSync(codeFile, 'utf-8')
+      context.push(`### **Contents of ${codeFile}**\n\n${fileContents}\n\n### **End of ${codeFile}**`)
     }
+  })
 
-    // Initialize variables
-    const lines: string[] = []
-    const context: string[] = []
+  // Generate the message for unit test creation
+  let analysis = ''
 
-    // Read input from temporary file
-    contextFiles.split("\n").forEach((line) => {
-      if (line.trim()) {
-        lines.push(line.trim())
-      }
-    })
-
-    lines.forEach((codeFile) => {
-      if (fs.existsSync(codeFile) && fs.statSync(codeFile).isFile()) {
-        const fileContents = fs.readFileSync(codeFile, 'utf-8')
-        context.push(`### **Contents of ${codeFile}**\n\n${fileContents}\n\n### **End of ${codeFile}**`)
-      }
-    })
-
-    // Generate the message for unit test creation
-    let analysis = ''
-
-    if ((files || []).length > 0) {
-      const message = `please create unit tests for these files:
+  if ((files || []).length > 0) {
+    const message = `please create unit tests for these files:
 
 ## begin list of files
 ${(files || []).join("\n")}
@@ -134,10 +133,10 @@ ${(files || []).join("\n")}
 ## context
 ${context.join("\n\n")}`
 
-      // Get the model and analysis using ClovingGPT
-      analysis = await gpt.generateText({ prompt: message })
-    } else {
-      const message = `please create unit tests for these changes:
+    // Get the model and analysis using ClovingGPT
+    analysis = await gpt.generateText({ prompt: message })
+  } else {
+    const message = `please create unit tests for these changes:
 
 ## begin diff
 ${await getGitDiff()}
@@ -145,17 +144,13 @@ ${await getGitDiff()}
 
 ## context
 
-  ${context.join("\n\n")}`
+${context.join("\n\n")}`
 
-      // Get the model and analysis using ClovingGPT
-      analysis = await gpt.generateText({ prompt: message })
-    }
-
-    console.log(analysis)
-
-  } catch (error) {
-    console.error('Error processing unit tests:', (error as Error).message)
+    // Get the model and analysis using ClovingGPT
+    analysis = await gpt.generateText({ prompt: message })
   }
+
+  console.log(analysis)
 }
 
 export default unitTests
