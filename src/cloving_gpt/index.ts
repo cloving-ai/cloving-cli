@@ -78,7 +78,10 @@ class ClovingGPT {
             rlConfirm.question('Do you still want to continue? [Yn]: ', (confirmAnswer) => {
               rlConfirm.close()
               confirmAnswer = confirmAnswer.trim().toLowerCase()
-              resolve(confirmAnswer === 'y' || confirmAnswer === '')
+              if (confirmAnswer !== 'y' && confirmAnswer !== '') {
+                process.exit(1)
+              }
+              resolve(true)
             })
           })
 
