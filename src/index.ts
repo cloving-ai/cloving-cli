@@ -24,6 +24,7 @@ program
 program
   .command('unit-tests')
   .description('Generate unit tests for the changes')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .action(unitTests)
 
 program
@@ -34,6 +35,7 @@ program
 program
   .command('review')
   .description('Review the changes and propose ')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .action(analyze)
 
 program

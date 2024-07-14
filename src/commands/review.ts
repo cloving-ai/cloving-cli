@@ -4,8 +4,11 @@ import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
+import type { ClovingGPTOptions } from '../utils/types'
 
-const review = async () => {
+const review = async (options: ClovingGPTOptions) => {
+  const gpt = new ClovingGPT(options)
+
   try {
     // Define the prompt for analysis
     const gitDiff = await getGitDiff()
@@ -16,8 +19,7 @@ Format the output of this code review in Markdown format.
 
 ${gitDiff}`
 
-    // Instantiate ClovingGPT and get the analysis
-    const gpt = new ClovingGPT()
+    // get the analysis
     const analysis = await gpt.generateText({ prompt })
     const markdown = extractMarkdown(analysis)
 

@@ -4,8 +4,9 @@ import { execFileSync } from 'child_process'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
+import type { ClovingGPTOptions } from '../utils/types'
 
-const generateAndCommitMessage = async (options: { silent: boolean }) => {
+const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
   const gpt = new ClovingGPT(options)
   try {
     // Generate the prompt for commit message

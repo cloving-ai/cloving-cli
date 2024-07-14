@@ -7,7 +7,7 @@ import ClovingGPT from '../cloving_gpt'
 import readline from 'readline'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
-import type { ClovingConfig } from '../utils/types'
+import { getConfig } from '../utils/command_utils'
 
 const specialFiles = [
   'package.json',
@@ -98,20 +98,6 @@ const checkForSpecialFiles = (): boolean => {
   return specialFiles.some(file => fs.existsSync(file))
 }
 
-const getConfig = (): ClovingConfig | null => {
-  const configPath = path.join(os.homedir(), '.cloving.json')
-  if (fs.existsSync(configPath)) {
-    const rawConfig = fs.readFileSync(configPath, 'utf-8')
-    return JSON.parse(rawConfig)
-  }
-  return null
-}
-
-const saveConfig = (config: ClovingConfig) => {
-  const configPath = path.join(os.homedir(), '.cloving.json')
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
-}
-
 const promptUser = (question: string): Promise<string> => {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -160,28 +146,9 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   const config = getConfig()
-  if (!config) {
-    const models = await fetchModels()
-    if (models.length === 0) {
-      console.error('No models available.')
-      return
-    }
-
-    console.log('Available models:')
-    models.forEach((model, index) => console.log(`${index + 1}. ${model}`))
-
-    const modelIndex = parseInt(await promptUser('Select a model by number: '), 10) - 1
-    if (modelIndex < 0 || modelIndex >= models.length) {
-      console.error('Invalid selection.')
-      return
-    }
-
-    const selectedModel = models[modelIndex]
-    const apiKey = await promptUser('Enter your API key: ')
-
-    saveConfig({ CLOVING_MODEL: selectedModel, CLOVING_API_KEY: apiKey })
-
-    console.log(`Configuration saved to ${path.join(os.homedir(), '.cloving.json')}`)
+  if (!config || !config?.primaryModel || !config?.models) {
+    console.error('No Cloving configuration found. Please run `cloving config` to configure Cloving.')
+    return
   }
 
   if (!checkForSpecialFiles()) {
