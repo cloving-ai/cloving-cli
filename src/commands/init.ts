@@ -19,18 +19,18 @@ export const init = async (options: ClovingGPTOptions) => {
     if (specialFileNames.length > 0) {
       console.log(`Cloving will analyze the list of files and the contents of the following files:
 
-  ${specialFileNames.join("\n")}
+${specialFileNames.join("\n")}
 
-  Cloving will send AI a request to summarize the technologies used in this project.
+Cloving will send AI a request to summarize the technologies used in this project.
 
-  This will provide better context for future Cloving requests.
+This will provide better context for future Cloving requests.
 
-  For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model (llama3:70b-instruct currently works well for this) so that this data is not sent to an AI service provider.
+For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model (llama3:70b-instruct currently works well for this) so that this data is not sent to an AI service provider.
   `)
     } else {
       console.log(`
-  This script will analyze the list of files in the current directory using GPT to summarize the
-  technologies used. This will provide better context for future Cloving requests.
+This script will analyze the list of files in the current directory using GPT to summarize the
+technologies used. This will provide better context for future Cloving requests.
       `)
     }
   }
