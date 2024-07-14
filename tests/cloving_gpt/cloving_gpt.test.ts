@@ -21,14 +21,14 @@ describe('ClovingGPT', () => {
     process.env.CLOVING_MODEL = ''
     process.env.CLOVING_API_KEY = 'test_api_key'
 
-    expect(() => new ClovingGPT()).toThrow("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set")
+    expect(() => new ClovingGPT()).toThrow("No cloving configuration found. Please run `cloving config`")
   })
 
   it('should throw an error if CLOVING_API_KEY is not set', () => {
     process.env.CLOVING_MODEL = 'claude:claude-3-5-sonnet-20240620'
     process.env.CLOVING_API_KEY = ''
 
-    expect(() => new ClovingGPT()).toThrow("CLOVING_MODEL and CLOVING_API_KEY environment variables must be set")
+    expect(() => new ClovingGPT()).toThrow("No cloving configuration found. Please run `cloving config`")
   })
 
   it('should return text from openai API', async () => {

@@ -18,7 +18,7 @@ class ClovingGPT {
   constructor(options: ClovingGPTOptions = { silent: false }) {
     const config = getConfig()
     if (!config || !config.primaryModel || !config.models) {
-      throw new Error('No Cloving configuration found. Please run `cloving config` to configure Cloving.')
+      throw new Error('No cloving configuration found. Please run `cloving config`')
     }
 
     const clovingModel = process.env.CLOVING_MODEL || config?.primaryModel

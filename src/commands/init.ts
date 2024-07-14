@@ -147,7 +147,7 @@ technologies used. This will provide better context for future Cloving requests.
 
   const config = getConfig()
   if (!config || !config?.primaryModel || !config?.models) {
-    console.error('No Cloving configuration found. Please run `cloving config` to configure Cloving.')
+    console.error('No cloving configuration found. Please run `cloving config`')
     return
   }
 
