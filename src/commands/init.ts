@@ -10,7 +10,7 @@ import type { ClovingGPTOptions } from '../utils/types'
 
 // Main function for the describe command
 export const init = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig().silent || false
+  options.silent = getConfig(options).silent || false
   const gpt = new ClovingGPT(options)
   const specialFileContents = collectSpecialFileContents()
   const specialFileNames = Object.keys(specialFileContents).map(file => ' - ' + file)
@@ -35,7 +35,7 @@ export const init = async (options: ClovingGPTOptions) => {
     }
   }
 
-  const config = getConfig()
+  const config = getConfig(options)
   if (!config || !config?.primaryModel || !config?.models) {
     console.error('No cloving configuration found. Please run `cloving config`')
     return

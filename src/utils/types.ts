@@ -8,7 +8,7 @@ export interface GPTRequest {
 }
 
 export interface ClovingGPTOptions {
-  silent: boolean
+  silent?: boolean
 }
 
 export type ClovingConfig = {

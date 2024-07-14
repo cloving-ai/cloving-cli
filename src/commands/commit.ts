@@ -8,7 +8,7 @@ import ClovingGPT from '../cloving_gpt'
 import type { ClovingGPTOptions } from '../utils/types'
 
 const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig().silent || false
+  options.silent = getConfig(options).silent || false
   const gpt = new ClovingGPT(options)
   try {
     // Generate the prompt for commit message
