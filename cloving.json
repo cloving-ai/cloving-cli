@@ -2,19 +2,19 @@
   "languages": [
     {
       "name": "TypeScript",
-      "version": "~> 5.5.3",
-      "primary": true
-    },
-    {
-      "name": "JavaScript",
-      "version": "ES6+"
+      "version": "5.5.3",
+      "primary": true,
+      "directory": "src",
+      "extension": ".ts"
     }
   ],
   "frameworks": [
     {
       "name": "Node.js",
       "type": "Runtime environment",
-      "primary": true
+      "primary": true,
+      "directory": "src",
+      "extension": ".js"
     }
   ],
   "testingFrameworks": [

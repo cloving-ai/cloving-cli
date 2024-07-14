@@ -9,6 +9,7 @@ export interface GPTRequest {
 
 export interface ClovingGPTOptions {
   silent?: boolean
+  files?: string[]
 }
 
 export type ClovingConfig = {

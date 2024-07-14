@@ -66,7 +66,7 @@ class ClovingGPT {
 
           less.on('close', (code) => {
             if (code !== 0) {
-              console.error('less command exited with an error.')
+              console.error('less command exited with an error')
               resolve(false)
               return
             }
@@ -78,7 +78,12 @@ class ClovingGPT {
             rlConfirm.question('Do you still want to continue? [Yn]: ', (confirmAnswer) => {
               rlConfirm.close()
               confirmAnswer = confirmAnswer.trim().toLowerCase()
-              resolve(confirmAnswer === 'y' || confirmAnswer === '')
+              if (confirmAnswer !== 'y' && confirmAnswer !== '') {
+                console.error('User cancelled the operation')
+                process.exit(1)
+              } else {
+                resolve(true)
+              }
             })
           })
 
