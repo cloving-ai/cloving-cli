@@ -60,14 +60,13 @@ export const saveConfig = (config: ClovingConfig) => {
 }
 
 export const getConfig = (): ClovingConfig | null => {
-  if (fs.existsSync(CONFIG_PATH)) {
-    try {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
       const rawConfig = fs.readFileSync(CONFIG_PATH, 'utf-8')
       return JSON.parse(rawConfig)
-    } catch (error) {
-      console.error('Error parsing configuration file:', error)
-      return null
     }
+  } catch (err) {
+    console.error('Error reading configuration:', err)
   }
-  return null
+  return { models: {}, primaryModel: null }
 }

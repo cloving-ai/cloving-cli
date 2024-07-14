@@ -104,8 +104,7 @@ class ClovingGPT {
     const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}? [Yn]: `)
 
     if (!shouldContinue) {
-      console.log('Operation cancelled by the user.')
-      process.exit(0)
+      throw 'Operation cancelled by the user.'
     }
 
     try {
