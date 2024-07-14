@@ -38,7 +38,7 @@ program
 
 program
   .command('init')
-  .description('Setup cloving in the current project, including the language, framework, and language version')
+  .description('Setup cloving in the current project')
   .action(init)
 
 program
