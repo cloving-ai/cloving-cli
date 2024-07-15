@@ -1,5 +1,6 @@
 import readline from 'readline'
 import { execFileSync } from 'child_process'
+import highlight from 'cli-highlight'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { extractMarkdown } from '../../utils/string_utils'
@@ -26,7 +27,7 @@ ${gitDiff}`
     const markdown = extractMarkdown(analysis)
 
     // Print the analysis to the console
-    console.log(markdown)
+    console.log(highlight(markdown))
 
     // Prompt the user to copy the analysis to the clipboard
     const rl = readline.createInterface({

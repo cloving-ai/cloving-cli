@@ -7,7 +7,7 @@ import { getCurrentBranchName } from '../../utils/git_utils'
 import { getAllFiles } from '../../utils/config_utils'
 import type { ClovingGPTOptions, ProjectConfig } from '../../utils/types'
 
-const generatePrompt = async (projectNAme: string, projectTask: string) => {
+const generatePrompt = async (projectName: string, projectTask: string) => {
   const filesList = await getAllFiles({}, false)
 
   return `Here is a list of all my source files:
@@ -19,7 +19,7 @@ ${filesList.join("\n")}
 Please enumerate all the files in the provided list that are pertinent for this task:
 
 ==== begin task description ====
-Task name: ${projectNAme}
+Task name: ${projectName}
 Task description: ${projectTask}
 ==== end task description ====
 
@@ -38,14 +38,13 @@ test/models/foo_test.rb
 test/controllers/baz_controller_test.rb`
 }
 
-// Main function for the initProject command
 export const initProject = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
 
   const defaultProjectName = getCurrentBranchName()
   const projectName = await promptUser(`Enter the name of your project [${defaultProjectName}]: `) || defaultProjectName
-  const projectTask = await promptUser('Describe the task you want to accomplish with your project: ')
+  const projectTask = await promptUser('Describe the task you want to accomplish with this project: ')
 
   const prompt = await generatePrompt(projectName, projectTask)
   const contextFiles = await gpt.generateText({ prompt })

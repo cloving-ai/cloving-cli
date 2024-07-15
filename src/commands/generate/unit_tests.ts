@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
+import highlight from 'cli-highlight'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
@@ -132,7 +133,7 @@ ${context.join('\n\n')}`
     analysis = await gpt.generateText({ prompt: message })
   }
 
-  console.log(analysis)
+  console.log(highlight(analysis))
 }
 
 export default unitTests

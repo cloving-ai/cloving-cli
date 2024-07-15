@@ -8,6 +8,9 @@ import commit from './commands/generate/commit'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
 import initProject from './commands/project/init'
+import planProject from './commands/project/plan'
+import buildProject from './commands/project/build'
+import completeProject from './commands/project/complete'
 
 const program = new Command()
 
@@ -76,5 +79,20 @@ project
   .command('init')
   .description('Setup a new cloving project')
   .action(initProject)
+
+project
+  .command('plan')
+  .description('Plan a cloving project')
+  .action(planProject)
+
+project
+  .command('build')
+  .description('Build the next step in the project')
+  .action(buildProject)
+
+project
+  .command('complete')
+  .description('Clean up and finalize the project')
+  .action(completeProject)
 
 program.parse(process.argv)

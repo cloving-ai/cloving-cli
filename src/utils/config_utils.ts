@@ -94,11 +94,11 @@ export const getPrimaryModel = (partialModel?: string): { provider: string, mode
   }
 }
 
-export const getProjectConfig = (name: string): ClovingfileConfig => {
+export const getProjectConfig = (name: string): ProjectConfig => {
   const projectConfigPath = path.join(CLOVINGPROJECT_PATH, name, 'config.ini')
   if (fs.existsSync(projectConfigPath)) {
     const configFile = fs.readFileSync(projectConfigPath, 'utf-8')
-    return ini.parse(configFile) as ClovingfileConfig
+    return ini.parse(configFile) as ProjectConfig
   } else {
     throw new Error(`${projectConfigPath} file not found`)
   }
@@ -116,6 +116,16 @@ export const saveProjectConfig = (name: string, config: ProjectConfig): void => 
   const iniString = ini.stringify(config)
   fs.writeFileSync(projectConfigPath, iniString)
   console.log(`Configuration saved to ${projectConfigPath}`)
+}
+
+export const removeProjectConfig = (name: string): void => {
+  const projectConfigPath = path.join(CLOVINGPROJECT_PATH, name, 'config.ini')
+  if (fs.existsSync(projectConfigPath)) {
+    fs.unlinkSync(projectConfigPath)
+    console.log(`Project completed and file removed: ${projectConfigPath}`)
+  } else {
+    console.error(`Configuration not found: ${projectConfigPath}`)
+  }
 }
 
 const setupTestingPrompt = async (gpt: ClovingGPT, config: ClovingfileConfig) => {

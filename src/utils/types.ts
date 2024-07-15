@@ -25,6 +25,7 @@ export type ProjectConfig = {
   name: string
   task: string
   files?: string[]
+  plan?: Record<string, any>
 }
 
 export type ClovingConfig = {
