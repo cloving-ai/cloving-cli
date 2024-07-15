@@ -7,6 +7,7 @@ import { getGitDiff } from '../../utils/git_utils'
 import { extractMarkdown } from '../../utils/string_utils'
 import { getConfig } from '../../utils/config_utils'
 import { parseMarkdownInstructions } from '../../utils/string_utils'
+import { promptUser } from '../../utils/command_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
@@ -29,7 +30,7 @@ ${gitDiff}`
 
     // Print the analysis to the console
     parseMarkdownInstructions(markdown).map(code => {
-      if (code.startsWith('```')) {
+      if (code.trim().startsWith('```')) {
         const lines = code.split('\n')
         const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
         console.log(lines[0])
@@ -41,22 +42,15 @@ ${gitDiff}`
     })
 
     // Prompt the user to copy the analysis to the clipboard
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-
-    rl.question('Do you want to copy the analysis to the clipboard? [Y/n] ', (answer) => {
-      if (answer.toLowerCase() === 'y' || answer === '') {
-        try {
-          execFileSync('pbcopy', { input: markdown })
-          console.log('Analysis copied to clipboard')
-        } catch (error) {
-          console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
-        }
+    const answer = await promptUser('Do you want to copy the analysis to the clipboard? [Y/n] ')
+    if (answer.toLowerCase() === 'y' || answer === '') {
+      try {
+        execFileSync('pbcopy', { input: markdown })
+        console.log('Analysis copied to clipboard')
+      } catch (error) {
+        console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
       }
-      rl.close()
-    })
+    }
   } catch (error) {
     console.error('Error during analysis:', (error as Error).message)
   }

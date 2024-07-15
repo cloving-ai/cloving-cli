@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs'
+import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 import inquirer from 'inquirer'
 
@@ -6,6 +7,7 @@ import ClovingGPT from '../../cloving_gpt'
 import { getConfig, getProjectConfig } from '../../utils/config_utils'
 import { getCurrentBranchName } from '../../utils/git_utils'
 import { parseMarkdownInstructions } from '../../utils/string_utils'
+import { promptUser } from '../../utils/command_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const generatePrompt = async (projectName: string, projectTask: string, filesList: string[], incompletePlanItem: string) => {
@@ -67,7 +69,7 @@ export const buildProject = async (options: ClovingGPTOptions) => {
   const projectCode = await gpt.generateText({ prompt })
 
   parseMarkdownInstructions(projectCode).map(code => {
-    if (code.startsWith('```')) {
+    if (code.trim().startsWith('```')) {
       const lines = code.split('\n')
       const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
       console.log(lines[0])
@@ -77,6 +79,17 @@ export const buildProject = async (options: ClovingGPTOptions) => {
       console.log(highlight(code, { language: 'markdown' }))
     }
   })
+
+  // Prompt the user to copy the analysis to the clipboard
+  const answer = await promptUser('Do you want to copy the analysis to the clipboard? [Y/n] ')
+  if (answer.toLowerCase() === 'y' || answer === '') {
+    try {
+      execFileSync('pbcopy', { input: projectCode })
+      console.log('Analysis copied to clipboard')
+    } catch (error) {
+      console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
+    }
+  }
 }
 
 export default buildProject

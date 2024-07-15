@@ -73,7 +73,7 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   let inCodeBlock = false
 
   lines.forEach(line => {
-    if (line.startsWith('```')) {
+    if (line.trim().startsWith('```')) {
       if (inCodeBlock) {
         // End of code block
         buffer.push(line)
