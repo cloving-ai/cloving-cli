@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import config from './commands/config'
 import init from './commands/init'
 import models from './commands/models'
@@ -12,12 +14,19 @@ import planProject from './commands/project/plan'
 import buildProject from './commands/project/build'
 import completeProject from './commands/project/complete'
 
+// Function to get version from package.json
+const getPackageVersion = () => {
+  const packagePath = join(__dirname, 'package.json')
+  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+  return packageJson.version
+}
+
 const program = new Command()
 
 program
   .name('cloving')
   .description('Integrate AI into your development workflow for generating commit messages, code reviews, and unit tests.')
-  .version('1.0.0')
+  .version(getPackageVersion())
 
 program
   .command('config')
