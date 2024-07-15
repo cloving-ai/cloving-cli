@@ -22,6 +22,32 @@ Cloving is an innovative CLI tool designed to seamlessly integrate AI into vario
 
 ## Installation
 
+You have three options to install and use Cloving:
+
+### 1. Global Installation via npm
+
+Install Cloving globally using npm:
+
+```bash
+npm install cloving -g
+```
+
+This allows you to run `cloving` commands from anywhere in your terminal.
+
+### 2. Run with npx
+
+You can use npx to run Cloving without installing it globally:
+
+```bash
+npx cloving [command]
+```
+
+This method downloads and executes Cloving on-the-fly, ensuring you always use the latest version.
+
+### 3. Clone and Install from Source
+
+For development or to use the latest unreleased features:
+
 1. Clone this repository:
    ```bash
    git clone https://github.com/cloving-ai/cloving-cli.git
@@ -38,10 +64,13 @@ Cloving is an innovative CLI tool designed to seamlessly integrate AI into vario
    yarn link
    ```
 
-4. Configure Cloving with your API key and model:
-   ```bash
-   cloving config
-   ```
+After installation, configure Cloving with your API key and preferred model:
+
+```bash
+cloving config
+```
+
+Choose the installation method that best suits your needs and workflow. The global npm installation is recommended for most users, while npx is great for one-off usage or trying out Cloving. Cloning from source is ideal for contributors or those who want the absolute latest features.
 
 ## Usage
 
