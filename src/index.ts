@@ -70,7 +70,7 @@ generate
 // Project commands
 const project = program
   .command('project')
-  .description('Start a cloving project')
+  .description('Commands for cloving a project')
 
 project
   .command('init')
