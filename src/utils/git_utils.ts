@@ -36,37 +36,39 @@ ${diff}`
 
 export const getGitDiff = async (): Promise<string> => {
   try {
-    let mainBranchName: string
+    const defaultBranchName = await getDefaultBranchName()
 
-    mainBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
-      .toString()
-      .trim()
-
-    if (mainBranchName === '') {
-      console.error('Could not determine the default branch.')
-
-      const answer = await askQuestion('Do you want to run `git remote set-head origin -a`? [Y/n] ')
-
-      if (answer.toLowerCase() === 'y' || answer === '') {
-        execSync('git remote set-head origin -a')
-        mainBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
-          .toString()
-          .trim()
-
-        if (mainBranchName === '') {
-          throw new Error('Error: Could not determine the default branch (main or master)')
-        }
-      } else {
-        throw new Error('Operation aborted by user.')
-      }
-    }
-
-    const gitDiff = execSync(`git diff ${mainBranchName} --`).toString().trim()
+    const gitDiff = execSync(`git diff ${defaultBranchName} --`).toString().trim()
     return gitDiff
   } catch (error) {
     console.error('Error getting git diff:', (error as Error).message)
     process.exit(1)
   }
+}
+
+export const getDefaultBranchName = async (): Promise<string> => {
+  let defaultBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
+    .toString()
+    .trim()
+
+  if (defaultBranchName === '') {
+    console.error('Could not determine the default branch.')
+
+    const answer = await askQuestion('Do you want to run `git remote set-head origin -a`? [Y/n] ')
+
+    if (answer.toLowerCase() === 'y' || answer === '') {
+      execSync('git remote set-head origin -a')
+      defaultBranchName = await getDefaultBranchName()
+
+      if (defaultBranchName === '') {
+        throw new Error('Error: Could not determine the default branch (main or master)')
+      }
+    } else {
+      throw new Error('Operation aborted by user.')
+    }
+  }
+
+  return defaultBranchName
 }
 
 export const getCurrentBranchName = (): string => {

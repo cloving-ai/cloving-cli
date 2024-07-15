@@ -207,12 +207,6 @@ Here is an example response:
   "projectType": "Command-line tool",
 }`
 
-    if (process.env.DEBUG === '1') {
-      estimateTokens(prompt).then(tokenCount => {
-        console.log(`Estimated token count: ${tokenCount}`)
-      })
-    }
-
     const aiChatResponse = await gpt.generateText({ prompt })
     const cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
 

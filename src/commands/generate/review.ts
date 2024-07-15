@@ -1,4 +1,3 @@
-import readline from 'readline'
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 
