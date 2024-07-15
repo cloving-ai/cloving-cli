@@ -1,3 +1,5 @@
+Here's the updated README.md with the latest changes and improvements:
+
 # Cloving
 
 Cloving is an innovative tool designed to seamlessly integrate AI into various aspects of the developer workflow. It aims to enhance productivity and code quality by leveraging AI for tasks such as generating commit messages, conducting code reviews, and creating unit tests.
@@ -9,12 +11,13 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 - **AI-assisted unit test generation**
 - **Seamless integration with existing development workflows**
 - **Customizable AI prompts for different tasks**
+- **Project initialization, planning, and building with AI assistance**
 
 ## Prerequisites
 
 - Node.js (version 20 or higher)
 - Git
-- API access to AI chat models (e.g., OpenAI GPT-4o, Claude, etc.)
+- API access to AI chat models (e.g., OpenAI GPT-4, Claude, Ollama, etc.)
 
 ## Installation
 
@@ -55,14 +58,14 @@ This will generate an AI-powered commit message based on your recent changes, al
 
 To get an AI-powered code review for your latest changes:
 ```bash
-cloving review
+cloving generate review
 ```
 
 ### Generating Unit Tests
 
 To generate unit tests for a specific file or function:
 ```bash
-cloving unit-tests [file_path_to_test]
+cloving generate unit-tests [file_path_to_test]
 ```
 
 ### Initial Setup
@@ -86,6 +89,30 @@ To list the available AI models:
 cloving models
 ```
 
+### Project Commands
+
+Cloving now includes commands for managing entire projects:
+
+- Initialize a new project:
+  ```bash
+  cloving project init
+  ```
+
+- Plan a project:
+  ```bash
+  cloving project plan
+  ```
+
+- Build the next step in the project:
+  ```bash
+  cloving project build
+  ```
+
+- Complete and finalize the project:
+  ```bash
+  cloving project complete
+  ```
+
 ## Command Line Options
 
 Usage: `cloving [options] [command]`
@@ -98,11 +125,18 @@ Options:
 
 Commands:
 - `commit`          Generate a commit message and commit the changes
-- `unit-tests`      Generate unit tests for the changes
-- `models`          List available models
-- `review`          Review the changes and propose
-- `init`            Setup Cloving in the current project
 - `config`          Configure Cloving with your API key and model
+- `init`            Setup Cloving in the current project
+- `models`          List available models
+- `generate`        Generate various items like unit-tests and code reviews
+  - `commit`        Generate a commit message and commit the changes
+  - `unit-tests`    Generate unit tests for the changes
+  - `review`        Review the changes and propose improvements
+- `project`         Commands for managing Cloving projects
+  - `init`          Setup a new Cloving project
+  - `plan`          Plan a Cloving project
+  - `build`         Build the next step in the project
+  - `complete`      Clean up and finalize the project
 - `help [command]`  Display help for command
 
 ## Contributing
