@@ -2,10 +2,11 @@ import readline from 'readline'
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 
+import ClovingGPT from '../../cloving_gpt'
 import { getGitDiff } from '../../utils/git_utils'
 import { extractMarkdown } from '../../utils/string_utils'
-import ClovingGPT from '../../cloving_gpt'
 import { getConfig } from '../../utils/config_utils'
+import { parseMarkdownInstructions } from '../../utils/string_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
@@ -27,7 +28,17 @@ ${gitDiff}`
     const markdown = extractMarkdown(analysis)
 
     // Print the analysis to the console
-    console.log(highlight(markdown))
+    parseMarkdownInstructions(markdown).map(code => {
+      if (code.startsWith('```')) {
+        const lines = code.split('\n')
+        const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
+        console.log(lines[0])
+        console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+        console.log(lines.slice(-1)[0])
+      } else {
+        console.log(highlight(code, { language: 'markdown' }))
+      }
+    })
 
     // Prompt the user to copy the analysis to the clipboard
     const rl = readline.createInterface({

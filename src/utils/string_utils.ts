@@ -65,3 +65,39 @@ export const extractMarkdown = (response: string): string => {
 
   return markdownString
 }
+
+export const parseMarkdownInstructions = (input: string): string[] => {
+  const lines = input.split('\n')
+  const result: string[] = []
+  let buffer: string[] = []
+  let inCodeBlock = false
+
+  lines.forEach(line => {
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        // End of code block
+        buffer.push(line)
+        result.push(buffer.join('\n'))
+        buffer = []
+        inCodeBlock = false
+      } else {
+        // Start of code block
+        if (buffer.length > 0) {
+          result.push(buffer.join('\n'))
+          buffer = []
+        }
+        buffer.push(line)
+        inCodeBlock = true
+      }
+    } else {
+      buffer.push(line)
+    }
+  })
+
+  // If buffer has any remaining lines, add them to the result
+  if (buffer.length > 0) {
+    result.push(buffer.join('\n'))
+  }
+
+  return result
+}

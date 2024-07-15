@@ -5,6 +5,7 @@ import inquirer from 'inquirer'
 import ClovingGPT from '../../cloving_gpt'
 import { getConfig, getProjectConfig } from '../../utils/config_utils'
 import { getCurrentBranchName } from '../../utils/git_utils'
+import { parseMarkdownInstructions } from '../../utils/string_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const generatePrompt = async (projectName: string, projectTask: string, filesList: string[], incompletePlanItem: string) => {
@@ -27,42 +28,6 @@ ${context}
 Please implement the following plan item, please include full file path names in all code snippets:
 
 ${incompletePlanItem}`
-}
-
-const parseMarkdownInstructions = (input: string): string[] => {
-  const lines = input.split('\n')
-  const result: string[] = []
-  let buffer: string[] = []
-  let inCodeBlock = false
-
-  lines.forEach(line => {
-    if (line.startsWith('```')) {
-      if (inCodeBlock) {
-        // End of code block
-        buffer.push(line)
-        result.push(buffer.join('\n'))
-        buffer = []
-        inCodeBlock = false
-      } else {
-        // Start of code block
-        if (buffer.length > 0) {
-          result.push(buffer.join('\n'))
-          buffer = []
-        }
-        buffer.push(line)
-        inCodeBlock = true
-      }
-    } else {
-      buffer.push(line)
-    }
-  })
-
-  // If buffer has any remaining lines, add them to the result
-  if (buffer.length > 0) {
-    result.push(buffer.join('\n'))
-  }
-
-  return result
 }
 
 export const buildProject = async (options: ClovingGPTOptions) => {
@@ -100,7 +65,18 @@ export const buildProject = async (options: ClovingGPTOptions) => {
 
   const prompt = await generatePrompt(projectName, projectConfig.task, projectConfig.files || [], planText)
   const projectCode = await gpt.generateText({ prompt })
-  parseMarkdownInstructions(projectCode).map(code => console.log(highlight(code)))
+
+  parseMarkdownInstructions(projectCode).map(code => {
+    if (code.startsWith('```')) {
+      const lines = code.split('\n')
+      const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
+      console.log(lines[0])
+      console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+      console.log(lines.slice(-1)[0])
+    } else {
+      console.log(highlight(code, { language: 'markdown' }))
+    }
+  })
 }
 
 export default buildProject
