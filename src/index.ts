@@ -77,17 +77,17 @@ const project = program
 
 project
   .command('init')
-  .description('Setup a new cloving project')
+  .description('Setup a new cloving project inside a git branch')
   .action(initProject)
 
 project
   .command('plan')
-  .description('Plan a cloving project')
+  .description('Plan the steps to complete the project')
   .action(planProject)
 
 project
   .command('build')
-  .description('Build the next step in the project')
+  .description('Generate code to build the project')
   .action(buildProject)
 
 project

@@ -1,8 +1,8 @@
-Here's the updated README.md with the latest changes and improvements:
+Here's the updated README.md incorporating the latest changes:
 
 # Cloving
 
-Cloving is an innovative tool designed to seamlessly integrate AI into various aspects of the developer workflow. It aims to enhance productivity and code quality by leveraging AI for tasks such as generating commit messages, conducting code reviews, and creating unit tests.
+Cloving is an innovative CLI tool designed to seamlessly integrate AI into various aspects of the developer workflow. It enhances productivity and code quality by leveraging AI for tasks such as generating commit messages, conducting code reviews, creating unit tests, and even assisting with entire project lifecycles.
 
 ## Features
 
@@ -12,6 +12,7 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 - **Seamless integration with existing development workflows**
 - **Customizable AI prompts for different tasks**
 - **Project initialization, planning, and building with AI assistance**
+- **Support for multiple AI models including OpenAI, Claude, and Ollama**
 
 ## Prerequisites
 
@@ -46,69 +47,85 @@ Cloving is an innovative tool designed to seamlessly integrate AI into various a
 
 Cloving provides several commands to help integrate AI into your development workflow:
 
-### Generating Commit Messages
-
-Run the following command in your Git repository:
-```bash
-cloving commit
-```
-This will generate an AI-powered commit message based on your recent changes, allow you to review and edit it, and then commit your changes.
-
-### Code Reviews
-
-To get an AI-powered code review for your latest changes:
-```bash
-cloving generate review
-```
-
-### Generating Unit Tests
-
-To generate unit tests for a specific file or function:
-```bash
-cloving generate unit-tests [file_path_to_test]
-```
-
-### Initial Setup
-
-To set up Cloving in the current project, generating a `cloving.json` file that includes a GPT-generated project overview with details like the language, framework, and language version:
-```bash
-cloving init
-```
-
 ### Configuration
 
-To configure Cloving with your API key and model:
+Configure Cloving with your API key and model:
 ```bash
 cloving config
 ```
 
+### Initialization
+
+Set up Cloving in the current project:
+```bash
+cloving init
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation of submitting prompts
+- `-m, --model <model>`: Select the model to use
+
 ### Listing Available Models
 
-To list the available AI models:
+List the available AI models:
 ```bash
 cloving models
 ```
+
+### Generating Commit Messages
+
+Generate an AI-powered commit message:
+```bash
+cloving commit
+```
+or
+```bash
+cloving generate commit
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation
+- `-m, --model <model>`: Select the model to use
+
+### Generating Unit Tests
+
+Generate unit tests for changes or specific files:
+```bash
+cloving generate unit-tests
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation
+- `-f, --files <filenames...>`: Specify filenames for the unit tests
+- `-m, --model <model>`: Select the model to use
+
+### Code Reviews
+
+Get an AI-powered code review:
+```bash
+cloving generate review
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation
+- `-m, --model <model>`: Select the model to use
 
 ### Project Commands
 
 Cloving now includes commands for managing entire projects:
 
-- Initialize a new project:
+- Initialize a new project inside a git branch:
   ```bash
   cloving project init
   ```
 
-- Plan a project:
+- Plan the steps to complete the project:
   ```bash
   cloving project plan
   ```
 
-- Build the next step in the project:
+- Generate code to build the project:
   ```bash
   cloving project build
   ```
 
-- Complete and finalize the project:
+- Clean up and finalize the project:
   ```bash
   cloving project complete
   ```
@@ -117,27 +134,28 @@ Cloving now includes commands for managing entire projects:
 
 Usage: `cloving [options] [command]`
 
-Integrate AI into your development workflow for generating commit messages, code reviews, and unit tests.
-
 Options:
-- `-V, --version`   output the version number
-- `-h, --help`      display help for command
+- `-V, --version`: Output the version number
+- `-h, --help`: Display help for command
 
 Commands:
-- `commit`          Generate a commit message and commit the changes
-- `config`          Configure Cloving with your API key and model
-- `init`            Setup Cloving in the current project
-- `models`          List available models
-- `generate`        Generate various items like unit-tests and code reviews
-  - `commit`        Generate a commit message and commit the changes
-  - `unit-tests`    Generate unit tests for the changes
-  - `review`        Review the changes and propose improvements
-- `project`         Commands for managing Cloving projects
-  - `init`          Setup a new Cloving project
-  - `plan`          Plan a Cloving project
-  - `build`         Build the next step in the project
-  - `complete`      Clean up and finalize the project
-- `help [command]`  Display help for command
+- `config`: Configure Cloving with your API key and models to use
+- `init`: Setup Cloving in the current directory
+- `models`: List available models
+- `commit`: Alias for cloving generate commit
+- `generate`: Generate various items like unit-tests and code reviews
+  - `commit`: Generate a commit message and commit the changes
+  - `unit-tests`: Generate unit tests
+  - `review`: Review the code for committed changes
+- `project`: Commands for managing Cloving projects
+  - `init`: Setup a new Cloving project inside a git branch
+  - `plan`: Plan the steps to complete the project
+  - `build`: Generate code to build the project
+  - `complete`: Clean up and finalize the project
+
+Most commands support the following options:
+- `-s, --silent`: Run the command without asking for confirmation of submitting prompts
+- `-m, --model <model>`: Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)
 
 ## Contributing
 
