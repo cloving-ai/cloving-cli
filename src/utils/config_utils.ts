@@ -4,6 +4,7 @@ import fs from 'fs'
 import ini from 'ini'
 
 import type { ClovingConfig, ClovingGPTOptions, ClovingModelConfig, ClovingfileConfig } from '../utils/types'
+
 export const CLOVING_CONFIG_PATH = path.join(os.homedir(), '.clovingconfig')
 export const CLOVINGFILE_PATH = 'cloving.json'
 
@@ -58,22 +59,29 @@ export const saveConfig = (config: ClovingConfig): void => {
   console.log(`Configuration saved to ${CLOVING_CONFIG_PATH}`)
 }
 
-export const getPrimaryModel = (): { provider: string, model: string, config: ClovingModelConfig } | null => {
+export const getPrimaryModel = (partialModel?: string): { provider: string, model: string, config: ClovingModelConfig } | null => {
   try {
     const config = getConfig({})
+    const models: { provider: string, model: string, config: ClovingModelConfig }[] = []
+
     for (const provider in config.models) {
       for (const model in config.models[provider]) {
-        if (config.models[provider][model].primary) {
-          return {
+        if (!partialModel || `${provider}:${model}`.startsWith(partialModel)) {
+          models.push({
             provider,
             model,
-            config: config.models[provider][model]
-          }
+            config: config.models[provider][model],
+          })
         }
       }
     }
+
+    models.sort((a, b) => parseInt(`${b.config.priority}`, 10) - parseInt(`${a.config.priority}`, 10))
+
+    return models.length > 0 ? models[0] : null
+
   } catch (err) {
-    console.error('Error reading primary model from configuration:', err)
+    console.error('Error reading model from configuration:', err)
+    return null
   }
-  return null
 }

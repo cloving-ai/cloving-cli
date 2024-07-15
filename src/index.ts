@@ -19,6 +19,7 @@ program
   .command('commit')
   .description('Generate a commit message and commit the changes')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(commit)
 
 program
@@ -26,6 +27,7 @@ program
   .description('Generate unit tests (if you don\'t specify filenames, it will generate tests for commited changes that differ from the main/master branch)')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(unitTests)
 
 program
@@ -37,12 +39,14 @@ program
   .command('review')
   .description('Review the code for commited changes that differ from the main/master branch')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(analyze)
 
 program
   .command('init')
   .description('Setup cloving in the current project')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(init)
 
 program

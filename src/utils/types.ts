@@ -8,6 +8,7 @@ export interface GPTRequest {
 }
 
 export interface ClovingGPTOptions {
+  model?: string
   silent?: boolean
   files?: string[]
 }

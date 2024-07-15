@@ -16,13 +16,14 @@ class ClovingGPT {
   private silent: boolean
 
   constructor(options: ClovingGPTOptions = { silent: false }) {
+    const { model: partialModel } = options
     const config: ClovingConfig = getConfig(options)
     if (!config || !config.models) {
       console.log('No cloving configuration found. Please run: cloving config')
       process.exit(1)
     }
 
-    const primaryModel = getPrimaryModel()
+    const primaryModel = getPrimaryModel(partialModel)
     if (!primaryModel) {
       console.log('No primary model found in the configuration. Please run: cloving config')
       process.exit(1)
