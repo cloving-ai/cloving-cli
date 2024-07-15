@@ -39,7 +39,7 @@ export const config = async (): Promise<void> => {
     const setAsPrimary = await promptUser('Do you want to use this model as a primary model? [Yn]: ')
     const primary = setAsPrimary.toLowerCase() === 'y' || setAsPrimary === ''
 
-    const priority = primary ? 10 : parseInt(await promptUser('Enter the priority for this model (0-100, higher priority will be used as long as the prompt fits the context token limit): '), 100)
+    const priority = primary ? 100 : parseInt(await promptUser('Enter the priority for this model (0-100, higher priority will be used as long as the prompt fits the context token limit): [' + (primary ? 100 : 0) + ']'), 100)
 
     const silentResponse = await promptUser('Do you want to review all prompts before they are sent to this model? [Yn]: ')
     const silent = !(silentResponse.toLowerCase() === 'y' || silentResponse === '')
