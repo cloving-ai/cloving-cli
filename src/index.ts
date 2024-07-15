@@ -23,7 +23,7 @@ program
 
 program
   .command('unit-tests')
-  .description('Generate unit tests for the changes')
+  .description('Generate unit tests (if you don\'t specify filenames, it will generate tests for commited changes that differ from the main/master branch)')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
   .action(unitTests)
@@ -35,7 +35,7 @@ program
 
 program
   .command('review')
-  .description('Review the changes and propose ')
+  .description('Review the code for commited changes that differ from the main/master branch')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .action(analyze)
 
@@ -47,7 +47,7 @@ program
 
 program
   .command('config')
-  .description('Configure cloving with your API key and model')
+  .description('Configure cloving with your API key and models to use')
   .action(config)
 
 program.parse(process.argv)
