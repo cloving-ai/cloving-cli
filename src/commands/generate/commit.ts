@@ -1,11 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 import { execFileSync } from 'child_process'
-import { generateCommitMessagePrompt } from '../utils/git_utils'
-import { extractMarkdown } from '../utils/string_utils'
-import { getConfig } from '../utils/config_utils'
-import ClovingGPT from '../cloving_gpt'
-import type { ClovingGPTOptions } from '../utils/types'
+import { generateCommitMessagePrompt } from '../../utils/git_utils'
+import { extractMarkdown } from '../../utils/string_utils'
+import { getConfig } from '../../utils/config_utils'
+import ClovingGPT from '../../cloving_gpt'
+import type { ClovingGPTOptions } from '../../utils/types'
 
 const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false

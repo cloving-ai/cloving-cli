@@ -1,4 +1,4 @@
-import { spawn } from 'child_process'
+import { spawn, execFileSync } from 'child_process'
 import readline from 'readline'
 import fs from 'fs'
 

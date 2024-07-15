@@ -1,11 +1,11 @@
 import readline from 'readline'
 import { execFileSync } from 'child_process'
 
-import { getGitDiff } from '../utils/git_utils'
-import { extractMarkdown } from '../utils/string_utils'
-import ClovingGPT from '../cloving_gpt'
-import { getConfig } from '../utils/config_utils'
-import type { ClovingGPTOptions } from '../utils/types'
+import { getGitDiff } from '../../utils/git_utils'
+import { extractMarkdown } from '../../utils/string_utils'
+import ClovingGPT from '../../cloving_gpt'
+import { getConfig } from '../../utils/config_utils'
+import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false

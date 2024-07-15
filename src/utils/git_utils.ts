@@ -68,3 +68,12 @@ export const getGitDiff = async (): Promise<string> => {
     process.exit(1)
   }
 }
+
+export const getCurrentBranchName = (): string => {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
+  } catch (error) {
+    console.error('Error getting current branch name:', (error as Error).message)
+    process.exit(1)
+  }
+}

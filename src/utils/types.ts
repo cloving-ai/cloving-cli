@@ -21,6 +21,12 @@ export interface ClovingModelConfig {
   trust: boolean;
 }
 
+export type ProjectConfig = {
+  name: string
+  task: string
+  files?: string[]
+}
+
 export type ClovingConfig = {
   models: {
     [provider: string]: {
