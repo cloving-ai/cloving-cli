@@ -80,12 +80,12 @@ export const buildProject = async (options: ClovingGPTOptions) => {
     }
   })
 
-  // Prompt the user to copy the analysis to the clipboard
-  const answer = await promptUser('Do you want to copy the analysis to the clipboard? [Y/n] ')
+  // Prompt the user to copy the project to the clipboard
+  const answer = await promptUser('Do you want to copy this project to the clipboard? [Y/n] ')
   if (answer.toLowerCase() === 'y' || answer === '') {
     try {
       execFileSync('pbcopy', { input: projectCode })
-      console.log('Analysis copied to clipboard')
+      console.log('Project copied to clipboard')
     } catch (error) {
       console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
     }
