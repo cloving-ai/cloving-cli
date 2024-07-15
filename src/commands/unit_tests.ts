@@ -2,8 +2,8 @@ import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
 import ClovingGPT from '../cloving_gpt'
-import { readClovingConfig } from '../utils/command_utils'
-import type { ClovingGPTOptions, ClovingGPTConfig } from '../utils/types'
+import { readClovingConfig } from '../utils/config_utils'
+import type { ClovingGPTOptions, ClovingfileConfig } from '../utils/types'
 
 const extractChangedFiles = (gitDiff: string): string[] => {
   const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g
@@ -17,7 +17,7 @@ const extractChangedFiles = (gitDiff: string): string[] => {
   return Array.from(files)
 }
 
-const setupTestingPrompt = async (gpt: ClovingGPT, config: ClovingGPTConfig) => {
+const setupTestingPrompt = async (gpt: ClovingGPT, config: ClovingfileConfig) => {
   const prompt = `I have the following cloving.json configuration file:
 
 ==== begin cloving.json ====

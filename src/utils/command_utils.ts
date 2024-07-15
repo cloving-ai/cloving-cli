@@ -1,11 +1,7 @@
 import { spawn } from 'child_process'
 import readline from 'readline'
 import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import type { ClovingConfig, ClovingGPTOptions, ClovingGPTConfig } from '../utils/types'
 
-export const CONFIG_PATH = path.join(os.homedir(), '.cloving.json')
 export const SPECIAL_FILES = [
   'package.json',
   'Gemfile',
@@ -116,45 +112,5 @@ export const fetchModels = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Error fetching models:', (error as Error).message)
     return []
-  }
-}
-
-export const saveConfig = (config: ClovingConfig) => {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
-  console.log(`Configuration saved to ${CONFIG_PATH}`)
-}
-
-export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      const rawConfig = fs.readFileSync(CONFIG_PATH, 'utf-8')
-      const config = JSON.parse(rawConfig)
-      if (options.silent) {
-        return { ...config, silent: true }
-      } else {
-        return config
-      }
-    }
-  } catch (err) {
-    console.error('Error reading configuration:', err)
-  }
-  if (process.env.CLOVING_MODEL) {
-    return {
-      models: { [`${process.env.CLOVING_MODEL}`]: process.env.CLOVING_API_KEY ?? '' },
-      primaryModel: process.env.CLOVING_MODEL,
-      silent: options.silent || false
-    }
-  } else {
-    return { models: {}, primaryModel: null, silent: options.silent || false }
-  }
-}
-
-export const readClovingConfig = (): ClovingGPTConfig => {
-  const configPath = path.resolve(process.cwd(), 'cloving.json')
-  if (fs.existsSync(configPath)) {
-    const configFile = fs.readFileSync(configPath, 'utf-8')
-    return JSON.parse(configFile) as ClovingGPTConfig
-  } else {
-    throw new Error('cloving.json file not found')
   }
 }

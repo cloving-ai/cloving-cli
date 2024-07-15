@@ -8,14 +8,26 @@ export interface GPTRequest {
 }
 
 export interface ClovingGPTOptions {
+  model?: string
   silent?: boolean
   files?: string[]
 }
 
+export interface ClovingModelConfig {
+  apiKey: string;
+  primary: boolean;
+  priority: number;
+  silent: boolean;
+  trust: boolean;
+}
+
 export type ClovingConfig = {
-  models: Record<string, string>
-  primaryModel?: string | null
-  silent?: boolean
+  models: {
+    [provider: string]: {
+      [model: string]: ClovingModelConfig;
+    };
+  };
+  globalSilent: boolean;
 }
 
 interface LanguageConfig {
@@ -59,7 +71,7 @@ interface DatabaseConfig {
   primary?: boolean
 }
 
-export interface ClovingGPTConfig {
+export interface ClovingfileConfig {
   languages: LanguageConfig[]
   frameworks: FrameworkConfig[]
   testingFrameworks?: TestingFrameworkConfig[]

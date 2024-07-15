@@ -5,12 +5,13 @@ import { estimateTokens } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
-import { getConfig, promptUser, generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
+import { getConfig } from '../utils/config_utils'
+import { promptUser, generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 // Main function for the describe command
 export const init = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig(options).silent || false
+  options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   const specialFileContents = collectSpecialFileContents()
   const specialFileNames = Object.keys(specialFileContents).map(file => ' - ' + file)
@@ -36,7 +37,7 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   const config = getConfig(options)
-  if (!config || !config?.primaryModel || !config?.models) {
+  if (!config || !config?.models) {
     console.error('No cloving configuration found. Please run `cloving config`')
     return
   }
@@ -132,7 +133,7 @@ interface DatabaseConfig {
   primary?: boolean
 }
 
-export interface ClovingGPTConfig {
+export interface ClovingfileConfig {
   languages: LanguageConfig[]
   frameworks: FrameworkConfig[]
   testingFrameworks?: TestingFrameworkConfig[]

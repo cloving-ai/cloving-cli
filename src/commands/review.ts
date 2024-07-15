@@ -4,11 +4,11 @@ import { execFileSync } from 'child_process'
 import { getGitDiff } from '../utils/git_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
-import { getConfig } from '../utils/command_utils'
+import { getConfig } from '../utils/config_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig(options).silent || false
+  options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
 
   try {

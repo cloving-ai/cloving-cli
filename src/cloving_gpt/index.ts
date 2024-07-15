@@ -7,8 +7,8 @@ import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
 import { GPT4AllAdapter } from './adapters/gpt4all'
 import { OllamaAdapter } from './adapters/ollama'
-import { getConfig } from '../utils/command_utils'
-import type { GPTRequest, ClovingGPTOptions } from '../utils/types'
+import { getConfig, getPrimaryModel } from '../utils/config_utils'
+import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
 
 class ClovingGPT {
   private adapter: Adapter
@@ -16,19 +16,24 @@ class ClovingGPT {
   private silent: boolean
 
   constructor(options: ClovingGPTOptions = { silent: false }) {
-    const config = getConfig(options)
-    if (!config || !config.primaryModel || !config.models) {
+    const { model: partialModel } = options
+    const config: ClovingConfig = getConfig(options)
+    if (!config || !config.models) {
       console.log('No cloving configuration found. Please run: cloving config')
       process.exit(1)
     }
 
-    const clovingModel = config.primaryModel
-    this.apiKey = config.models[config?.primaryModel || ''].trim()
-    this.silent = options.silent || false
+    const primaryModel = getPrimaryModel(partialModel)
+    if (!primaryModel) {
+      console.log('No primary model found in the configuration. Please run: cloving config')
+      process.exit(1)
+    }
 
-    const parts = clovingModel.split(':')
-    const model = parts.slice(1).join(':')
-    switch (parts[0]) {
+    const { provider, model, config: modelConfig } = primaryModel
+    this.apiKey = modelConfig.apiKey
+    this.silent = options.silent || modelConfig.silent
+
+    switch (provider) {
       case 'claude':
         this.adapter = new ClaudeAdapter(model)
         break
@@ -42,7 +47,7 @@ class ClovingGPT {
         this.adapter = new OllamaAdapter(model)
         break
       default:
-        throw new Error(`Unsupported provider: ${parts[0]}`)
+        throw new Error(`Unsupported provider: ${provider}`)
     }
   }
 
