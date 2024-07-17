@@ -1,13 +1,33 @@
 import fs from 'fs'
 import path from 'path'
-import { execFileSync } from 'child_process'
-import { generateCommitMessagePrompt } from '../../utils/git_utils'
+import { execFileSync, execSync } from 'child_process'
 import { extractMarkdown } from '../../utils/string_utils'
 import { getConfig } from '../../utils/config_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
-const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
+const generateCommitMessagePrompt = (): string => {
+  const diff = execSync('git diff HEAD').toString()
+  return `Generate a concise and meaningful commit message based on a diff.
+
+Do not add any commentary or context to the message other than the commit message itself.
+
+An example of the output for this should look like the following:
+
+\`\`\`plaintext
+Update dependencies and package versions
+
+- Upgrade Ruby gems including aws-sdk, honeybadger, irb, and rubocop
+- Update Node.js packages including esbuild, tinymce, and trix
+- Bump TypeScript and ESLint related packages to latest versions
+\`\`\`
+
+Here is the diff to help you write the commit message:
+
+${diff}`
+}
+
+const commit = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   try {
@@ -42,4 +62,4 @@ const generateAndCommitMessage = async (options: ClovingGPTOptions) => {
   }
 }
 
-export default generateAndCommitMessage
+export default commit

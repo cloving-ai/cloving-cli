@@ -6,6 +6,7 @@ import { join } from 'path'
 import config from './commands/config'
 import init from './commands/init'
 import models from './commands/models'
+import sh from './commands/generate/sh'
 import commit from './commands/generate/commit'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
@@ -55,7 +56,16 @@ program
 // Generate commands
 const generate = program
   .command('generate')
+  .alias('g')
   .description('Generate various items like unit-tests and code reviews')
+
+generate
+  .command('sh')
+  .description('Generate a shell command based on a prompt')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
+  .option('-p, --prompt <prompt>', 'Specify the prompt to use')
+  .action(sh)
 
 generate
   .command('commit')

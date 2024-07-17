@@ -4,13 +4,17 @@ import ClovingGPT from '../../cloving_gpt'
 import { getConfig, saveProjectConfig } from '../../utils/config_utils'
 import { promptUser } from '../../utils/command_utils'
 import { getCurrentBranchName, getDefaultBranchName } from '../../utils/git_utils'
-import { getAllFiles } from '../../utils/config_utils'
+import { getAllFiles, readClovingConfig } from '../../utils/config_utils'
 import type { ClovingGPTOptions, ProjectConfig } from '../../utils/types'
 
 const generatePrompt = async (projectName: string, projectTask: string) => {
   const filesList = await getAllFiles({}, false)
 
-  return `Here is a list of all my source files:
+  return `Here is a description of my app:
+
+${readClovingConfig()}
+
+Here is a list of all my source files:
 
 ==== begin list of source files ====
 ${filesList.join("\n")}
