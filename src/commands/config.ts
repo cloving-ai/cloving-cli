@@ -1,11 +1,12 @@
 import { getConfig, saveConfig } from '../utils/config_utils'
-import { promptUser, fetchModels } from '../utils/command_utils'
+import { fetchModels } from '../utils/command_utils'
 import type { ClovingModelConfig } from '../utils/types'
+import inquirer from 'inquirer'
 
 export const config = async (): Promise<void> => {
   let currentConfig = getConfig({})
 
-  // Ensure models is initialized properly
+  // Ensure models are initialized properly
   if (!currentConfig.models) {
     currentConfig.models = {}
   }
@@ -19,16 +20,46 @@ export const config = async (): Promise<void> => {
   let continueConfig = true
 
   while (continueConfig) {
-    console.log('Available models:')
-    models.forEach((model, index) => console.log(`${index + 1}. ${model}`))
+    const providers = [...new Set(models.map(model => model.split(':')[0]))]
+    const { selectedProvider } = await inquirer.prompt<{ selectedProvider: string }>([
+      {
+        type: 'list',
+        name: 'selectedProvider',
+        message: 'Select a provider:',
+        choices: providers.map(provider => ({ name: provider, value: provider })),
+      },
+    ])
 
-    const modelIndex = parseInt(await promptUser('Select a model by number: '), 10) - 1
-    if (isNaN(modelIndex) || modelIndex < 0 || modelIndex >= models.length) {
-      throw new Error('Invalid selection')
-    }
+    const providerModels = models.filter(model => model.startsWith(selectedProvider))
+    const modelCategories = [...new Set(providerModels.map(model => model.split(':')[1]))]
+    const { selectedCategory } = await inquirer.prompt<{ selectedCategory: string }>([
+      {
+        type: 'list',
+        name: 'selectedCategory',
+        message: 'Select a category:',
+        choices: modelCategories.map(category => ({ name: category, value: category })),
+      },
+    ])
 
-    const selectedModel = models[modelIndex]
-    const apiKey = await promptUser(`Enter your API key for ${selectedModel}: `)
+    const specificModels = providerModels.filter(model => model.split(':')[1] === selectedCategory)
+    const { modelIndex } = await inquirer.prompt<{ modelIndex: number }>([
+      {
+        type: 'list',
+        name: 'modelIndex',
+        message: 'Select an AI model you\'d like to use:',
+        choices: specificModels.map((model, index) => ({ name: model, value: index })),
+        pageSize: specificModels.length,
+      },
+    ])
+
+    const selectedModel = specificModels[modelIndex]
+    const { apiKey } = await inquirer.prompt<{ apiKey: string }>([
+      {
+        type: 'input',
+        name: 'apiKey',
+        message: `Enter your API key for ${selectedModel}: `,
+      },
+    ])
     const [provider, ...modelParts] = selectedModel.split(':')
     const model = modelParts.join(':')
 
@@ -36,23 +67,54 @@ export const config = async (): Promise<void> => {
       currentConfig.models[provider] = {}
     }
 
-    const setAsPrimary = await promptUser('Do you want to use this model as a primary model? [Yn]: ')
-    const primary = setAsPrimary.toLowerCase() === 'y' || setAsPrimary === ''
+    const { primary } = await inquirer.prompt<{ primary: boolean }>([
+      {
+        type: 'confirm',
+        name: 'primary',
+        message: 'Set this model as the primary? Primary models are used by default if your prompt fits within its context window. You can configure backup models for larger prompts.',
+        default: true,
+      },
+    ])
 
-    const priorityNumber = await promptUser('Enter the priority for this model (0-100, higher priority will be used as long as the prompt fits the context token limit): [' + (primary ? 100 : 0) + ']')
-    const priority = primary ? 100 : parseInt(priorityNumber, 10)
+    const { priority } = await inquirer.prompt<{ priority: string }>([
+      {
+        type: 'input',
+        name: 'priority',
+        message: 'Enter the priority for this model (0-100). Higher priority AI APIs are chosen as long as the prompt fits its context window:',
+        default: primary ? '100' : '0',
+        validate: (input: string) => {
+          const num = parseInt(input, 10)
+          if (isNaN(num) || num < 0 || num > 100) {
+            return 'Please enter a valid number between 0 and 100.'
+          }
+          return true
+        },
+      },
+    ])
 
-    const silentResponse = await promptUser('Do you want to review all prompts before they are sent to this model? [Yn]: ')
-    const silent = !(silentResponse.toLowerCase() === 'y' || silentResponse === '')
+    const { review } = await inquirer.prompt<{ review: boolean }>([
+      {
+        type: 'confirm',
+        name: 'review',
+        message: `Do you want to review all prompts before they are sent to ${selectedModel}?`,
+        default: true,
+      },
+    ])
 
-    const trustResponse = await promptUser('Do you trust this model with sensitive information? [Yn]: ')
-    const trust = trustResponse.toLowerCase() === 'y' || trustResponse === ''
+    const { trust } = await inquirer.prompt<{ trust: boolean }>([
+      {
+        type: 'confirm',
+        name: 'trust',
+        message: `Do you trust ${selectedModel} with sensitive information?`,
+        default: false,
+      },
+    ])
 
     const modelConfig: ClovingModelConfig = {
       apiKey,
       primary,
-      priority,
-      silent,
+      priority: parseInt(priority, 10),
+      silent: !review,
       trust,
     }
 
@@ -69,10 +131,16 @@ export const config = async (): Promise<void> => {
       }
     }
 
-    const anotherModel = await promptUser('Do you want to configure another model? [Yn]: ')
-    if (anotherModel.toLowerCase() !== 'y' && anotherModel !== '') {
-      continueConfig = false
-    }
+    const { anotherModel } = await inquirer.prompt<{ anotherModel: boolean }>([
+      {
+        type: 'confirm',
+        name: 'anotherModel',
+        message: 'Do you want to configure another model?',
+        default: true,
+      },
+    ])
+
+    continueConfig = anotherModel
   }
 
   saveConfig(currentConfig)

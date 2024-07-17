@@ -7,10 +7,10 @@ export class ClaudeAdapter implements Adapter {
   private anthropicVersion: string
 
   static supportedModels: string[] = [
-    'claude:claude-3-5-sonnet-20240620',
-    'claude:claude-3-opus-20240229',
-    'claude:claude-3-sonnet-20240229',
-    'claude:claude-3-haiku-20240307',
+    'claude:claude-3-5:sonnet-20240620',
+    'claude:claude-3:opus-20240229',
+    'claude:claude-3:sonnet-20240229',
+    'claude:claude-3:haiku-20240307',
     // Add more supported models here as needed
   ]
 
@@ -39,7 +39,7 @@ export class ClaudeAdapter implements Adapter {
 
   getPayload(request: GPTRequest): Record<string, any> {
     return {
-      model: this.model,
+      model: this.model.replace(':', '-'),
       system: 'You are a computer programmer giving advice on how to write better code.',
       messages: [
         { role: 'user', content: request.prompt }

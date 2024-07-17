@@ -5,10 +5,10 @@ export class OpenAIAdapter implements Adapter {
   private model: string
 
   static supportedModels: string[] = [
-    'openai:gpt-4o',
-    'openai:gpt-4-turbo',
-    'openai:gpt-3.5-turbo',
-    'openai:text-embedding-3-large',
+    'openai:gpt:4o',
+    'openai:gpt:4-turbo',
+    'openai:gpt:3.5-turbo',
+    'openai:text-embedding:3-large',
     // Add more supported models here as needed
   ]
 
@@ -35,7 +35,7 @@ export class OpenAIAdapter implements Adapter {
 
   getPayload(request: GPTRequest): Record<string, any> {
     return {
-      model: this.model,
+      model: this.model.replace(':', '-'),
       messages: [{ role: "user", content: request.prompt }],
       max_tokens: request.maxTokens,
       temperature: request.temperature || 0.7

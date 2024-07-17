@@ -25,7 +25,7 @@ class ClovingGPT {
 
     const primaryModel = getPrimaryModel(partialModel)
     if (!primaryModel) {
-      console.log('No primary model found in the configuration. Please run: cloving config')
+      console.log('No AI API models found in the cloving configuration. Please run: cloving config')
       process.exit(1)
     }
 
