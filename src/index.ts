@@ -6,7 +6,7 @@ import { join } from 'path'
 import config from './commands/config'
 import init from './commands/init'
 import models from './commands/models'
-import sh from './commands/generate/sh'
+import shell from './commands/generate/shell'
 import commit from './commands/generate/commit'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
@@ -62,15 +62,17 @@ const generate = program
   .description('Generate various items like unit-tests and code reviews')
 
 generate
-  .command('sh')
+  .command('shell')
+  .alias('s')
   .description('Generate a shell command based on a prompt')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .option('-p, --prompt <prompt>', 'Specify the prompt to use')
-  .action(sh)
+  .action(shell)
 
 generate
   .command('commit')
+  .alias('c')
   .description('Generate a commit message and commit the changes')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
@@ -78,6 +80,7 @@ generate
 
 generate
   .command('unit-tests')
+  .alias('u')
   .description('Generate unit tests (if you don\'t specify filenames, it will generate tests for commited changes that differ from the main/master branch)')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
@@ -86,6 +89,7 @@ generate
 
 generate
   .command('review')
+  .alias('r')
   .description('Review the code for commited changes that differ from the main/master branch')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
@@ -99,21 +103,25 @@ const project = program
 
 project
   .command('init')
+  .alias('i')
   .description('Setup a new cloving project inside a git branch')
   .action(initProject)
 
 project
   .command('plan')
+  .alias('p')
   .description('Plan the steps to complete the project')
   .action(planProject)
 
 project
   .command('build')
+  .alias('b')
   .description('Generate code to build the project')
   .action(buildProject)
 
 project
   .command('complete')
+  .alias('c')
   .description('Clean up and finalize the project')
   .action(completeProject)
 
