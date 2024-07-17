@@ -1,11 +1,12 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import inquirer from 'inquirer'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
-import { promptUser, generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
+import { generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 // Main function for the describe command
@@ -39,8 +40,15 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    const continueAnswer = await promptUser('No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process? [Yn] ')
-    if (continueAnswer.toLowerCase() !== 'y' && continueAnswer.trim() !== '') {
+    const { continueAnswer } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'continueAnswer',
+        message: 'No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process?',
+        default: true,
+      },
+    ])
+    if (!continueAnswer) {
       console.log('Operation aborted by the user.')
       return
     }
@@ -214,8 +222,15 @@ Here is an example response:
 
     // Prompt the user if they want to review the generated cloving.json
     if (!options.silent) {
-      const reviewAnswer = await promptUser('Do you want to review the generated data? [Yn] ')
-      if (reviewAnswer.toLowerCase() === 'y' || reviewAnswer.trim() === '') {
+      const { reviewAnswer } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'reviewAnswer',
+          message: 'Do you want to review the generated data?',
+          default: true,
+        },
+      ])
+      if (reviewAnswer) {
         console.log(cleanAiChatResponse)
       }
     }

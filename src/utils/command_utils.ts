@@ -91,20 +91,6 @@ export const runCommand = (command: string, args: string[]): Promise<string[]> =
   })
 }
 
-export const promptUser = (question: string): Promise<string> => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close()
-      resolve(answer.trim())
-    })
-  })
-}
-
 export const fetchModels = async (): Promise<string[]> => {
   try {
     const modelsOutput = await runCommand('cloving', ['models'])

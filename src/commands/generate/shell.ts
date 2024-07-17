@@ -2,7 +2,6 @@ import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { execSync, execFileSync } from 'child_process'
 import { extractMarkdown } from '../../utils/string_utils'
-import { promptUser } from '../../utils/command_utils'
 import { getConfig } from '../../utils/config_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
@@ -39,7 +38,14 @@ const shell = async (options: ClovingGPTOptions) => {
   const gpt = new ClovingGPT(options)
   try {
     if (!prompt) {
-      prompt = await promptUser('What would you like to do: ')
+      const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
+        {
+          type: 'input',
+          name: 'userPrompt',
+          message: 'What would you like to do: '
+        }
+      ])
+      prompt = userPrompt
     }
     // Generate the prompt for commit message
     const shellPrompt = generateShellPrompt(prompt)

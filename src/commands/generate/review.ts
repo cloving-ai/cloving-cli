@@ -1,12 +1,12 @@
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
+import inquirer from 'inquirer'
 
 import ClovingGPT from '../../cloving_gpt'
 import { getGitDiff } from '../../utils/git_utils'
 import { extractMarkdown } from '../../utils/string_utils'
 import { getConfig } from '../../utils/config_utils'
 import { parseMarkdownInstructions } from '../../utils/string_utils'
-import { promptUser } from '../../utils/command_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
@@ -41,8 +41,16 @@ ${gitDiff}`
     })
 
     // Prompt the user to copy the analysis to the clipboard
-    const answer = await promptUser('Do you want to copy the analysis to the clipboard? [Y/n] ')
-    if (answer.toLowerCase() === 'y' || answer === '') {
+    const { copyToClipboard } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'copyToClipboard',
+        message: 'Do you want to copy the analysis to the clipboard?',
+        default: true
+      }
+    ])
+
+    if (copyToClipboard) {
       try {
         execFileSync('pbcopy', { input: markdown })
         console.log('Analysis copied to clipboard')

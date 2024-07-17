@@ -1,7 +1,7 @@
 import ncp from 'copy-paste'
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
-import { promptUser, collectSpecialFileContents } from '../../utils/command_utils'
+import { collectSpecialFileContents } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
 import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
@@ -88,7 +88,13 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
 
   switch (action) {
     case 'revise':
-      const newPrompt = await promptUser('Enter your revised prompt: ')
+      const { newPrompt } = await inquirer.prompt<{ newPrompt: string }>([
+        {
+          type: 'input',
+          name: 'newPrompt',
+          message: 'Enter your revised prompt:',
+        },
+      ])
       const newRawCodeCommand = await generateCode(gpt, newPrompt, allSrcFiles, contextFiles, rawCodeCommand)
       displayGeneratedCode(newRawCodeCommand)
       await handleUserAction(gpt, newRawCodeCommand, newPrompt, allSrcFiles, contextFiles)
@@ -124,7 +130,14 @@ const code = async (options: ClovingGPTOptions) => {
 
   try {
     if (!prompt) {
-      prompt = await promptUser('What would you like to build: ')
+      const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
+        {
+          type: 'input',
+          name: 'userPrompt',
+          message: 'What would you like to build:',
+        },
+      ])
+      prompt = userPrompt
     }
 
     if (files && files.length > 0) {
@@ -144,7 +157,14 @@ const code = async (options: ClovingGPTOptions) => {
       let includeMoreFiles = true
 
       while (includeMoreFiles) {
-        const contextFile = await promptUser('Relative path of an existing file you would like to include as context in the prompt [optional]: ')
+        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+          {
+            type: 'input',
+            name: 'contextFile',
+            message: 'Relative path of an existing file you would like to include as context in the prompt [optional]:',
+          },
+        ])
+
         if (contextFile) {
           const filePath = path.resolve(contextFile)
           if (fs.existsSync(filePath)) {
