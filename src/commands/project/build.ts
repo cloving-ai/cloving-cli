@@ -7,7 +7,6 @@ import ClovingGPT from '../../cloving_gpt'
 import { getConfig, getProjectConfig } from '../../utils/config_utils'
 import { getCurrentBranchName } from '../../utils/git_utils'
 import { parseMarkdownInstructions } from '../../utils/string_utils'
-import { promptUser } from '../../utils/command_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const generatePrompt = async (projectName: string, projectTask: string, filesList: string[], incompletePlanItem: string) => {
@@ -80,9 +79,17 @@ export const buildProject = async (options: ClovingGPTOptions) => {
     }
   })
 
-  // Prompt the user to copy the project to the clipboard
-  const answer = await promptUser('Do you want to copy this project to the clipboard? [Y/n] ')
-  if (answer.toLowerCase() === 'y' || answer === '') {
+  // Prompt the user to copy the project to the clipboard using inquirer
+  const { copyToClipboard } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'copyToClipboard',
+      message: 'Do you want to copy this project to the clipboard?',
+      default: true,
+    },
+  ])
+
+  if (copyToClipboard) {
     const success = copy(projectCode)
     if (success) {
       console.log('Project copied to clipboard')
