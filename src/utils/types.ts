@@ -1,4 +1,4 @@
-export type Provider = 'openai' | 'claude' | 'gpt4all'
+export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
 export interface GPTRequest {
   prompt: string
