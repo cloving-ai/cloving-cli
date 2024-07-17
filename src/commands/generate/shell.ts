@@ -1,6 +1,7 @@
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
-import { execSync, execFileSync } from 'child_process'
+import { execSync } from 'child_process'
+import ncp from 'copy-paste'
 import { extractMarkdown } from '../../utils/string_utils'
 import { getConfig } from '../../utils/config_utils'
 import ClovingGPT from '../../cloving_gpt'
@@ -89,8 +90,13 @@ const shell = async (options: ClovingGPTOptions) => {
         console.log(highlight(explainShellCommand, { language: 'markdown' }))
         break
       case 'copy':
-        execFileSync('pbcopy', { input: generatedShellWithoutShebang })
-        console.log('Script copied to clipboard.')
+        ncp.copy(generatedShellWithoutShebang, (err) => {
+          if (err) {
+            console.error('Error: Unable to copy to clipboard.', err)
+          } else {
+            console.log('Script copied to clipboard.')
+          }
+        })
         break
       case 'cancel':
         console.log('Operation cancelled.')

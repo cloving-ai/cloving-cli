@@ -81,7 +81,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
         { name: 'Explain', value: 'explain' },
         { name: 'Copy Source Code to Clipboard', value: 'copySource' },
         { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
-        { name: 'Finished', value: 'finished' },
+        { name: 'Done', value: 'done' },
       ],
     },
   ])
@@ -115,7 +115,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
         console.log('Entire response copied to clipboard')
       })
       break
-    case 'finished':
+    case 'done':
       break
   }
 }
