@@ -6,8 +6,7 @@ import { getConfig } from '../../utils/config_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
-const generateCommitMessagePrompt = (): string => {
-  const diff = execSync('git diff HEAD').toString()
+const generateCommitMessagePrompt = (diff: string): string => {
   return `Generate a concise and meaningful commit message based on a diff.
 
 Do not add any commentary or context to the message other than the commit message itself.
@@ -31,8 +30,17 @@ const commit = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   try {
+    // Get the git diff
+    const diff = execSync('git diff HEAD').toString().trim()
+
+    // Check if the diff is blank
+    if (!diff) {
+      console.error('The diff is blank. No changes to commit.')
+      return
+    }
+
     // Generate the prompt for commit message
-    const prompt = generateCommitMessagePrompt()
+    const prompt = generateCommitMessagePrompt(diff)
 
     // Instantiate ClovingGPT and get the commit message
     const rawCommitMessage = await gpt.generateText({ prompt })
@@ -58,7 +66,7 @@ const commit = async (options: ClovingGPTOptions) => {
     })
 
   } catch (error) {
-    console.error('Could not generate commit message')
+    console.error('Could not generate commit message:', error)
   }
 }
 
