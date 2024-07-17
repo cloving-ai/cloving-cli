@@ -36,31 +36,27 @@ export const extractJsonMetadata = (response: string): string => {
 
 // Function to extract markdown from the AI response
 export const extractMarkdown = (response: string): string => {
-  let markdownString
+  let markdownString = response
 
-  // Extract the ```markdown block from the response
-  const markdownBlockStart = response.indexOf('```markdown')
-  const markdownBlockEnd = response.indexOf('```', markdownBlockStart + 11)
+  // Regular expression to match any ```<word> block
+  const codeBlockRegex = /```(\w+)\s*([\s\S]*?)\s*```/g
 
-  if (markdownBlockStart !== -1 && markdownBlockEnd !== -1) {
-    markdownString = response.substring(markdownBlockStart + 11, markdownBlockEnd).trim()
-  } else {
-    markdownString = response
-  }
-
-  const plaintextBlockStart = response.indexOf('```plaintext')
-  const plaintextBlockEnd = response.indexOf('```', plaintextBlockStart + 12)
-
-  if (plaintextBlockStart !== -1 && plaintextBlockEnd !== -1) {
-    markdownString = response.substring(plaintextBlockStart + 12, plaintextBlockEnd).trim()
-  } else {
-    markdownString = response
+  let match
+  while ((match = codeBlockRegex.exec(response)) !== null) {
+    // Extract the content inside the code block
+    const [, , content] = match
+    markdownString = content.trim()
   }
 
   // Remove any data before the first '#'
   const jsonStartIndex = markdownString.indexOf('#')
   if (jsonStartIndex !== -1) {
     markdownString = markdownString.substring(jsonStartIndex)
+  }
+
+  // Remove the last ``` if it exists
+  if (markdownString.endsWith('```')) {
+    markdownString = markdownString.substring(0, markdownString.length - 3)
   }
 
   return markdownString
