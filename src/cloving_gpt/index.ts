@@ -1,7 +1,7 @@
 import axios from 'axios'
-import readline from 'readline'
 import { spawn } from 'child_process'
 import process from 'process'
+import inquirer from 'inquirer'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
@@ -51,72 +51,68 @@ class ClovingGPT {
     }
   }
 
-  private async askUserToConfirm(prompt: string, message: string): Promise<boolean> {
-    if (this.silent) return true
+  private async reviewPrompt(prompt: string, endpoint: string): Promise<void> {
+    if (this.silent) return
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
+    const tokenCount = Math.ceil(prompt.length / 4).toLocaleString()
+    const { reviewPrompt } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'reviewPrompt',
+        message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
+        default: true
+      }
+    ])
 
-    return new Promise((resolve) => {
-      rl.question(message, (answer) => {
-        rl.close()
-        answer = answer.trim().toLowerCase()
-        if (answer === 'y' || answer === '') {
-          const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
+    if (reviewPrompt) {
+      const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
 
-          less.stdin.write(prompt)
-          less.stdin.end()
+      less.stdin.write(prompt)
+      less.stdin.end()
 
-          less.on('close', (code) => {
-            if (code !== 0) {
-              console.error('less command exited with an error')
-              resolve(false)
-              return
+      await new Promise<void>((resolve, reject) => {
+        less.on('close', async (code) => {
+          if (code !== 0) {
+            console.error('less command exited with an error')
+            reject(new Error('Less command failed'))
+            return
+          }
+
+          const { confirmContinue } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'confirmContinue',
+              message: 'Do you want to continue?',
+              default: true
             }
+          ])
 
-            const rlConfirm = readline.createInterface({
-              input: process.stdin,
-              output: process.stdout
-            })
-            rlConfirm.question('Do you still want to continue? [Yn]: ', (confirmAnswer) => {
-              rlConfirm.close()
-              confirmAnswer = confirmAnswer.trim().toLowerCase()
-              if (confirmAnswer !== 'y' && confirmAnswer !== '') {
-                console.error('User cancelled the operation')
-                process.exit(1)
-              } else {
-                resolve(true)
-              }
-            })
-          })
+          if (!confirmContinue) {
+            console.error('User cancelled the operation')
+            process.exit(1)
+          }
 
-          less.stdin.on('error', (err) => {
-            if (isNodeError(err) && err.code === 'EPIPE') {
-              resolve(true)
-            } else {
-              console.error('Pipeline error:', err)
-              resolve(false)
-            }
-          })
-        } else {
-          resolve(true)
-        }
+          resolve()
+        })
+
+        less.stdin.on('error', (err) => {
+          if (isNodeError(err) && err.code === 'EPIPE') {
+            resolve()
+          } else {
+            console.error('Pipeline error:', err)
+            reject(err)
+          }
+        })
       })
-    })
+    }
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
     const endpoint = this.adapter.getEndpoint()
     const payload = this.adapter.getPayload(request)
     const headers = this.adapter.getHeaders(this.apiKey)
-    const tokenCount = Math.ceil(request.prompt.length / 4).toLocaleString()
-    const shouldContinue = await this.askUserToConfirm(request.prompt, `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}? [Yn]: `)
 
-    if (!shouldContinue) {
-      throw 'Operation cancelled by the user.'
-    }
+    await this.reviewPrompt(request.prompt, endpoint)
 
     try {
       const response = await axios.post(endpoint, payload, { headers })
