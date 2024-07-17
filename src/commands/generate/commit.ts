@@ -35,7 +35,7 @@ const commit = async (options: ClovingGPTOptions) => {
 
     // Check if the diff is blank
     if (!diff) {
-      console.error('The diff is blank. No changes to commit.')
+      console.error('No changes to commit.')
       return
     }
 
