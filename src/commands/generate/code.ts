@@ -1,9 +1,9 @@
+import copy from 'copy-to-clipboard'
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
-import { execFileSync } from 'child_process'
 import { promptUser, collectSpecialFileContents } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions } from '../../utils/string_utils'
+import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 import fs from 'fs'
@@ -40,7 +40,7 @@ ${previousCode}
 
 I would like to generate code that does the following: ${prompt}
 
-Please generate the code and include filenames with paths to the code files mentioned and do not ask me to keep the existing code, always include existing code in the response.`
+Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
 
   return promptText
 }
@@ -79,7 +79,8 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       choices: [
         { name: 'Revise', value: 'revise' },
         { name: 'Explain', value: 'explain' },
-        { name: 'Copy to Clipboard', value: 'copy' },
+        { name: 'Copy Source Code to Clipboard', value: 'copySource' },
+        { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
         { name: 'Cancel', value: 'cancel' },
       ],
     },
@@ -96,11 +97,15 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       const explainPrompt = generateExplainCodePrompt(rawCodeCommand)
       const explainCodeCommand = await gpt.generateText({ prompt: explainPrompt })
       console.log(highlight(explainCodeCommand, { language: 'markdown' }))
-      await handleUserAction(gpt, rawCodeCommand, prompt, allSrcFiles, contextFiles)
       break
-    case 'copy':
-      execFileSync('pbcopy', { input: rawCodeCommand })
-      console.log('Script copied to clipboard.')
+    case 'copySource':
+      const sourceCode = extractMarkdown(rawCodeCommand)
+      copy(sourceCode)
+      console.log('Source code copied to clipboard.')
+      break
+    case 'copyAll':
+      copy(rawCodeCommand)
+      console.log('Entire response copied to clipboard.')
       break
     case 'cancel':
       console.log('Operation cancelled.')

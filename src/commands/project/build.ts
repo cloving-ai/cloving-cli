@@ -1,5 +1,5 @@
+import copy from 'copy-to-clipboard'
 import { promises as fs } from 'fs'
-import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 import inquirer from 'inquirer'
 
@@ -83,11 +83,11 @@ export const buildProject = async (options: ClovingGPTOptions) => {
   // Prompt the user to copy the project to the clipboard
   const answer = await promptUser('Do you want to copy this project to the clipboard? [Y/n] ')
   if (answer.toLowerCase() === 'y' || answer === '') {
-    try {
-      execFileSync('pbcopy', { input: projectCode })
+    const success = copy(projectCode)
+    if (success) {
       console.log('Project copied to clipboard')
-    } catch (error) {
-      console.error('Error: pbcopy command not found. Unable to copy to clipboard.')
+    } else {
+      console.error('Error: Unable to copy to clipboard.')
     }
   }
 }

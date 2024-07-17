@@ -40,6 +40,7 @@
     "axios": "^1.7.2",
     "cli-highlight": "^2.1.11",
     "commander": "^12.1.0",
+    "copy-to-clipboard": "^3.3.3",
     "eslint": "^9.6.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-raine": "^0.5.0",
