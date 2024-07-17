@@ -114,3 +114,12 @@ export const fetchModels = async (): Promise<string[]> => {
     return []
   }
 }
+
+export const readFileContent = (file: string): string => {
+  try {
+    return fs.readFileSync(file, 'utf-8')
+  } catch (error) {
+    console.error('Error reading file content:', (error as Error).message)
+    return ''
+  }
+}

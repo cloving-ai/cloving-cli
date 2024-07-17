@@ -49,7 +49,7 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
   }
 }
 
-export const readClovingConfig = (): ClovingfileConfig => {
+export const getClovingConfig = (): ClovingfileConfig => {
   if (clovingConfig) {
     return clovingConfig
   } else if (fs.existsSync(CLOVINGFILE_PATH)) {
@@ -147,7 +147,7 @@ export const getAllFiles = async (options: ClovingGPTOptions, forTesting: boolea
   const gpt = new ClovingGPT(options)
 
   // Read the cloving.json file
-  const config = readClovingConfig()
+  const config = getClovingConfig()
   const testingDirectory = getTestingDirectory()
 
   let allSrcFiles: string[] = []
@@ -169,6 +169,6 @@ export const getAllFiles = async (options: ClovingGPTOptions, forTesting: boolea
 }
 
 export const getTestingDirectory = (): string | undefined => {
-  const config = readClovingConfig()
+  const config = getClovingConfig()
   return config.testingFrameworks?.find((framework: any) => framework.directory)?.directory
 }

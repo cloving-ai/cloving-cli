@@ -1,7 +1,6 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { estimateTokens } from '../utils/string_utils'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
@@ -24,10 +23,7 @@ ${specialFileNames.join("\n")}
 
 Cloving will send AI a request to summarize the technologies used in this project.
 
-This will provide better context for future Cloving requests.
-
-For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model (llama3:70b-instruct currently works well for this) so that this data is not sent to an AI service provider.
-  `)
+This will provide better context for future Cloving requests.`)
     } else {
       console.log(`
 This script will analyze the list of files in the current directory using GPT to summarize the

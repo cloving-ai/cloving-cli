@@ -7,6 +7,7 @@ import config from './commands/config'
 import init from './commands/init'
 import models from './commands/models'
 import shell from './commands/generate/shell'
+import code from './commands/generate/code'
 import commit from './commands/generate/commit'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
@@ -71,8 +72,17 @@ generate
   .action(shell)
 
 generate
-  .command('commit')
+  .command('code')
   .alias('c')
+  .description('Generate code based on a prompt')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
+  .option('-p, --prompt <prompt>', 'Specify the prompt to use')
+  .option('-f, --files <filenames...>', 'Specify filenames of files with context to use for generating code')
+  .action(code)
+
+generate
+  .command('commit')
   .description('Generate a commit message and commit the changes')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
