@@ -40,7 +40,7 @@
     "axios": "^1.7.2",
     "cli-highlight": "^2.1.11",
     "commander": "^12.1.0",
-    "copy-to-clipboard": "^3.3.3",
+    "copy-paste": "^1.5.3",
     "eslint": "^9.6.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-raine": "^0.5.0",
@@ -57,6 +57,7 @@
     "vite-node": "^2.0.1"
   },
   "devDependencies": {
+    "@types/copy-paste": "^1.1.33",
     "@types/ini": "^4.1.1",
     "@types/inquirer": "^9.0.7",
     "@types/jest": "^29.5.12",

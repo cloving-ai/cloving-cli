@@ -1,4 +1,4 @@
-import copy from 'copy-to-clipboard'
+import ncp from 'copy-paste'
 import { promises as fs } from 'fs'
 import highlight from 'cli-highlight'
 import inquirer from 'inquirer'
@@ -90,12 +90,9 @@ export const buildProject = async (options: ClovingGPTOptions) => {
   ])
 
   if (copyToClipboard) {
-    const success = copy(projectCode)
-    if (success) {
+    ncp.copy(projectCode, () => {
       console.log('Project copied to clipboard')
-    } else {
-      console.error('Error: Unable to copy to clipboard.')
-    }
+    })
   }
 }
 

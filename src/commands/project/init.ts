@@ -1,8 +1,8 @@
 import { promises as fs } from 'fs'
+import inquirer from 'inquirer'
 
 import ClovingGPT from '../../cloving_gpt'
 import { getConfig, saveProjectConfig } from '../../utils/config_utils'
-import { promptUser } from '../../utils/command_utils'
 import { getCurrentBranchName, getDefaultBranchName } from '../../utils/git_utils'
 import { getAllFiles, getClovingConfig } from '../../utils/config_utils'
 import type { ClovingGPTOptions, ProjectConfig } from '../../utils/types'
@@ -53,7 +53,14 @@ export const initProject = async (options: ClovingGPTOptions) => {
     console.log(`You are on the ${defaultBranchName} branch. Please checkout to a git branch and try again. For example: git branch -b my-new-project`)
     process.exit(1)
   }
-  const projectTask = await promptUser('Describe the task you want to accomplish with this project: ')
+
+  const { projectTask } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'projectTask',
+      message: 'Describe the task you want to accomplish with this project:',
+    },
+  ])
 
   const prompt = await generatePrompt(projectName, projectTask)
   const contextFiles = await gpt.generateText({ prompt })

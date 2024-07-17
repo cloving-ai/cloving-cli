@@ -1017,6 +1017,11 @@
   dependencies:
     "@babel/types" "^7.20.7"
 
+"@types/copy-paste@^1.1.33":
+  version "1.1.33"
+  resolved "https://registry.yarnpkg.com/@types/copy-paste/-/copy-paste-1.1.33.tgz#d3ebd9b147ea9e9ea3d93465f2383828dcce3d05"
+  integrity sha512-vhDsD3A+WPfme1SW56fZCPvgEQ6ELYC0Jzgomldg+ExpMyQ1xDcIcuzao6O5l43cttbhepo16zz54Y16+GtpKw==
+
 "@types/eslint@^8.56.5":
   version "8.56.10"
   resolved "https://registry.npmjs.org/@types/eslint/-/eslint-8.56.10.tgz"
@@ -1699,12 +1704,12 @@ convert-source-map@^2.0.0:
   resolved "https://registry.yarnpkg.com/convert-source-map/-/convert-source-map-2.0.0.tgz#4b560f649fc4e918dd0ab75cf4961e8bc882d82a"
   integrity sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==
 
-copy-to-clipboard@^3.3.3:
-  version "3.3.3"
-  resolved "https://registry.yarnpkg.com/copy-to-clipboard/-/copy-to-clipboard-3.3.3.tgz#55ac43a1db8ae639a4bd99511c148cdd1b83a1b0"
-  integrity sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==
+copy-paste@^1.5.3:
+  version "1.5.3"
+  resolved "https://registry.yarnpkg.com/copy-paste/-/copy-paste-1.5.3.tgz#ee9e775858d05c57a91ea2a063188ab686840797"
+  integrity sha512-qOnFo+8l8vemGmdcoCiD7gPTefkXEg2rivYE+EBtuKOj754eFivkGhGAM9e/xqShrpuVE11evSxGnHwVAUK1Iw==
   dependencies:
-    toggle-selection "^1.0.6"
+    iconv-lite "^0.4.8"
 
 cosmiconfig@^6.0.0:
   version "6.0.0"
@@ -2674,7 +2679,7 @@ husky@^9.0.11:
   resolved "https://registry.yarnpkg.com/husky/-/husky-9.0.11.tgz#fc91df4c756050de41b3e478b2158b87c1e79af9"
   integrity sha512-AB6lFlbwwyIqMdHYhwPe+kjOC3Oc5P3nThEoW/AaO2BX3vJDjWPFxYLxokUZOo6RNX20He3AaT8sESs9NJcmEw==
 
-iconv-lite@^0.4.24:
+iconv-lite@^0.4.24, iconv-lite@^0.4.8:
   version "0.4.24"
   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.4.24.tgz#2022b4b25fbddc21d2f524974a474aafe733908b"
   integrity sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==
@@ -4654,11 +4659,6 @@ to-regex-range@^5.0.1:
   integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
   dependencies:
     is-number "^7.0.0"
-
-toggle-selection@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/toggle-selection/-/toggle-selection-1.0.6.tgz#6e45b1263f2017fa0acc7d89d78b15b8bf77da32"
-  integrity sha512-BiZS+C1OS8g/q2RRbJmy59xpyghNBqrr6k5L/uKBGRsTfxmu3ffiRnd8mlGPUVayg8pvfi5urfnu8TU7DVOkLQ==
 
 ts-jest@^29.2.0:
   version "29.2.0"

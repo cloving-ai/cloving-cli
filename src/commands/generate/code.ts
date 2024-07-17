@@ -1,4 +1,4 @@
-import copy from 'copy-to-clipboard'
+import ncp from 'copy-paste'
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { promptUser, collectSpecialFileContents } from '../../utils/command_utils'
@@ -100,12 +100,14 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       break
     case 'copySource':
       const sourceCode = extractMarkdown(rawCodeCommand)
-      copy(sourceCode)
-      console.log('Source code copied to clipboard.')
+      ncp.copy(sourceCode, () => {
+        console.log('Source code to clipboard')
+      })
       break
     case 'copyAll':
-      copy(rawCodeCommand)
-      console.log('Entire response copied to clipboard.')
+      ncp.copy(rawCodeCommand, () => {
+        console.log('Entire response copied to clipboard')
+      })
       break
     case 'cancel':
       console.log('Operation cancelled.')
