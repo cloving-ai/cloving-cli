@@ -11,6 +11,7 @@ export interface ClovingGPTOptions {
   model?: string
   silent?: boolean
   files?: string[]
+  prompt?: string
 }
 
 export interface ClovingModelConfig {
@@ -19,6 +20,13 @@ export interface ClovingModelConfig {
   priority: number;
   silent: boolean;
   trust: boolean;
+}
+
+export type ProjectConfig = {
+  name: string
+  task: string
+  files?: string[]
+  plan?: Record<string, any>
 }
 
 export type ClovingConfig = {

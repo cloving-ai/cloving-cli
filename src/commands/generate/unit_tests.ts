@@ -1,9 +1,11 @@
 import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
-import { getGitDiff } from '../utils/git_utils'
-import ClovingGPT from '../cloving_gpt'
-import { readClovingConfig } from '../utils/config_utils'
-import type { ClovingGPTOptions, ClovingfileConfig } from '../utils/types'
+import highlight from 'cli-highlight'
+
+import { getGitDiff } from '../../utils/git_utils'
+import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
+import ClovingGPT from '../../cloving_gpt'
+import type { ClovingGPTOptions } from '../../utils/types'
 
 const extractChangedFiles = (gitDiff: string): string[] => {
   const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g
@@ -15,21 +17,6 @@ const extractChangedFiles = (gitDiff: string): string[] => {
   }
 
   return Array.from(files)
-}
-
-const setupTestingPrompt = async (gpt: ClovingGPT, config: ClovingfileConfig) => {
-  const prompt = `I have the following cloving.json configuration file:
-
-==== begin cloving.json ====
-${JSON.stringify(config, null, 2)}
-==== end cloving.json ====
-
-Please provide instructions on how to set up testing for this project.`
-
-  const setupInstructions = await gpt.generateText({ prompt })
-
-  console.log(setupInstructions)
-  process.exit(0)
 }
 
 const generatePrompt = (files: string[], srcFiles: string, testFiles: string, gitDiff?: string) => {
@@ -77,26 +64,8 @@ const unitTests = async (options: ClovingGPTOptions) => {
   const { files } = options
   const gpt = new ClovingGPT(options)
 
-  // Read the cloving.json file
-  const config = readClovingConfig()
-  const testingDirectory = config.testingFrameworks?.find((framework: any) => framework.directory)?.directory
-
-  if (!testingDirectory) {
-    await setupTestingPrompt(gpt, config)
-  }
-
-  let allSrcFiles: string[] = []
-
-  // Collect srcFiles for each language with specified directory and extension
-  for (const language of config.languages) {
-    if (language.directory && language.extension) {
-      const srcFiles = execFileSync('find', [language.directory, '-type', 'f', '-name', `*${language.extension}`]).toString().trim().split('\n')
-      allSrcFiles = allSrcFiles.concat(srcFiles)
-    }
-  }
-
-  // Ensure allSrcFiles is unique
-  allSrcFiles = Array.from(new Set(allSrcFiles))
+  const allSrcFiles = await getAllFiles(options, true)
+  const testingDirectory = getTestingDirectory()
 
   if (allSrcFiles.length === 0 || !testingDirectory) {
     console.error('Could not find any source files to generate unit tests. Please run: cloving init. Then try again.')
@@ -120,7 +89,7 @@ const unitTests = async (options: ClovingGPTOptions) => {
   const lines: string[] = []
   const context: string[] = []
 
-  // Read input from temporary file
+  // Read each line of the context files
   contextFiles.split('\n').forEach((line) => {
     if (line.trim()) {
       lines.push(line.trim())
@@ -164,7 +133,7 @@ ${context.join('\n\n')}`
     analysis = await gpt.generateText({ prompt: message })
   }
 
-  console.log(analysis)
+  console.log(highlight(analysis))
 }
 
 export default unitTests

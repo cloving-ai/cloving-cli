@@ -1,4 +1,4 @@
-import { spawn } from 'child_process'
+import { spawn, execFileSync } from 'child_process'
 import readline from 'readline'
 import fs from 'fs'
 
@@ -91,20 +91,6 @@ export const runCommand = (command: string, args: string[]): Promise<string[]> =
   })
 }
 
-export const promptUser = (question: string): Promise<string> => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close()
-      resolve(answer.trim())
-    })
-  })
-}
-
 export const fetchModels = async (): Promise<string[]> => {
   try {
     const modelsOutput = await runCommand('cloving', ['models'])
@@ -112,5 +98,14 @@ export const fetchModels = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Error fetching models:', (error as Error).message)
     return []
+  }
+}
+
+export const readFileContent = (file: string): string => {
+  try {
+    return fs.readFileSync(file, 'utf-8')
+  } catch (error) {
+    console.error('Error reading file content:', (error as Error).message)
+    return ''
   }
 }

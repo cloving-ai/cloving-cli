@@ -1,12 +1,12 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { estimateTokens } from '../utils/string_utils'
+import inquirer from 'inquirer'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
-import { promptUser, generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
+import { generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 // Main function for the describe command
@@ -24,10 +24,7 @@ ${specialFileNames.join("\n")}
 
 Cloving will send AI a request to summarize the technologies used in this project.
 
-This will provide better context for future Cloving requests.
-
-For increased privacy, you can run \`cloving config\` and make sure to configure a local ollama model (llama3:70b-instruct currently works well for this) so that this data is not sent to an AI service provider.
-  `)
+This will provide better context for future Cloving requests.`)
     } else {
       console.log(`
 This script will analyze the list of files in the current directory using GPT to summarize the
@@ -43,8 +40,15 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    const continueAnswer = await promptUser('No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process? [Yn] ')
-    if (continueAnswer.toLowerCase() !== 'y' && continueAnswer.trim() !== '') {
+    const { continueAnswer } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'continueAnswer',
+        message: 'No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process?',
+        default: true,
+      },
+    ])
+    if (!continueAnswer) {
       console.log('Operation aborted by the user.')
       return
     }
@@ -207,12 +211,6 @@ Here is an example response:
   "projectType": "Command-line tool",
 }`
 
-    if (process.env.DEBUG === '1') {
-      estimateTokens(prompt).then(tokenCount => {
-        console.log(`Estimated token count: ${tokenCount}`)
-      })
-    }
-
     const aiChatResponse = await gpt.generateText({ prompt })
     const cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
 
@@ -224,8 +222,15 @@ Here is an example response:
 
     // Prompt the user if they want to review the generated cloving.json
     if (!options.silent) {
-      const reviewAnswer = await promptUser('Do you want to review the generated data? [Yn] ')
-      if (reviewAnswer.toLowerCase() === 'y' || reviewAnswer.trim() === '') {
+      const { reviewAnswer } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'reviewAnswer',
+          message: 'Do you want to review the generated data?',
+          default: true,
+        },
+      ])
+      if (reviewAnswer) {
         console.log(cleanAiChatResponse)
       }
     }
