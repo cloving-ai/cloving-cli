@@ -7,6 +7,7 @@ import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
 import { GPT4AllAdapter } from './adapters/gpt4all'
 import { OllamaAdapter } from './adapters/ollama'
+import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
 
@@ -45,6 +46,9 @@ class ClovingGPT {
         break
       case 'ollama':
         this.adapter = new OllamaAdapter(model)
+        break
+      case 'gemini':
+        this.adapter = new GeminiAdapter(model)
         break
       default:
         throw new Error(`Unsupported provider: ${provider}`)

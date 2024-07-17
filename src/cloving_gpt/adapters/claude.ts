@@ -1,4 +1,3 @@
-// claude.ts
 import { Adapter } from '.'
 import { GPTRequest } from '../../utils/types'
 
