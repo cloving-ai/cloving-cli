@@ -43,11 +43,13 @@ program
 
 program
   .command('models')
+  .alias('m')
   .description('List available models')
   .action(models)
 
 program
   .command('commit')
+  .alias('c')
   .description('Alias for cloving generate commit')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
@@ -92,6 +94,7 @@ generate
 // Project commands
 const project = program
   .command('project')
+  .alias('p')
   .description('Commands for cloving a project')
 
 project
