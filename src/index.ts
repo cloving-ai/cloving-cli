@@ -75,6 +75,7 @@ generate
   .command('code')
   .alias('c')
   .description('Generate code based on a prompt')
+  .option('--save', 'Automatically save all files to dist after generating the code')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .option('-p, --prompt <prompt>', 'Specify the prompt to use')

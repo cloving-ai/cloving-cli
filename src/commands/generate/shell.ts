@@ -30,7 +30,9 @@ ${prompt}`
 
 const generateExplainShellPrompt = (prompt: string): string => {
   return `${prompt}
-  
+
+## Task
+
 Please briefly explain how this shell script works.`
 }
 

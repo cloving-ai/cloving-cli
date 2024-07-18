@@ -62,29 +62,6 @@ Do not add any commentary or context to the message other than the commit messag
 An example of the output for this should look like the following:
 \`\`\`
 
-2. **src/commands/generate/code.ts**
-
-\`\`\`typescript
-import ncp from 'copy-paste'
-import inquirer from 'inquirer'
-import highlight from 'cli-highlight'
-import { collectSpecialFileContents } from '../../utils/command_utils'
-import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
-import ClovingGPT from '../../cloving_gpt'
-import type { ClovingGPTOptions } from '../../utils/types'
-import fs from 'fs'
-import path from 'path'
-
-const generateCodePrompt = (prompt: string | undefined, files: string[], contextFiles: Record<string, string>, previousCode?: string): string => {
-  const specialFileContents = collectSpecialFileContents()
-  const specialFiles = Object.keys(specialFileContents).map((file) => \`### Contents of \${file}\\n\\n\${JSON.stringify(specialFileContents[file], null, 2)}\\n\\n\`).join('\\n')
-  const contextFileContents = Object.keys(contextFiles).map((file) => \`### Contents of \${file}\\n\\n\${contextFiles[file]}\\n\\n\`).join('\\n')
-
-  return 'Here is a description of my app:'
-}
-\`\`\`
-
 ### Request
 
 Generate code that does the following: ${prompt}
@@ -96,8 +73,10 @@ Do not use any data from the example response structure, only use the structure.
 
 const generateExplainCodePrompt = (prompt: string): string => {
   return `${prompt}
-  
-Please briefly explain how this code works.`
+
+## Task
+
+Please briefly explain how the code works in this.`
 }
 
 const generateCode = async (gpt: ClovingGPT, prompt: string, allSrcFiles: string[], contextFiles: Record<string, string>, previousCode?: string): Promise<string> => {
@@ -290,7 +269,7 @@ const code = async (options: ClovingGPTOptions) => {
             type: 'confirm',
             name: 'includeMore',
             message: `Do you want to include any${firstFile ? '' : ' other'} files or directories as context for the prompt?`,
-            default: false,
+            default: true,
           },
         ])
 
@@ -345,7 +324,25 @@ const code = async (options: ClovingGPTOptions) => {
 
     const rawCodeCommand = await generateCode(gpt, prompt, allSrcFiles, contextFiles)
     displayGeneratedCode(rawCodeCommand)
-    await handleUserAction(gpt, rawCodeCommand, prompt, allSrcFiles, contextFiles)
+
+    if (options.save) {
+      const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
+      files.forEach(file => {
+        if (fileContents[file]) {
+          const filePath = path.resolve(file)
+
+          fs.mkdirSync(path.dirname(filePath), { recursive: true })
+          fs.writeFileSync(filePath, fileContents[file])
+
+          console.log(`${file} has been saved.`)
+        } else {
+          console.log(`File content not found for ${file}.`)
+        }
+      })
+      console.log('All files have been saved.')
+    } else {
+      await handleUserAction(gpt, rawCodeCommand, prompt, allSrcFiles, contextFiles)
+    }
   } catch (error) {
     console.error('Could not generate code', error)
   }
