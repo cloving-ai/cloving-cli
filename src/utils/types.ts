@@ -12,6 +12,7 @@ export interface ClovingGPTOptions {
   silent?: boolean
   files?: string[]
   prompt?: string
+  save?: boolean
 }
 
 export interface ClovingModelConfig {
