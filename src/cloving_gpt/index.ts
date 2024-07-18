@@ -5,7 +5,7 @@ import inquirer from 'inquirer'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
-import { GPT4AllAdapter } from './adapters/gpt4all'
+import { MistralAdapter } from './adapters/mistral'
 import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
@@ -41,8 +41,8 @@ class ClovingGPT {
       case 'openai':
         this.adapter = new OpenAIAdapter(model)
         break
-      case 'gpt4all':
-        this.adapter = new GPT4AllAdapter(model)
+      case 'mistral':
+        this.adapter = new MistralAdapter(model)
         break
       case 'ollama':
         this.adapter = new OllamaAdapter(model)
