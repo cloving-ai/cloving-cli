@@ -34,11 +34,11 @@ These changes primarily focus on improving the code generation process and addin
 4. Improving the copy-to-clipboard functionality to allow copying individual files.
 5. Removing an unused import in the review.ts file.
 
-### Reason for Changes
+## Reason for Changes
 
 The changes aim to enhance the usability and flexibility of the code generation tool by providing clearer prompts, better file management, and more control over the generated code.
 
-### Detailed Description
+## Detailed Description
 
 1. **Enhanced Code Generation Prompt** - The \`generateCodePrompt\` function now includes a structured example of a well-formatted response. This helps guide the AI to produce more consistent and usable output, making it easier to parse and use the generated code.
 2. **File Extraction Function** - A new function \`extractFilesAndContent\` has been added to parse the raw code command and extract individual file names and their contents. This enables more granular control over the generated code, allowing for file-specific operations.
@@ -95,7 +95,7 @@ Format the output of this code review in Markdown format.`
 
     // Modified Function to extract specific sections from the analysis
     const extractSection = (section: string): string => {
-      const regex = new RegExp(`## ${section}[\\s\\S]*?(?=\\n## |$)`, 'g')
+      const regex = new RegExp(`## ${section}[\\s\\S]*?(?=\\n## Potential Bugs and Recommended Fixes|$)`, 'g')
       const match = analysis.match(regex)
       return match ? match[0].trim() : ''
     }
