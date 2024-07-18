@@ -34,8 +34,6 @@ These changes primarily focus on improving the code generation process and addin
 4. Improving the copy-to-clipboard functionality to allow copying individual files.
 5. Removing an unused import in the review.ts file.
 
-## Detailed Explanation
-
 ### 1. Enhanced Code Generation Prompt
 
 The \`generateCodePrompt\` function now includes a structured example of a well-formatted response. This helps guide the AI to produce more consistent and usable output, making it easier to parse and use the generated code.
