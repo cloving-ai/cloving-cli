@@ -97,3 +97,29 @@ export const parseMarkdownInstructions = (input: string): string[] => {
 
   return result
 }
+
+export const extractFilesAndContent = (rawCodeCommand: string): [string[], Record<string, string>] => {
+  const files: string[] = []
+  const fileContents: Record<string, string> = {}
+
+  const matches = rawCodeCommand.match(/(\*{2})([^\*]+)(\*{2})/g)
+  if (!matches) return [files, fileContents]
+
+  for (const match of matches) {
+    const fileName = match.replace(/\*{2}/g, '').trim()
+    const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g');
+    const contentMatch = regex.exec(rawCodeCommand)
+    if (contentMatch) {
+      files.push(fileName)
+      let content = contentMatch[1]
+
+      // Remove the first word after the opening triple backticks
+      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
+
+      fileContents[fileName] = content
+    }
+  }
+
+  return [files, fileContents]
+}

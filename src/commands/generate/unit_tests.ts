@@ -7,6 +7,7 @@ import path from 'path'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
+import { extractFilesAndContent } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
@@ -62,31 +63,6 @@ test/controllers/baz_controller_test.rb
 Please enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
 
 Also, list any test files that might be relevant to these files.`
-}
-
-const extractFilesAndContent = (analysis: string): [string[], Record<string, string>] => {
-  const files: string[] = []
-  const fileContents: Record<string, string> = {}
-
-  const matches = analysis.match(/(\*{2})([^\*]+)(\*{2})/g)
-  if (!matches) return [files, fileContents]
-
-  for (const match of matches) {
-    const fileName = match.replace(/\*{2}/g, '').trim()
-    const regex = new RegExp(`\\*\\*${fileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g')
-    const contentMatch = regex.exec(analysis)
-    if (contentMatch) {
-      files.push(fileName)
-      let content = contentMatch[1]
-
-      // Remove the first word after the opening triple backticks
-      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
-
-      fileContents[fileName] = content
-    }
-  }
-
-  return [files, fileContents]
 }
 
 const handleUserAction = async (analysis: string): Promise<void> => {
