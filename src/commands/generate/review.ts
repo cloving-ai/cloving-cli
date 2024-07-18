@@ -1,4 +1,3 @@
-import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 import inquirer from 'inquirer'
 import ncp from 'copy-paste'

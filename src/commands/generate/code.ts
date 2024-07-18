@@ -36,11 +36,60 @@ ${previousCode}
 `
   }
 
-  promptText += `### Request
+  promptText += `### Example of a well-structured response structure
+
+Here are the files that I would like to generate:
+
+1. **src/commands/generate/shell.ts**
+
+\`\`\`typescript
+import inquirer from 'inquirer'
+import highlight from 'cli-highlight'
+import { execSync } from 'child_process'
+import ncp from 'copy-paste'
+import { extractMarkdown } from '../../utils/string_utils'
+import { getConfig } from '../../utils/config_utils'
+import ClovingGPT from '../../cloving_gpt'
+import type { ClovingGPTOptions } from '../../utils/types'
+
+const generateShellPrompt = (prompt: string | undefined): string => {
+  const shell = execSync('echo $SHELL').toString().trim()
+  const os = execSync('echo $OSTYPE').toString().trim()
+  return \`Generate an executable \${shell} script that works on \${os}. Try to make it a single line if possible and as simple and straightforward as possible.
+
+Do not add any commentary or context to the message other than the commit message itself.
+
+An example of the output for this should look like the following:
+\`\`\`
+
+2. **src/commands/generate/code.ts**
+
+\`\`\`typescript
+import ncp from 'copy-paste'
+import inquirer from 'inquirer'
+import highlight from 'cli-highlight'
+import { collectSpecialFileContents } from '../../utils/command_utils'
+import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
+import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
+import ClovingGPT from '../../cloving_gpt'
+import type { ClovingGPTOptions } from '../../utils/types'
+import fs from 'fs'
+import path from 'path'
+
+const generateCodePrompt = (prompt: string | undefined, files: string[], contextFiles: Record<string, string>, previousCode?: string): string => {
+  const specialFileContents = collectSpecialFileContents()
+  const specialFiles = Object.keys(specialFileContents).map((file) => \`### Contents of \${file}\\n\\n\${JSON.stringify(specialFileContents[file], null, 2)}\\n\\n\`).join('\\n')
+  const contextFileContents = Object.keys(contextFiles).map((file) => \`### Contents of \${file}\\n\\n\${contextFiles[file]}\\n\\n\`).join('\\n')
+
+  return 'Here is a description of my app:'
+}
+\`\`\`
+
+### Request
 
 I would like to generate code that does the following: ${prompt}
 
-Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
+Do not use any data from the example response structure, only use the structure. Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
 
   return promptText
 }
@@ -70,7 +119,34 @@ const displayGeneratedCode = (rawCodeCommand: string) => {
   })
 }
 
+const extractFilesAndContent = (rawCodeCommand: string): [string[], Record<string, string>] => {
+  const files: string[] = []
+  const fileContents: Record<string, string> = {}
+
+  const matches = rawCodeCommand.match(/(\*{2})([^\*]+)(\*{2})/g)
+  if (!matches) return [files, fileContents]
+
+  for (const match of matches) {
+    const fileName = match.replace(/\*{2}/g, '').trim()
+    const regex = new RegExp(`\\*\\*${fileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g')
+    const contentMatch = regex.exec(rawCodeCommand)
+    if (contentMatch) {
+      files.push(fileName)
+      let content = contentMatch[1]
+
+      // Remove the first word after the opening triple backticks
+      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
+
+      fileContents[fileName] = content
+    }
+  }
+
+  return [files, fileContents]
+}
+
 const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt: string, allSrcFiles: string[], contextFiles: Record<string, string>): Promise<void> => {
+  const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
+
   const { action } = await inquirer.prompt<{ action: string }>([
     {
       type: 'list',
@@ -79,6 +155,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       choices: [
         { name: 'Revise', value: 'revise' },
         { name: 'Explain', value: 'explain' },
+        { name: 'Save Source Code to Files', value: 'save' },
         { name: 'Copy Source Code to Clipboard', value: 'copySource' },
         { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
         { name: 'Done', value: 'done' },
@@ -105,15 +182,76 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       console.log(highlight(explainCodeCommand, { language: 'markdown' }))
       break
     case 'copySource':
-      const sourceCode = extractMarkdown(rawCodeCommand)
-      ncp.copy(sourceCode, () => {
-        console.log('Source code to clipboard')
-      })
+      let copyAnother = true
+      while (copyAnother) {
+        const { fileToCopy } = await inquirer.prompt<{ fileToCopy: string }>([
+          {
+            type: 'list',
+            name: 'fileToCopy',
+            message: 'Which file do you want to copy to the clipboard?',
+            choices: files.map(file => ({ name: file, value: file })),
+          },
+        ])
+
+        if (fileContents[fileToCopy]) {
+          ncp.copy(fileContents[fileToCopy], () => {
+            console.log(`${fileToCopy} copied to clipboard`)
+          })
+        } else {
+          console.log('File content not found.')
+        }
+
+        const { copyMore } = await inquirer.prompt<{ copyMore: boolean }>([
+          {
+            type: 'confirm',
+            name: 'copyMore',
+            message: 'Do you want to copy another file?',
+            default: false,
+          },
+        ])
+
+        copyAnother = copyMore
+      }
       break
     case 'copyAll':
       ncp.copy(rawCodeCommand, () => {
         console.log('Entire response copied to clipboard')
       })
+      break
+    case 'save':
+      let saveAnother = true
+      while (saveAnother) {
+        const { fileToSave } = await inquirer.prompt<{ fileToSave: string }>([
+          {
+            type: 'list',
+            name: 'fileToSave',
+            message: 'Which file do you want to save?',
+            choices: files.map(file => ({ name: file, value: file })),
+          },
+        ])
+
+        if (fileContents[fileToSave]) {
+          const filePath = path.resolve(fileToSave)
+
+          fs.mkdirSync(path.dirname(filePath), { recursive: true })
+          fs.writeFileSync(filePath, fileContents[fileToSave])
+
+          console.log(`${fileToSave} has been saved.`)
+        } else {
+          console.log('File content not found.')
+        }
+
+        const { saveMore } = await inquirer.prompt<{ saveMore: boolean }>([
+          {
+            type: 'confirm',
+            name: 'saveMore',
+            message: 'Do you want to save another file?',
+            default: false,
+          },
+        ])
+
+        saveAnother = saveMore
+      }
       break
     case 'done':
       break
