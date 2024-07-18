@@ -86,7 +86,12 @@ Format the output of this code review in Markdown format.`
         const lines = code.split('\n')
         const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
         console.log(lines[0])
-        console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+        try {
+          console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+        } catch (error) {
+          // don't highlight if it fails
+          console.log(lines.slice(1, -1).join('\n'))
+        }
         console.log(lines.slice(-1)[0])
       } else {
         console.log(highlight(code, { language: 'markdown' }))

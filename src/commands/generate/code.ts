@@ -3,7 +3,7 @@ import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { collectSpecialFileContents } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions } from '../../utils/string_utils'
+import { parseMarkdownInstructions, extractFilesAndContent } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 import fs from 'fs'
@@ -111,37 +111,17 @@ const displayGeneratedCode = (rawCodeCommand: string) => {
       const lines = code.split('\n')
       const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
       console.log(lines[0])
-      console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+      try {
+        console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+      } catch (error) {
+        // don't highlight if it fails
+        console.log(lines.slice(1, -1).join('\n'))
+      }
       console.log(lines.slice(-1)[0])
     } else {
       console.log(highlight(code, { language: 'markdown' }))
     }
   })
-}
-
-const extractFilesAndContent = (rawCodeCommand: string): [string[], Record<string, string>] => {
-  const files: string[] = []
-  const fileContents: Record<string, string> = {}
-
-  const matches = rawCodeCommand.match(/(\*{2})([^\*]+)(\*{2})/g)
-  if (!matches) return [files, fileContents]
-
-  for (const match of matches) {
-    const fileName = match.replace(/\*{2}/g, '').trim()
-    const regex = new RegExp(`\\*\\*${fileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g')
-    const contentMatch = regex.exec(rawCodeCommand)
-    if (contentMatch) {
-      files.push(fileName)
-      let content = contentMatch[1]
-
-      // Remove the first word after the opening triple backticks
-      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
-
-      fileContents[fileName] = content
-    }
-  }
-
-  return [files, fileContents]
 }
 
 const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt: string, allSrcFiles: string[], contextFiles: Record<string, string>): Promise<void> => {
