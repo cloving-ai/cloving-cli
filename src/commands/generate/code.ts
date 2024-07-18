@@ -133,7 +133,8 @@ const extractFilesAndContent = (rawCodeCommand: string): [string[], Record<strin
 
   for (const match of matches) {
     const fileName = match.replace(/\*{2}/g, '').trim()
-    const regex = new RegExp(`\\*\\*${fileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g')
+    const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g');
     const contentMatch = regex.exec(rawCodeCommand)
     if (contentMatch) {
       files.push(fileName)
