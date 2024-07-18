@@ -68,5 +68,10 @@
     "lint-staged": "^15.2.7",
     "ts-jest": "^29.2.0",
     "typescript": "^5.5.3"
+  },
+  "resolutions": {
+    "eslint": "8.57.0",
+    "eslint-plugin-n": "16.6.2",
+    "eslint-plugin-import": "2.29.1"
   }
 }
