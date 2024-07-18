@@ -5,11 +5,15 @@ export class MistralAdapter implements Adapter {
   private model: string
 
   static supportedModels: string[] = [
+    'mistral:mistral:embed',
     'mistral:mistral:tiny-latest',
     'mistral:mistral:small-latest',
     'mistral:mistral:medium-latest',
     'mistral:mistral:large-latest',
-    'mistral:mixtral:8x7b-latest',
+    'mistral:open-mistral:7b',
+    'mistral:open-mixtral:8x7b',
+    'mistral:open-mixtral:8x22b',
+    'mistral:codestral:latest',
   ]
 
   static listSupportedModels(): void {
