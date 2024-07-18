@@ -3,7 +3,7 @@ import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { collectSpecialFileContents } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
+import { parseMarkdownInstructions } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 import fs from 'fs'
@@ -258,20 +258,71 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
   }
 }
 
+const addFilesToContext = async (contextFiles: Record<string, string>, filePath: string): Promise<void> => {
+  const stats = fs.statSync(filePath)
+
+  if (stats.isDirectory()) {
+    const files = fs.readdirSync(filePath)
+    for (const file of files) {
+      await addFilesToContext(contextFiles, path.join(filePath, file))
+    }
+  } else if (stats.isFile()) {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    contextFiles[filePath] = content
+  }
+}
+
 const code = async (options: ClovingGPTOptions) => {
   let { prompt, files } = options
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
-  const allSrcFiles = await getAllFiles(options, true)
+  const allSrcFiles = await getAllFiles(options, false)
   const contextFiles: Record<string, string> = {}
 
   try {
+    let firstFile = true
+    let includeMoreFiles = true
+
+    while (includeMoreFiles) {
+      const { includeMore } = await inquirer.prompt<{ includeMore: boolean }>([
+        {
+          type: 'confirm',
+          name: 'includeMore',
+          message: `Do you want to include any${firstFile ? '' : ' other'} files or directories as context for the prompt?`,
+          default: false,
+        },
+      ])
+
+      firstFile = false
+      includeMoreFiles = includeMore
+
+      if (includeMoreFiles) {
+        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+          {
+            type: 'input',
+            name: 'contextFile',
+            message: 'Enter the relative path of a file or directory you would like to include as context:',
+          },
+        ])
+
+        if (contextFile) {
+          const filePath = path.resolve(contextFile)
+          if (fs.existsSync(filePath)) {
+            await addFilesToContext(contextFiles, filePath)
+            console.log(`Added ${filePath} to context.`)
+          } else {
+            console.log(`File or directory ${contextFile} does not exist.`)
+          }
+        }
+      }
+    }
+
     if (!prompt) {
       const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
         {
           type: 'input',
           name: 'userPrompt',
-          message: 'What would you like to build:',
+          message: 'What would you like the code to do:',
         },
       ])
       prompt = userPrompt
@@ -286,42 +337,7 @@ const code = async (options: ClovingGPTOptions) => {
 
       // Read the content of the provided files
       for (const file of files) {
-        const content = fs.readFileSync(file, 'utf-8')
-        contextFiles[file] = content
-      }
-    } else {
-      // Prompt for additional context files if no files were passed in options
-      let includeMoreFiles = true
-
-      while (includeMoreFiles) {
-        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-          {
-            type: 'input',
-            name: 'contextFile',
-            message: 'Relative path of an existing file you would like to include as context in the prompt [optional]:',
-          },
-        ])
-
-        if (contextFile) {
-          const filePath = path.resolve(contextFile)
-          if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf-8')
-            contextFiles[filePath] = content
-          } else {
-            console.log(`File ${contextFile} does not exist.`)
-          }
-        }
-
-        const { includeMore } = await inquirer.prompt<{ includeMore: boolean }>([
-          {
-            type: 'confirm',
-            name: 'includeMore',
-            message: 'Do you want to include any other files?',
-            default: false,
-          },
-        ])
-
-        includeMoreFiles = includeMore
+        await addFilesToContext(contextFiles, file)
       }
     }
 
