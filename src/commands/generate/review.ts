@@ -34,6 +34,8 @@ These changes primarily focus on improving the code generation process and addin
 4. Improving the copy-to-clipboard functionality to allow copying individual files.
 5. Removing an unused import in the review.ts file.
 
+## Detailed Explanation
+
 ### 1. Enhanced Code Generation Prompt
 
 The \`generateCodePrompt\` function now includes a structured example of a well-formatted response. This helps guide the AI to produce more consistent and usable output, making it easier to parse and use the generated code.
@@ -101,9 +103,9 @@ Format the output of this code review in Markdown format.`
       }
     })
 
-    // Function to extract specific sections from the analysis
+    // Modified Function to extract specific sections from the analysis
     const extractSection = (section: string): string => {
-      const regex = new RegExp(`## ${section}[\\s\\S]*?(?=##|$)`)
+      const regex = new RegExp(`## ${section}[\\s\\S]*?(?=\\n## |$)`, 'g')
       const match = analysis.match(regex)
       return match ? match[0].trim() : ''
     }
@@ -136,6 +138,7 @@ Format the output of this code review in Markdown format.`
         contentToCopy = analysis
         break
       case 'Done':
+        console.log('No content copied to clipboard.')
         return
     }
 
