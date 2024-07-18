@@ -38,7 +38,7 @@ export class OpenAIAdapter implements Adapter {
       model: this.model.replace(':', '-'),
       messages: [{ role: "user", content: request.prompt }],
       max_tokens: request.maxTokens,
-      temperature: request.temperature || 0.7
+      temperature: request.temperature || 0.2
     }
   }
 

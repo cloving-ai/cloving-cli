@@ -44,7 +44,7 @@ export class ClaudeAdapter implements Adapter {
         { role: 'user', content: request.prompt }
       ],
       max_tokens: request.maxTokens || 4096,
-      temperature: request.temperature || 0.7
+      temperature: request.temperature || 0.2
     }
   }
 

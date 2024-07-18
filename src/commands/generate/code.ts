@@ -169,7 +169,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
         {
           type: 'input',
           name: 'newPrompt',
-          message: 'Enter your revised prompt:',
+          message: 'How would you like to modify the output:',
         },
       ])
       const newRawCodeCommand = await generateCode(gpt, newPrompt, allSrcFiles, contextFiles, rawCodeCommand)

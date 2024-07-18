@@ -64,7 +64,7 @@ const generate = program
 
 generate
   .command('shell')
-  .alias('s')
+  .alias('sh')
   .description('Generate a shell command based on a prompt')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
