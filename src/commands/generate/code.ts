@@ -3,7 +3,7 @@ import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { collectSpecialFileContents } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions, extractMarkdown } from '../../utils/string_utils'
+import { parseMarkdownInstructions } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 import fs from 'fs'
@@ -14,7 +14,7 @@ const generateCodePrompt = (prompt: string | undefined, files: string[], context
   const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
   const contextFileContents = Object.keys(contextFiles).map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`).join('\n')
 
-  let promptText = `Here is a description of my app:
+  let promptText = `### Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
@@ -87,7 +87,7 @@ const generateCodePrompt = (prompt: string | undefined, files: string[], context
 
 ### Request
 
-I would like to generate code that does the following: ${prompt}
+Generate code that does the following: ${prompt}
 
 Do not use any data from the example response structure, only use the structure. Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
 
@@ -155,7 +155,8 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
       choices: [
         { name: 'Revise', value: 'revise' },
         { name: 'Explain', value: 'explain' },
-        { name: 'Save Source Code to Files', value: 'save' },
+        { name: 'Save a Source Code File', value: 'save' },
+        { name: 'Save All Source Code Files', value: 'saveAll' },
         { name: 'Copy Source Code to Clipboard', value: 'copySource' },
         { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
         { name: 'Done', value: 'done' },
@@ -169,7 +170,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
         {
           type: 'input',
           name: 'newPrompt',
-          message: 'Enter your revised prompt:',
+          message: 'How would you like to modify the output:',
         },
       ])
       const newRawCodeCommand = await generateCode(gpt, newPrompt, allSrcFiles, contextFiles, rawCodeCommand)
@@ -206,7 +207,7 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
             type: 'confirm',
             name: 'copyMore',
             message: 'Do you want to copy another file?',
-            default: false,
+            default: true,
           },
         ])
 
@@ -246,15 +247,44 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
             type: 'confirm',
             name: 'saveMore',
             message: 'Do you want to save another file?',
-            default: false,
+            default: true,
           },
         ])
 
         saveAnother = saveMore
       }
       break
+    case 'saveAll':
+      files.forEach(file => {
+        if (fileContents[file]) {
+          const filePath = path.resolve(file)
+
+          fs.mkdirSync(path.dirname(filePath), { recursive: true })
+          fs.writeFileSync(filePath, fileContents[file])
+
+          console.log(`${file} has been saved.`)
+        } else {
+          console.log(`File content not found for ${file}.`)
+        }
+      })
+      console.log('All files have been saved.')
+      break
     case 'done':
       break
+  }
+}
+
+const addFilesToContext = async (contextFiles: Record<string, string>, filePath: string): Promise<void> => {
+  const stats = fs.statSync(filePath)
+
+  if (stats.isDirectory()) {
+    const files = fs.readdirSync(filePath)
+    for (const file of files) {
+      await addFilesToContext(contextFiles, path.join(filePath, file))
+    }
+  } else if (stats.isFile()) {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    contextFiles[filePath] = content
   }
 }
 
@@ -262,16 +292,59 @@ const code = async (options: ClovingGPTOptions) => {
   let { prompt, files } = options
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
-  const allSrcFiles = await getAllFiles(options, true)
+  const allSrcFiles = await getAllFiles(options, false)
   const contextFiles: Record<string, string> = {}
 
   try {
+    if (files) {
+      files.forEach(async file => {
+        await addFilesToContext(contextFiles, file)
+      })
+    } else {
+      let firstFile = true
+      let includeMoreFiles = true
+
+      while (includeMoreFiles) {
+        const { includeMore } = await inquirer.prompt<{ includeMore: boolean }>([
+          {
+            type: 'confirm',
+            name: 'includeMore',
+            message: `Do you want to include any${firstFile ? '' : ' other'} files or directories as context for the prompt?`,
+            default: false,
+          },
+        ])
+
+        firstFile = false
+        includeMoreFiles = includeMore
+
+        if (includeMoreFiles) {
+          const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+            {
+              type: 'input',
+              name: 'contextFile',
+              message: 'Enter the relative path of a file or directory you would like to include as context:',
+            },
+          ])
+
+          if (contextFile) {
+            const filePath = path.resolve(contextFile)
+            if (fs.existsSync(filePath)) {
+              await addFilesToContext(contextFiles, filePath)
+              console.log(`Added ${filePath} to context.`)
+            } else {
+              console.log(`File or directory ${contextFile} does not exist.`)
+            }
+          }
+        }
+      }
+    }
+
     if (!prompt) {
       const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
         {
           type: 'input',
           name: 'userPrompt',
-          message: 'What would you like to build:',
+          message: 'What would you like the code to do:',
         },
       ])
       prompt = userPrompt
@@ -286,42 +359,7 @@ const code = async (options: ClovingGPTOptions) => {
 
       // Read the content of the provided files
       for (const file of files) {
-        const content = fs.readFileSync(file, 'utf-8')
-        contextFiles[file] = content
-      }
-    } else {
-      // Prompt for additional context files if no files were passed in options
-      let includeMoreFiles = true
-
-      while (includeMoreFiles) {
-        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-          {
-            type: 'input',
-            name: 'contextFile',
-            message: 'Relative path of an existing file you would like to include as context in the prompt [optional]:',
-          },
-        ])
-
-        if (contextFile) {
-          const filePath = path.resolve(contextFile)
-          if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf-8')
-            contextFiles[filePath] = content
-          } else {
-            console.log(`File ${contextFile} does not exist.`)
-          }
-        }
-
-        const { includeMore } = await inquirer.prompt<{ includeMore: boolean }>([
-          {
-            type: 'confirm',
-            name: 'includeMore',
-            message: 'Do you want to include any other files?',
-            default: false,
-          },
-        ])
-
-        includeMoreFiles = includeMore
+        await addFilesToContext(contextFiles, file)
       }
     }
 

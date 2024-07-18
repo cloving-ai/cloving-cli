@@ -57,7 +57,8 @@ export const getClovingConfig = (): ClovingfileConfig => {
     clovingConfig = JSON.parse(configFile) as ClovingfileConfig
     return clovingConfig
   } else {
-    throw new Error(`${CLOVING_CONFIG_PATH} file not found`)
+    console.log(`${CLOVINGFILE_PATH} file not found, please run: cloving init`)
+    process.exit(1)
   }
 }
 

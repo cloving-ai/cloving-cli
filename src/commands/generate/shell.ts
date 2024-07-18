@@ -1,3 +1,4 @@
+
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import { execSync } from 'child_process'
@@ -33,6 +34,72 @@ const generateExplainShellPrompt = (prompt: string): string => {
 Please briefly explain how this shell script works.`
 }
 
+const generateShell = async (gpt: ClovingGPT, prompt: string): Promise<string> => {
+  const shellPrompt = generateShellPrompt(prompt)
+  return await gpt.generateText({ prompt: shellPrompt })
+}
+
+const displayGeneratedShell = (rawShellCommand: string) => {
+  const generatedShell = extractMarkdown(rawShellCommand)
+  const generatedShellWithoutShebang = generatedShell.replace(/^#!.*?\s/, '')
+  console.log(highlight(generatedShellWithoutShebang))
+}
+
+const handleUserAction = async (gpt: ClovingGPT, rawShellCommand: string, prompt: string): Promise<void> => {
+  const generatedShell = extractMarkdown(rawShellCommand)
+  const generatedShellWithoutShebang = generatedShell.replace(/^#!.*?\s/, '')
+
+  const { action } = await inquirer.prompt<{ action: string }>([
+    {
+      type: 'list',
+      name: 'action',
+      message: 'What would you like to do?',
+      choices: [
+        { name: 'Execute', value: 'execute' },
+        { name: 'Revise', value: 'revise' },
+        { name: 'Explain', value: 'explain' },
+        { name: 'Copy to Clipboard', value: 'copy' },
+        { name: 'Cancel', value: 'cancel' },
+      ],
+    },
+  ])
+
+  switch (action) {
+    case 'execute':
+      execSync(generatedShellWithoutShebang, { stdio: 'inherit' })
+      break
+    case 'revise':
+      const { newPrompt } = await inquirer.prompt<{ newPrompt: string }>([
+        {
+          type: 'input',
+          name: 'newPrompt',
+          message: 'How would you like to modify the output:',
+        },
+      ])
+      const newRawShellCommand = await generateShell(gpt, newPrompt)
+      displayGeneratedShell(newRawShellCommand)
+      await handleUserAction(gpt, newRawShellCommand, newPrompt)
+      break
+    case 'explain':
+      const explainPrompt = generateExplainShellPrompt(generatedShellWithoutShebang)
+      const explainShellCommand = await gpt.generateText({ prompt: explainPrompt })
+      console.log(highlight(explainShellCommand, { language: 'markdown' }))
+      break
+    case 'copy':
+      ncp.copy(generatedShellWithoutShebang, (err) => {
+        if (err) {
+          console.error('Error: Unable to copy to clipboard.', err)
+        } else {
+          console.log('Script copied to clipboard.')
+        }
+      })
+      break
+    case 'cancel':
+      console.log('Operation cancelled.')
+      break
+  }
+}
+
 const shell = async (options: ClovingGPTOptions) => {
   let { prompt } = options
   options.silent = getConfig(options).globalSilent || false
@@ -48,62 +115,12 @@ const shell = async (options: ClovingGPTOptions) => {
       ])
       prompt = userPrompt
     }
-    // Generate the prompt for commit message
-    const shellPrompt = generateShellPrompt(prompt)
 
-    // Instantiate ClovingGPT and get the commit message
-    const rawShellCommand = await gpt.generateText({ prompt: shellPrompt })
-
-    // Clean the commit message using extractMarkdown
-    const generatedShell = extractMarkdown(rawShellCommand)
-    // remove #! from the generated shell script
-    const generatedShellWithoutShebang = generatedShell.replace(/^#!.*?\s/, '')
-    console.log(highlight(generatedShellWithoutShebang))
-
-    // Inquirer prompt for further actions
-    const { action } = await inquirer.prompt<{ action: string }>([
-      {
-        type: 'list',
-        name: 'action',
-        message: 'What would you like to do?',
-        choices: [
-          { name: 'Execute', value: 'execute' },
-          { name: 'Revise', value: 'revise' },
-          { name: 'Explain', value: 'explain' },
-          { name: 'Copy to Clipboard', value: 'copy' },
-          { name: 'Cancel', value: 'cancel' },
-        ],
-      },
-    ])
-
-    switch (action) {
-      case 'execute':
-        execSync(generatedShellWithoutShebang, { stdio: 'inherit' })
-        break
-      case 'revise':
-        // Logic to revise the prompt (not implemented in this example)
-        console.log('Revise option selected. Implement revision logic here.')
-        break
-      case 'explain':
-        const explainPrompt = generateExplainShellPrompt(generatedShellWithoutShebang)
-        const explainShellCommand = await gpt.generateText({ prompt: explainPrompt })
-        console.log(highlight(explainShellCommand, { language: 'markdown' }))
-        break
-      case 'copy':
-        ncp.copy(generatedShellWithoutShebang, (err) => {
-          if (err) {
-            console.error('Error: Unable to copy to clipboard.', err)
-          } else {
-            console.log('Script copied to clipboard.')
-          }
-        })
-        break
-      case 'cancel':
-        console.log('Operation cancelled.')
-        break
-    }
+    const rawShellCommand = await generateShell(gpt, prompt)
+    displayGeneratedShell(rawShellCommand)
+    await handleUserAction(gpt, rawShellCommand, prompt)
   } catch (error) {
-    console.error('Could not generate shell script')
+    console.error('Could not generate shell script', error)
   }
 }
 

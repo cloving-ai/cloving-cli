@@ -43,7 +43,7 @@ export class GeminiAdapter implements Adapter {
         }
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.2,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 1024

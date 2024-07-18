@@ -92,7 +92,7 @@ class ClovingGPT {
           ])
 
           if (!confirmContinue) {
-            console.error('User cancelled the operation')
+            console.error('Operation cancelled')
             process.exit(1)
           }
 
