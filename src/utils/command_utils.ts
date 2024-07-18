@@ -1,38 +1,14 @@
 import { spawn, execFileSync } from 'child_process'
-import readline from 'readline'
 import fs from 'fs'
+import path from 'path'
+import { getAllFiles } from './config_utils'
 
 export const SPECIAL_FILES = [
-  'package.json',
-  'Gemfile',
-  'requirements.txt',
-  'Pipfile',
-  'pyproject.toml',
-  'pom.xml',
-  'build.gradle',
-  '.csproj',
-  'packages.config',
-  'composer.json',
-  'CMakeLists.txt',
-  'conanfile.txt',
-  'conanfile.py',
-  'go.mod',
-  'Cargo.toml',
-  'Package.swift',
-  'build.gradle.kts',
-  'Podfile',
-  'Cartfile',
-  'cpanfile',
-  'DESCRIPTION',
-  'mix.exs',
-  'build.sbt',
-  'pubspec.yaml',
-  'stack.yaml',
-  'cabal.project',
-  'Project.toml',
-  'rockspec',
-  'rebar.config',
-  'project.clj'
+  'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
+  '.csproj', 'packages.config', 'composer.json', 'CMakeLists.txt', 'conanfile.txt', 'conanfile.py',
+  'go.mod', 'Cargo.toml', 'Package.swift', 'build.gradle.kts', 'Podfile', 'Cartfile', 'cpanfile',
+  'DESCRIPTION', 'mix.exs', 'build.sbt', 'pubspec.yaml', 'stack.yaml', 'cabal.project', 'Project.toml',
+  'rockspec', 'rebar.config', 'project.clj'
 ]
 
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {
@@ -50,9 +26,7 @@ export const collectSpecialFileContents = (): Record<string, string | Record<str
   return specialFileContents
 }
 
-export const checkForSpecialFiles = (): boolean => {
-  return SPECIAL_FILES.some(file => fs.existsSync(file))
-}
+export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some(file => fs.existsSync(file))
 
 export const generateFileList = async (): Promise<string[]> => {
   try {
@@ -108,4 +82,31 @@ export const readFileContent = (file: string): string => {
     console.error('Error reading file content:', (error as Error).message)
     return ''
   }
+}
+
+export const addFileOrDirectoryToContext = async (
+  contextFile: string,
+  contextFiles: Record<string, string>,
+  options: Record<string, any>
+): Promise<Record<string, string>> => {
+  const filePath = path.resolve(contextFile)
+  if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+    // Add all files in the specified directory
+    const files = await getAllFiles(options, false)
+    for (const file of files) {
+      // if the file is in the same directory as the context file, add it to the context
+      if (path.dirname(file) === path.dirname(filePath)) {
+        const content = await fs.promises.readFile(file, 'utf-8')
+        contextFiles[path.relative(process.cwd(), file)] = content
+      }
+    }
+    console.log(`Added contents of ${contextFile} to context.`)
+  } else if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+    const content = await fs.promises.readFile(filePath, 'utf-8')
+    contextFiles[contextFile] = content
+    console.log(`Added ${filePath} to context.`)
+  } else {
+    console.log(`File or directory ${contextFile} does not exist.`)
+  }
+  return contextFiles
 }

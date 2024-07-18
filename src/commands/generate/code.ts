@@ -5,7 +5,7 @@ import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
-import { collectSpecialFileContents } from '../../utils/command_utils'
+import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
 import { parseMarkdownInstructions, extractFilesAndContent } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
@@ -161,6 +161,22 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
           message: 'How would you like to modify the output:',
         },
       ])
+      let includeMoreFiles = true
+      while (includeMoreFiles) {
+        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+          {
+            type: 'input',
+            name: 'contextFile',
+            message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+          },
+        ])
+
+        if (contextFile) {
+          contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
+        } else {
+          includeMoreFiles = false
+        }
+      }
       const newRawCodeCommand = await generateCode(gpt, newPrompt, allSrcFiles, contextFiles, rawCodeCommand)
       displayGeneratedCode(newRawCodeCommand)
       await handleUserAction(gpt, newRawCodeCommand, newPrompt, allSrcFiles, contextFiles, options)
@@ -258,7 +274,7 @@ const code = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   const allSrcFiles = await getAllFiles(options, false)
-  const contextFiles: Record<string, string> = {}
+  let contextFiles: Record<string, string> = {}
 
   try {
     if (files) {
@@ -270,41 +286,21 @@ const code = async (options: ClovingGPTOptions) => {
         }
       }
     } else {
-      let firstFile = true
       let includeMoreFiles = true
 
       while (includeMoreFiles) {
-        const { includeMore } = await inquirer.prompt<{ includeMore: boolean }>([
+        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
           {
-            type: 'confirm',
-            name: 'includeMore',
-            message: `Do you want to include any${firstFile ? '' : ' other'} files or directories as context for the prompt?`,
-            default: true,
+            type: 'input',
+            name: 'contextFile',
+            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
           },
         ])
 
-        firstFile = false
-        includeMoreFiles = includeMore
-
-        if (includeMoreFiles) {
-          const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-            {
-              type: 'input',
-              name: 'contextFile',
-              message: 'Enter the relative path of a file or directory you would like to include as context:',
-            },
-          ])
-
-          if (contextFile) {
-            const filePath = path.resolve(contextFile)
-            if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
-              const content = await fs.promises.readFile(filePath, 'utf-8')
-              contextFiles[contextFile] = content
-              console.log(`Added ${filePath} to context.`)
-            } else {
-              console.log(`File or directory ${contextFile} does not exist.`)
-            }
-          }
+        if (contextFile) {
+          contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
+        } else {
+          includeMoreFiles = false
         }
       }
     }
@@ -338,17 +334,33 @@ const code = async (options: ClovingGPTOptions) => {
           {
             type: 'input',
             name: 'newPrompt',
-            message: 'Enter a new prompt to revise the code (or press enter to finish):',
+            message: 'Revise the code (or press enter to finish):',
           },
         ])
 
         if (newPrompt.trim() === '') {
           continueInteractive = false
         } else {
+          let includeMoreFiles = true
+          while (includeMoreFiles) {
+            const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+              {
+                type: 'input',
+                name: 'contextFile',
+                message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+              },
+            ])
+
+            if (contextFile) {
+              contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
+            } else {
+              includeMoreFiles = false
+            }
+          }
           rawCodeCommand = await generateCode(gpt, newPrompt, allSrcFiles, contextFiles, rawCodeCommand)
           displayGeneratedCode(rawCodeCommand)
 
-          if (options.save) {
+          if (options.save || options.interactive) {
             const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
             await saveGeneratedFiles(files, fileContents)
             await updateContextFiles(contextFiles, files, fileContents)
