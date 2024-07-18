@@ -36,7 +36,7 @@ ${previousCode}
 `
   }
 
-  promptText += `### Example of a well-structured response structure
+  promptText += `### Example of a well-structured response
 
 Here are the files that I would like to generate:
 
