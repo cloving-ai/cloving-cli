@@ -133,6 +133,44 @@ Options:
 - `-s, --silent`: Run without asking for confirmation
 - `-m, --model <model>`: Select the model to use
 
+### Generating Code
+
+Generate code based on a prompt:
+```bash
+cloving generate code
+```
+Options:
+- `--save`: Automatically save all files after generating the code
+- `-i, --interactive`: Auto-save generated code and then show a new prompt with existing context to revise the code further
+- `-s, --silent`: Run the command without asking for confirmation of submitting prompts
+- `-m, --model <model>`: Select the model to use
+- `-p, --prompt <prompt>`: Specify the prompt to use
+- `-f, --files <filenames...>`: Specify filenames of files with context to use for generating code
+
+### Generating Context
+
+Create a context string for generating prompts outside of the cloving cli:
+```bash
+cloving generate context
+```
+Options:
+- `-f, --files <filenames...>`: Specify filenames of files with context
+
+### Generating Shell Commands
+
+Generate a shell command based on a prompt:
+```bash
+cloving generate shell
+```
+or
+```bash
+cloving generate sh
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation of submitting prompts
+- `-m, --model <model>`: Select the model to use
+- `-p, --prompt <prompt>`: Specify the prompt to use
+
 ### Project Commands
 
 Cloving now includes commands for managing entire projects:
@@ -159,7 +197,7 @@ Cloving now includes commands for managing entire projects:
 
 ## Command Line Options
 
-Usage: `cloving [options] [command]`
+Usage: `cloving [command] [options]`
 
 Options:
 - `-V, --version`: Output the version number
@@ -172,6 +210,9 @@ Commands:
 - `commit`: Alias for cloving generate commit
 - `generate`: Generate various items like unit-tests and code reviews
   - `commit`: Generate a commit message and commit the changes
+  - `code`: Generate code based on a prompt
+  - `context`: Generate context for building a prompt outside of cloving
+  - `shell`: Generate a shell command based on a prompt
   - `unit-tests`: Generate unit tests
   - `review`: Review the code for committed changes
 - `project`: Commands for managing Cloving projects
