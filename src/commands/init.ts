@@ -1,3 +1,4 @@
+
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -40,18 +41,15 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    const { continueAnswer } = await inquirer.prompt([
+    const { technologies } = await inquirer.prompt([
       {
-        type: 'confirm',
-        name: 'continueAnswer',
-        message: 'No special files detected. Are you currently inside a software project\'s main directory? Do you want to continue analyzing this directory for the Cloving setup process?',
-        default: true,
+        type: 'input',
+        name: 'technologies',
+        message: 'No special files detected. Please describe the main technologies used in your project:',
+        validate: (input) => input.trim().length > 0 || 'Please provide a description of the technologies used.',
       },
     ])
-    if (!continueAnswer) {
-      console.log('Operation aborted by the user.')
-      return
-    }
+    specialFileContents['description'] = technologies
   }
 
   const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
@@ -74,11 +72,6 @@ technologies used. This will provide better context for future Cloving requests.
     })
 
     const limitedFileList = filteredFileList.slice(0, 100)
-
-    if (specialFileNames.length === 0) {
-      console.error('No special files found.')
-      return
-    }
 
     const projectDetails = {
       files: limitedFileList,
