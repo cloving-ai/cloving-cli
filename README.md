@@ -1,4 +1,4 @@
-# Cloving
+# Cloving CLI Documentation
 
 Cloving is an innovative CLI tool designed to seamlessly integrate AI into various aspects of the developer workflow. It enhances productivity and code quality by leveraging AI for tasks such as generating commit messages, conducting code reviews, creating unit tests, and even assisting with entire project lifecycles.
 
