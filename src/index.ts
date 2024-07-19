@@ -9,6 +9,7 @@ import models from './commands/models'
 import shell from './commands/generate/shell'
 import code from './commands/generate/code'
 import commit from './commands/generate/commit'
+import context from './commands/generate/context'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
 import initProject from './commands/project/init'
@@ -89,6 +90,11 @@ generate
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(commit)
+
+generate
+  .command('context')
+  .description('Create a context string for generating code')
+  .action(context)
 
 generate
   .command('unit-tests')
