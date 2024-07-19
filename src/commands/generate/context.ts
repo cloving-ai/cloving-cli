@@ -2,6 +2,9 @@
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import ncp from 'copy-paste'
+import fs from 'fs'
+import path from 'path'
+
 import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
@@ -25,26 +28,37 @@ ${files.join('\n')}`
 }
 
 const context = async (options: ClovingGPTOptions) => {
+  let { files } = options
   options.silent = getConfig(options).globalSilent || false
   const allSrcFiles = await getAllFiles(options, false)
   let contextFiles: Record<string, string> = {}
 
   try {
-    let includeMoreFiles = true
+    if (files) {
+      for (const file of files) {
+        const filePath = path.resolve(file)
+        if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+          const content = await fs.promises.readFile(filePath, 'utf-8')
+          contextFiles[file] = content
+        }
+      }
+    } else {
+      let includeMoreFiles = true
 
-    while (includeMoreFiles) {
-      const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-        {
-          type: 'input',
-          name: 'contextFile',
-          message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
-        },
-      ])
+      while (includeMoreFiles) {
+        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
+          {
+            type: 'input',
+            name: 'contextFile',
+            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
+          },
+        ])
 
-      if (contextFile) {
-        contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
-      } else {
-        includeMoreFiles = false
+        if (contextFile) {
+          contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
+        } else {
+          includeMoreFiles = false
+        }
       }
     }
 

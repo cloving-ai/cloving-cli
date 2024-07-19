@@ -1,7 +1,6 @@
 import ncp from 'copy-paste'
 import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
-import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 

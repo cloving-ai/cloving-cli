@@ -94,6 +94,7 @@ generate
 generate
   .command('context')
   .description('Create a context string for generating code')
+  .option('-f, --files <filenames...>', 'Specify filenames of files with context')
   .action(context)
 
 generate
