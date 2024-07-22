@@ -1,16 +1,35 @@
 # Cloving CLI Documentation
 
-Cloving is an innovative CLI tool designed to seamlessly integrate AI into various aspects of the developer workflow. It enhances productivity and code quality by leveraging AI for tasks such as generating commit messages, conducting code reviews, creating unit tests, and even assisting with entire project lifecycles.
+Cloving CLI is a command line utility which integrates AI into your development workflow.
+
+It provides AI-powered code generation, commit message generation, code reviews, unit test generation, and more.
+
+Cloving is designed to help developers write better code faster by leveraging the power of AI.
+
+What makes the Cloving CLI different from other AI tools is that it builds sophisticated context-aware prompts to generate code, commit messages, and more.
+
+Cloving gets to know your specific projects, the frameworks you use, the coding style you prefer, and the patterns you follow, and does its best to generate code that fits your existing project so that it actually works.
+
+It delivers usable code that you can save directly into your project instead of copying and pasting code snippets from chat interactions.
+
+**Read the [introduction announcement](https://cloving.ai/tutorials/introducing-the-cloving-cli).**
+
+> [!WARNING]
+>
+> This project is still in the early stages of development and is not yet stable.
+> Please use it with caution and [report any issues](https://github.com/cloving-ai/cloving-cli/issues) you encounter
 
 ## Features
 
+- **Context-aware AI code generation**
 - **AI-powered Git commit message generation**
 - **Automated code reviews with AI insights**
 - **AI-assisted unit test generation**
-- **Seamless integration with existing development workflows**
-- **Customizable AI prompts for different tasks**
-- **Project initialization, planning, and building with AI assistance**
 - **Support for multiple AI models including OpenAI, Claude, and Ollama**
+
+## Important
+
+The cloving will ask you before submitting any prompt to the AI model. You can use the `-s` or `--silent` flag to run the command without asking for confirmation, but by default you will have the chance to review all prompts with all the context before submitting them. This is to ensure that you are aware of what is being sent to the AI model and can make any necessary changes before submitting the prompt.
 
 ## Prerequisites
 
@@ -91,13 +110,6 @@ Options:
 - `-s, --silent`: Run without asking for confirmation of submitting prompts
 - `-m, --model <model>`: Select the model to use
 
-### Listing Available Models
-
-List the available AI models:
-```bash
-cloving models
-```
-
 ### Generating Commit Messages
 
 Generate an AI-powered commit message:
@@ -110,17 +122,6 @@ cloving generate commit
 ```
 Options:
 - `-s, --silent`: Run without asking for confirmation
-- `-m, --model <model>`: Select the model to use
-
-### Generating Unit Tests
-
-Generate unit tests for changes or specific files:
-```bash
-cloving generate unit-tests
-```
-Options:
-- `-s, --silent`: Run without asking for confirmation
-- `-f, --files <filenames...>`: Specify filenames for the unit tests
 - `-m, --model <model>`: Select the model to use
 
 ### Code Reviews
@@ -147,15 +148,6 @@ Options:
 - `-p, --prompt <prompt>`: Specify the prompt to use
 - `-f, --files <filenames...>`: Specify filenames of files with context to use for generating code
 
-### Generating Context
-
-Create a context string for generating prompts outside of the cloving cli:
-```bash
-cloving generate context
-```
-Options:
-- `-f, --files <filenames...>`: Specify filenames of files with context
-
 ### Generating Shell Commands
 
 Generate a shell command based on a prompt:
@@ -170,6 +162,26 @@ Options:
 - `-s, --silent`: Run without asking for confirmation of submitting prompts
 - `-m, --model <model>`: Select the model to use
 - `-p, --prompt <prompt>`: Specify the prompt to use
+
+### Generating Context
+
+Create a context string for generating prompts outside of the cloving cli:
+```bash
+cloving generate context
+```
+Options:
+- `-f, --files <filenames...>`: Specify filenames of files with context
+
+### Generating Unit Tests
+
+Generate unit tests for changes or specific files:
+```bash
+cloving generate unit-tests
+```
+Options:
+- `-s, --silent`: Run without asking for confirmation
+- `-f, --files <filenames...>`: Specify filenames for the unit tests
+- `-m, --model <model>`: Select the model to use
 
 ### Project Commands
 
