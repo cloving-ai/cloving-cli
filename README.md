@@ -1,4 +1,4 @@
-# Cloving CLI Documentation
+# Cloving - CLI Code Generation with AI
 
 Cloving CLI is a command line utility which integrates AI into your development workflow. It provides AI-powered code generation, commit message generation, code reviews, unit test generation, and more.
 
