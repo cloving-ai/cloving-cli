@@ -6,6 +6,7 @@ export class OpenAIAdapter implements Adapter {
 
   static supportedModels: string[] = [
     'openai:gpt:4o',
+    'openai:gpt:4o-mini',
     'openai:gpt:4-turbo',
     'openai:gpt:3.5-turbo',
     'openai:text-embedding:3-large',
