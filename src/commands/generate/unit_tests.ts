@@ -213,27 +213,107 @@ const unitTests = async (options: ClovingGPTOptions) => {
   let analysis = ''
 
   if ((files || []).length > 0) {
-    const message = `please create unit tests for these files:
-
-## Begin list of files
+    const message = `### List of files
 ${(files || []).join('\n')}
-## End list of files
 
-## Context
-${context.join('\n\n')}`
+### Context
+${context.join('\n\n')}
+
+### Example of a well-structured response
+
+An example of the output for this prompt should look like the following:
+
+Here are the unit tests for the code diff:
+
+1. **test/utils/model_utils.test.ts**
+
+\`\`\`typescript
+import { getModel } from '../../src/utils/model_utils'
+
+describe('modelUtils', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    jest.resetModules()
+    process.env = { ...originalEnv }
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  test('getModel should return default model when CLOVING_MODEL is not set', () => {
+    delete process.env.CLOVING_MODEL
+    const result = getModel()
+    expect(result).toBe('claude:claude-3-5-sonnet-20240620')
+  })
+
+  test('getModel should return CLOVING_MODEL when it is set', () => {
+    process.env.CLOVING_MODEL = 'openai:gpt-4'
+    const result = getModel()
+    expect(result).toBe('openai:gpt-4')
+  })
+})
+\`\`\`
+
+Do not add any commentary or context to the message other than the code itself. Do not use any data from the example response structure, only use the structure. Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.
+
+### Task
+
+Create unit tests for the List of files.`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
   } else {
-    const message = `please create unit tests for these changes:
-
-## Begin diff
+    const message = `## Code Diff
 ${await getGitDiff()}
-## End diff
 
-## Context
+### Context
 
-${context.join('\n\n')}`
+${context.join('\n\n')}
+
+### Example of a well-structured response
+
+An example of the output for this prompt should look like the following:
+
+Here are the unit tests for the code diff:
+
+1. **test/utils/model_utils.test.ts**
+
+\`\`\`typescript
+import { getModel } from '../../src/utils/model_utils'
+
+describe('modelUtils', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    jest.resetModules()
+    process.env = { ...originalEnv }
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  test('getModel should return default model when CLOVING_MODEL is not set', () => {
+    delete process.env.CLOVING_MODEL
+    const result = getModel()
+    expect(result).toBe('claude:claude-3-5-sonnet-20240620')
+  })
+
+  test('getModel should return CLOVING_MODEL when it is set', () => {
+    process.env.CLOVING_MODEL = 'openai:gpt-4'
+    const result = getModel()
+    expect(result).toBe('openai:gpt-4')
+  })
+})
+\`\`\`
+
+Do not add any commentary or context to the message other than the code itself. Do not use any data from the example response structure, only use the structure. Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.
+
+### Task
+
+Create unit tests for the code diff.`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
