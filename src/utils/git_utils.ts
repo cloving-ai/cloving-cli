@@ -15,13 +15,17 @@ const askQuestion = (question: string): Promise<string> => {
 
 export const getGitDiff = async (): Promise<string> => {
   try {
-    const defaultBranchName = await getDefaultBranchName()
+    const defaultBranchName = await getDefaultBranchName();
 
-    const gitDiff = execSync(`git diff ${defaultBranchName} --`).toString().trim()
-    return gitDiff
+    const gitDiff = execSync(`git diff ${defaultBranchName} --`).toString().trim();
+
+    // Indent each line by four spaces
+    const indentedDiff = gitDiff.split('\n').map(line => `    ${line}`).join('\n');
+
+    return indentedDiff;
   } catch (error) {
-    console.error('Error getting git diff:', (error as Error).message)
-    process.exit(1)
+    console.error('Error getting git diff:', (error as Error).message);
+    process.exit(1);
   }
 }
 

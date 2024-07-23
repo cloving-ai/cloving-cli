@@ -101,6 +101,7 @@ generate
   .command('unit-tests')
   .alias('u')
   .description('Generate unit tests (if you don\'t specify filenames, it will generate tests for commited changes that differ from the main/master branch)')
+  .option('--save', 'Automatically save all files after generating the unit tests')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')

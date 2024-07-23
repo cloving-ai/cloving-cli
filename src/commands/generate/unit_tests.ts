@@ -1,4 +1,3 @@
-
 import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
@@ -7,7 +6,7 @@ import path from 'path'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
-import { extractFilesAndContent } from '../../utils/string_utils'
+import { extractFilesAndContent, extractMarkdown } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
@@ -26,7 +25,10 @@ const extractChangedFiles = (gitDiff: string): string[] => {
 const generatePrompt = (files: string[], srcFiles: string, testFiles: string, gitDiff?: string) => {
   const filesList = files.length > 0 ? files.join('\n') : 'No files provided'
 
-  return `### List of Code Files
+  return `Enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
+Also, list any test files that might be relevant to these files.
+
+### List of Code Files
 
 ${filesList}
 
@@ -38,13 +40,13 @@ ${srcFiles}
 
 ${testFiles}
 
-### Git Diff Content
+${gitDiff ? '### Git Diff Content' : ''}
 
-${gitDiff}
+${gitDiff || ''}
 
 ## Example Output
 
-Give me this output format for your answer:
+Here are the files that are relevant:
 
 \`\`\`plaintext
 ## files
@@ -58,15 +60,30 @@ test/models/foo_test.rb
 test/controllers/baz_controller_test.rb
 \`\`\`
 
-### Request
+### Prompt
 
-Please enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
-
+Enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
 Also, list any test files that might be relevant to these files.`
 }
 
-const handleUserAction = async (analysis: string): Promise<void> => {
+const handleUserAction = async (analysis: string, autoSave: boolean = false): Promise<void> => {
   const [files, fileContents] = extractFilesAndContent(analysis)
+
+  if (autoSave) {
+    for (const file of files) {
+      if (fileContents[file]) {
+        const filePath = path.resolve(file)
+
+        await fs.mkdir(path.dirname(filePath), { recursive: true })
+        await fs.writeFile(filePath, fileContents[file])
+        console.log(`${file} has been saved.`)
+      } else {
+        console.log(`File content not found for ${file}.`)
+      }
+    }
+    console.log('All unit test files have been saved.')
+    return
+  }
 
   const { action } = await inquirer.prompt<{ action: string }>([
     {
@@ -99,10 +116,9 @@ const handleUserAction = async (analysis: string): Promise<void> => {
         if (fileContents[fileToSave]) {
           const filePath = path.resolve(fileToSave)
 
-          fs.mkdir(path.dirname(filePath), { recursive: true })
-            .then(() => fs.writeFile(filePath, fileContents[fileToSave]))
-            .then(() => console.log(`${fileToSave} has been saved.`))
-            .catch((error) => console.error(`Error saving ${fileToSave}:`, error))
+          await fs.mkdir(path.dirname(filePath), { recursive: true })
+          await fs.writeFile(filePath, fileContents[fileToSave])
+          console.log(`${fileToSave} has been saved.`)
         } else {
           console.log('File content not found.')
         }
@@ -124,10 +140,9 @@ const handleUserAction = async (analysis: string): Promise<void> => {
         if (fileContents[file]) {
           const filePath = path.resolve(file)
 
-          fs.mkdir(path.dirname(filePath), { recursive: true })
-            .then(() => fs.writeFile(filePath, fileContents[file]))
-            .then(() => console.log(`${file} has been saved.`))
-            .catch((error) => console.error(`Error saving ${file}:`, error))
+          await fs.mkdir(path.dirname(filePath), { recursive: true })
+          await fs.writeFile(filePath, fileContents[file])
+          console.log(`${file} has been saved.`)
         } else {
           console.log(`File content not found for ${file}.`)
         }
@@ -167,7 +182,7 @@ const handleUserAction = async (analysis: string): Promise<void> => {
 }
 
 const unitTests = async (options: ClovingGPTOptions) => {
-  const { files } = options
+  const { files, save } = options
   const gpt = new ClovingGPT(options)
 
   const allSrcFiles = await getAllFiles(options, true)
@@ -182,14 +197,23 @@ const unitTests = async (options: ClovingGPTOptions) => {
   let contextFiles: string
 
   if (files) {
+    console.log('Generating unit tests for the provided files...')
+    console.log('Gathering a list of files related to the changes...')
     const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
     contextFiles = await gpt.generateText({ prompt })
   } else {
+    console.log('Generating unit tests for the git diff between this branch and the default branch...')
+    console.log('Gathering a list of files related to the changes...')
     const gitDiff = await getGitDiff()
     const changedFiles = extractChangedFiles(gitDiff)
     const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff)
     contextFiles = await gpt.generateText({ prompt })
   }
+
+  contextFiles = extractMarkdown(contextFiles)
+
+  console.log(contextFiles)
+  console.log('\nBuilding the tests for these files...')
 
   // Initialize variables
   const lines: string[] = []
@@ -205,7 +229,7 @@ const unitTests = async (options: ClovingGPTOptions) => {
   for (const codeFile of lines) {
     if (await fs.stat(codeFile).then(stat => stat.isFile()).catch(() => false)) {
       const fileContents = await fs.readFile(codeFile, 'utf-8')
-      context.push(`### Contents of ${codeFile}\n\n${fileContents}\n\n### End of ${codeFile}`)
+      context.push(`### Contents of **${codeFile}\n\n${fileContents.split('\n').map(line => `    ${line}`).join('\n')}**\n\n`)
     }
   }
 
@@ -213,36 +237,118 @@ const unitTests = async (options: ClovingGPTOptions) => {
   let analysis = ''
 
   if ((files || []).length > 0) {
-    const message = `please create unit tests for these files:
+    const message = `Create unit tests for the List of Files. Always show filenames for the generated code.
 
-## Begin list of files
+## List of Files
 ${(files || []).join('\n')}
-## End list of files
+
+## Example Response Structure
+
+Here are the unit tests for the provided list of files:
+
+1. **tests/utils/model_utils.test.ts**
+
+\`\`\`typescript
+import { getModel } from '../../src/utils/model_utils'
+
+describe('modelUtils', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    jest.resetModules()
+    process.env = { ...originalEnv }
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  test('getModel should return default model when CLOVING_MODEL is not set', () => {
+    delete process.env.CLOVING_MODEL
+    const result = getModel()
+    expect(result).toBe('claude:claude-3-5-sonnet-20240620')
+  })
+
+  test('getModel should return CLOVING_MODEL when it is set', () => {
+    process.env.CLOVING_MODEL = 'openai:gpt-4'
+    const result = getModel()
+    expect(result).toBe('openai:gpt-4')
+  })
+})
+\`\`\`
 
 ## Context
-${context.join('\n\n')}`
+
+${context.join('\n\n')}
+
+## Prompt
+
+Create unit tests for the List of Files. Always show filenames for the generated code.`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
   } else {
-    const message = `please create unit tests for these changes:
+    const message = `Create unit tests for the Code Diff. Always show filenames for the generated code.
 
-## Begin diff
+## Code Diff
+
 ${await getGitDiff()}
-## End diff
 
 ## Context
 
-${context.join('\n\n')}`
+${context.join('\n\n')}
+
+## Example Response Structure
+
+Here are the unit tests for the code diff:
+
+1. **tests/utils/model_utils.test.ts**
+
+\`\`\`typescript
+import { getModel } from '../../src/utils/model_utils'
+
+describe('modelUtils', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    jest.resetModules()
+    process.env = { ...originalEnv }
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  test('getModel should return default model when CLOVING_MODEL is not set', () => {
+    delete process.env.CLOVING_MODEL
+    const result = getModel()
+    expect(result).toBe('claude:claude-3-5-sonnet-20240620')
+  })
+
+  test('getModel should return CLOVING_MODEL when it is set', () => {
+    process.env.CLOVING_MODEL = 'openai:gpt-4'
+    const result = getModel()
+    expect(result).toBe('openai:gpt-4')
+  })
+})
+\`\`\`
+
+## Prompt
+
+Create unit tests for the Code Diff. Always show filenames for the generated code.`
 
     // Get the model and analysis using ClovingGPT
     analysis = await gpt.generateText({ prompt: message })
   }
 
-  console.log(highlight(analysis))
+  if (analysis) {
+    console.log(highlight(analysis))
+  } else {
+    console.log('No unit tests generated.')
+  }
 
   // Add the new user action handling
-  await handleUserAction(analysis)
+  await handleUserAction(analysis, save)
 }
 
 export default unitTests
