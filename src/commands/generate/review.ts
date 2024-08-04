@@ -112,7 +112,16 @@ ${gitDiff}
 
     }
 
-    promptText += `
+    if (files) {
+      promptText += `
+
+### Request
+
+I would like you to explain the code and document a description of it.
+List any bugs in the new code as well as recommended fixes for those bugs with code examples.
+Format the output of this code review in Markdown format.`
+    } else {
+      promptText += `
 
 ### Request
 
@@ -120,6 +129,7 @@ Do not use any data from the example response structure, only use the structure.
 I would like you to explain why these change are being made and document a description of these changes.
 Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
 Format the output of this code review in Markdown format.`
+    }
 
     if (prompt) {
       promptText += `
