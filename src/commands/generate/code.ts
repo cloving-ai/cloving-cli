@@ -240,6 +240,18 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
   }
 }
 
+const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
+  const subdirs = await fs.promises.readdir(dir)
+  const files = await Promise.all(subdirs.map(async (subdir) => {
+    const res = path.resolve(dir, subdir)
+    if (subdir === 'node_modules' || subdir === '.git') {
+      return []
+    }
+    return (await fs.promises.stat(res)).isDirectory() ? getAllFilesInDirectory(res) : res
+  }))
+  return files.flat()
+}
+
 const code = async (options: ClovingGPTOptions) => {
   let { prompt, files } = options
   options.silent = getConfig(options).globalSilent || false
@@ -248,8 +260,20 @@ const code = async (options: ClovingGPTOptions) => {
   let contextFiles: Record<string, string> = {}
 
   try {
-    if (allSrcFiles) {
-      for (const file of allSrcFiles) {
+    if (files) {
+      let expandedFiles: string[] = []
+      for (const file of files) {
+        const filePath = path.resolve(file)
+        if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+          const dirFiles = await getAllFilesInDirectory(filePath)
+          expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
+        } else {
+          expandedFiles.push(path.relative(process.cwd(), filePath))
+        }
+      }
+      files = expandedFiles
+
+      for (const file of files) {
         const filePath = path.resolve(file)
         if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
           const content = await fs.promises.readFile(filePath, 'utf-8')
