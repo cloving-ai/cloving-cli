@@ -10,6 +10,9 @@ import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
 class ClovingGPT {
   public adapter: Adapter
@@ -57,56 +60,54 @@ class ClovingGPT {
     }
   }
 
-  private async reviewPrompt(prompt: string, endpoint: string): Promise<void> {
-    if (this.silent) return
+  private async reviewPrompt(prompt: string, endpoint: string): Promise<string | null> {
+    if (this.silent) return prompt
 
     const tokenCount = Math.ceil(prompt.length / 4).toLocaleString()
     const reviewPrompt = await confirm(
       {
-        message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
+        message: `Do you want to review/edit the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
         default: true
       }
     )
 
     if (reviewPrompt) {
-      const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
+      const tempFile = path.join(os.tmpdir(), `cloving_prompt_${Date.now()}.txt`)
+      fs.writeFileSync(tempFile, prompt)
 
-      less.stdin.write(prompt)
-      less.stdin.end()
+      const editor = process.env.EDITOR || 'nano'
+      const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' })
 
-      await new Promise<void>((resolve, reject) => {
-        less.on('close', async (code) => {
+      return new Promise<string | null>((resolve, reject) => {
+        editProcess.on('close', async (code) => {
           if (code !== 0) {
-            console.error('less command exited with an error')
-            reject(new Error('Less command failed'))
+            console.error(`${editor} exited with code ${code}`)
+            fs.unlinkSync(tempFile)
+            reject(new Error(`Editor exited with non-zero code`))
             return
           }
 
-          const confirmContinue = await confirm(
-            {
-              message: 'Do you want to continue?',
-              default: true
-            }
-          )
+          const editedPrompt = fs.readFileSync(tempFile, 'utf-8').trim()
+          fs.unlinkSync(tempFile)
 
-          if (!confirmContinue) {
-            console.error('Operation cancelled')
-            process.exit(1)
+          if (editedPrompt === '') {
+            console.log('Prompt is empty.')
+            resolve(null)
+            return
           }
 
-          resolve()
+          resolve(editedPrompt)
         })
 
-        less.stdin.on('error', (err) => {
-          if (isNodeError(err) && err.code === 'EPIPE') {
-            resolve()
-          } else {
-            console.error('Pipeline error:', err)
-            reject(err)
-          }
+        editProcess.on('error', (err) => {
+          console.error('Error launching editor:', err)
+          fs.unlinkSync(tempFile)
+          reject(err)
         })
       })
     }
+
+    return prompt
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
@@ -116,7 +117,11 @@ class ClovingGPT {
     const payload = this.adapter.getPayload(request)
     const headers = this.adapter.getHeaders(this.apiKey)
 
-    await this.reviewPrompt(request.prompt, endpoint)
+    const reviewedPrompt = await this.reviewPrompt(request.prompt, endpoint)
+    if (reviewedPrompt === null) {
+      throw new Error('Operation cancelled by user')
+    }
+    request.prompt = reviewedPrompt
 
     try {
       const response = await axios.post(endpoint, payload, { headers })
@@ -130,10 +135,6 @@ class ClovingGPT {
       throw error
     }
   }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error
 }
 
 export default ClovingGPT
