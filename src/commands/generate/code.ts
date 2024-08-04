@@ -248,8 +248,8 @@ const code = async (options: ClovingGPTOptions) => {
   let contextFiles: Record<string, string> = {}
 
   try {
-    if (files) {
-      for (const file of files) {
+    if (allSrcFiles) {
+      for (const file of allSrcFiles) {
         const filePath = path.resolve(file)
         if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
           const content = await fs.promises.readFile(filePath, 'utf-8')
