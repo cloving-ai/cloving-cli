@@ -70,7 +70,7 @@ generate
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .option('-p, --prompt <prompt>', 'Specify the prompt to use')
-  .option('-t, --temperature', 'Temperature for the model')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(shell)
 
 generate
@@ -81,7 +81,7 @@ generate
   .option('-i, --interactive', 'Auto-save generated code and then show a new prompt with existing context to revise the code further')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5:sonnet-20240620)')
-  .option('-t, --temperature', 'Temperature for the model')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .option('-p, --prompt <prompt>', 'Specify the prompt to use')
   .option('-f, --files <filenames...>', 'Specify filenames of files with context to use for generating code')
   .action(code)
@@ -89,7 +89,7 @@ generate
 generate
   .command('commit')
   .description('Generate a commit message and commit the changes')
-  .option('-t, --temperature', 'Temperature for the model')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .action(commit)
@@ -108,7 +108,7 @@ generate
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-f, --files <filenames...>', 'Specify filenames for the unit tests')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
-  .option('-t, --temperature', 'Temperature for the model')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(unitTests)
 
 generate
@@ -117,7 +117,7 @@ generate
   .description('Review the code for commited changes that differ from the main/master branch')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
-  .option('-t, --temperature', 'Temperature for the model')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(analyze)
 
 // Project commands
