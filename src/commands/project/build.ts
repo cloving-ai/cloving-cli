@@ -1,7 +1,7 @@
 import ncp from 'copy-paste'
 import { promises as fs } from 'fs'
 import highlight from 'cli-highlight'
-import inquirer from 'inquirer'
+import { select, confirm } from '@inquirer/prompts'
 
 import ClovingGPT from '../../cloving_gpt'
 import { getConfig, getProjectConfig } from '../../utils/config_utils'
@@ -46,15 +46,11 @@ export const buildProject = async (options: ClovingGPTOptions) => {
     process.exit(1)
   }
 
-  // Use inquirer to select a plan item
-  const { selectedPlanItemKey } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'selectedPlanItemKey',
-      message: 'Select a plan item:',
-      choices: planItems.map(([key, item]) => ({ name: key, value: key })),
-    },
-  ])
+  // Use @inquirer/prompts to select a plan item
+  const selectedPlanItemKey = await select({
+    message: 'Select a plan item:',
+    choices: planItems.map(([key, item]) => ({ name: key, value: key })),
+  })
 
   const selectedPlanItem = planItems.find(([key]) => key === selectedPlanItemKey)
   if (!selectedPlanItem) {
@@ -84,15 +80,11 @@ export const buildProject = async (options: ClovingGPTOptions) => {
     }
   })
 
-  // Prompt the user to copy the project to the clipboard using inquirer
-  const { copyToClipboard } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'copyToClipboard',
-      message: 'Do you want to copy this project to the clipboard?',
-      default: true,
-    },
-  ])
+  // Prompt the user to copy the project to the clipboard using @inquirer/prompts
+  const copyToClipboard = await confirm({
+    message: 'Do you want to copy this project to the clipboard?',
+    default: true,
+  })
 
   if (copyToClipboard) {
     ncp.copy(projectCode, () => {

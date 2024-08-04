@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
-import inquirer from 'inquirer'
+import { select, confirm } from '@inquirer/prompts'
 import path from 'path'
 
 import { getGitDiff } from '../../utils/git_utils'
@@ -85,33 +85,25 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
     return
   }
 
-  const { action } = await inquirer.prompt<{ action: string }>([
-    {
-      type: 'list',
-      name: 'action',
-      message: 'What would you like to do?',
-      choices: [
-        { name: 'Save a Unit Test File', value: 'save' },
-        { name: 'Save All Unit Test Files', value: 'saveAll' },
-        { name: 'Copy Unit Test to Clipboard', value: 'copyTest' },
-        { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
-        { name: 'Done', value: 'done' },
-      ],
-    },
-  ])
+  const action = await select({
+    message: 'What would you like to do?',
+    choices: [
+      { name: 'Save a Unit Test File', value: 'save' },
+      { name: 'Save All Unit Test Files', value: 'saveAll' },
+      { name: 'Copy Unit Test to Clipboard', value: 'copyTest' },
+      { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
+      { name: 'Done', value: 'done' },
+    ],
+  })
 
   switch (action) {
     case 'save':
       let saveAnother = true
       while (saveAnother) {
-        const { fileToSave } = await inquirer.prompt<{ fileToSave: string }>([
-          {
-            type: 'list',
-            name: 'fileToSave',
-            message: 'Which unit test file do you want to save?',
-            choices: files.map(file => ({ name: file, value: file })),
-          },
-        ])
+        const fileToSave = await select({
+          message: 'Which unit test file do you want to save?',
+          choices: files.map(file => ({ name: file, value: file })),
+        })
 
         if (fileContents[fileToSave]) {
           const filePath = path.resolve(fileToSave)
@@ -123,16 +115,10 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
           console.log('File content not found.')
         }
 
-        const { saveMore } = await inquirer.prompt<{ saveMore: boolean }>([
-          {
-            type: 'confirm',
-            name: 'saveMore',
-            message: 'Do you want to save another file?',
-            default: false,
-          },
-        ])
-
-        saveAnother = saveMore
+        saveAnother = await confirm({
+          message: 'Do you want to save another file?',
+          default: false,
+        })
       }
       break
     case 'saveAll':
@@ -150,14 +136,10 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
       console.log('All unit test files have been saved.')
       break
     case 'copyTest':
-      const { fileToCopy } = await inquirer.prompt<{ fileToCopy: string }>([
-        {
-          type: 'list',
-          name: 'fileToCopy',
-          message: 'Which unit test file do you want to copy to the clipboard?',
-          choices: files.map(file => ({ name: file, value: file })),
-        },
-      ])
+      const fileToCopy = await select({
+        message: 'Which unit test file do you want to copy to the clipboard?',
+        choices: files.map(file => ({ name: file, value: file })),
+      })
 
       if (fileContents[fileToCopy]) {
         process.nextTick(() => {

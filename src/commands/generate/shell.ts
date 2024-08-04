@@ -1,12 +1,11 @@
-
-import inquirer from 'inquirer'
-import highlight from 'cli-highlight'
 import { execSync } from 'child_process'
+import highlight from 'cli-highlight'
 import ncp from 'copy-paste'
 import { extractMarkdown } from '../../utils/string_utils'
 import { getConfig } from '../../utils/config_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
+import { select, input } from '@inquirer/prompts'
 
 const generateShellPrompt = (prompt: string | undefined): string => {
   const shell = execSync('echo $SHELL').toString().trim()
@@ -51,33 +50,25 @@ const handleUserAction = async (gpt: ClovingGPT, rawShellCommand: string, prompt
   const generatedShell = extractMarkdown(rawShellCommand)
   const generatedShellWithoutShebang = generatedShell.replace(/^#!.*?\s/, '')
 
-  const { action } = await inquirer.prompt<{ action: string }>([
-    {
-      type: 'list',
-      name: 'action',
-      message: 'What would you like to do?',
-      choices: [
-        { name: 'Execute', value: 'execute' },
-        { name: 'Revise', value: 'revise' },
-        { name: 'Explain', value: 'explain' },
-        { name: 'Copy to Clipboard', value: 'copy' },
-        { name: 'Cancel', value: 'cancel' },
-      ],
-    },
-  ])
+  const action = await select({
+    message: 'What would you like to do?',
+    choices: [
+      { name: 'Execute', value: 'execute' },
+      { name: 'Revise', value: 'revise' },
+      { name: 'Explain', value: 'explain' },
+      { name: 'Copy to Clipboard', value: 'copy' },
+      { name: 'Cancel', value: 'cancel' },
+    ],
+  })
 
   switch (action) {
     case 'execute':
       execSync(generatedShellWithoutShebang, { stdio: 'inherit' })
       break
     case 'revise':
-      const { newPrompt } = await inquirer.prompt<{ newPrompt: string }>([
-        {
-          type: 'input',
-          name: 'newPrompt',
-          message: 'How would you like to modify the output:',
-        },
-      ])
+      const newPrompt = await input({
+        message: 'How would you like to modify the output:',
+      })
       const newRawShellCommand = await generateShell(gpt, newPrompt)
       displayGeneratedShell(newRawShellCommand)
       await handleUserAction(gpt, newRawShellCommand, newPrompt)
@@ -103,24 +94,19 @@ const handleUserAction = async (gpt: ClovingGPT, rawShellCommand: string, prompt
 }
 
 const shell = async (options: ClovingGPTOptions) => {
-  let { prompt } = options
+  let { prompt: userPrompt } = options
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   try {
-    if (!prompt) {
-      const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
-        {
-          type: 'input',
-          name: 'userPrompt',
-          message: 'What would you like to do: '
-        }
-      ])
-      prompt = userPrompt
+    if (!userPrompt) {
+      userPrompt = await input({
+        message: 'What would you like to do: '
+      })
     }
 
-    const rawShellCommand = await generateShell(gpt, prompt)
+    const rawShellCommand = await generateShell(gpt, userPrompt)
     displayGeneratedShell(rawShellCommand)
-    await handleUserAction(gpt, rawShellCommand, prompt)
+    await handleUserAction(gpt, rawShellCommand, userPrompt)
   } catch (error) {
     console.error('Could not generate shell script', error)
   }

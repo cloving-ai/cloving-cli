@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
-import inquirer from 'inquirer'
+import { confirm } from '@inquirer/prompts'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
@@ -12,11 +12,12 @@ import { getConfig, getPrimaryModel } from '../utils/config_utils'
 import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
 
 class ClovingGPT {
-  private adapter: Adapter
+  public adapter: Adapter
+  public silent: boolean
+  public temperature: number
   private apiKey: string
-  private silent: boolean
 
-  constructor(options: ClovingGPTOptions = { silent: false }) {
+  constructor(options: ClovingGPTOptions) {
     const { model: partialModel } = options
     const config: ClovingConfig = getConfig(options)
     if (!config || !config.models) {
@@ -32,6 +33,7 @@ class ClovingGPT {
 
     const { provider, model, config: modelConfig } = primaryModel
     this.apiKey = modelConfig.apiKey
+    this.temperature = options.temperature || modelConfig.temperature || 0.2
     this.silent = options.silent || modelConfig.silent
 
     switch (provider) {
@@ -59,14 +61,12 @@ class ClovingGPT {
     if (this.silent) return
 
     const tokenCount = Math.ceil(prompt.length / 4).toLocaleString()
-    const { reviewPrompt } = await inquirer.prompt([
+    const reviewPrompt = await confirm(
       {
-        type: 'confirm',
-        name: 'reviewPrompt',
         message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
         default: true
       }
-    ])
+    )
 
     if (reviewPrompt) {
       const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
@@ -82,14 +82,12 @@ class ClovingGPT {
             return
           }
 
-          const { confirmContinue } = await inquirer.prompt([
+          const confirmContinue = await confirm(
             {
-              type: 'confirm',
-              name: 'confirmContinue',
               message: 'Do you want to continue?',
               default: true
             }
-          ])
+          )
 
           if (!confirmContinue) {
             console.error('Operation cancelled')
@@ -112,6 +110,8 @@ class ClovingGPT {
   }
 
   public async generateText(request: GPTRequest): Promise<string> {
+    request.temperature ||= this.temperature
+
     const endpoint = this.adapter.getEndpoint()
     const payload = this.adapter.getPayload(request)
     const headers = this.adapter.getHeaders(this.apiKey)

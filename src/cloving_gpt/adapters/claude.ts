@@ -62,6 +62,3 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 }
-
-// Example usage:
-// ClaudeAdapter.listSupportedModels()

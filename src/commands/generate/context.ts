@@ -1,9 +1,8 @@
-
-import inquirer from 'inquirer'
 import highlight from 'cli-highlight'
 import ncp from 'copy-paste'
 import fs from 'fs'
 import path from 'path'
+import { input, confirm } from '@inquirer/prompts'
 
 import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
@@ -46,13 +45,9 @@ const context = async (options: ClovingGPTOptions) => {
       let includeMoreFiles = true
 
       while (includeMoreFiles) {
-        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-          {
-            type: 'input',
-            name: 'contextFile',
-            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
-          },
-        ])
+        const contextFile = await input({
+          message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+        })
 
         if (contextFile) {
           contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
@@ -67,14 +62,10 @@ const context = async (options: ClovingGPTOptions) => {
     console.log('\nGenerated Context Prompt:')
     console.log(highlight(contextPrompt, { language: 'markdown' }))
 
-    const { copyToClipboard } = await inquirer.prompt<{ copyToClipboard: boolean }>([
-      {
-        type: 'confirm',
-        name: 'copyToClipboard',
-        message: 'Do you want to copy the context prompt to your clipboard?',
-        default: true,
-      },
-    ])
+    const copyToClipboard = await confirm({
+      message: 'Do you want to copy the context prompt to your clipboard?',
+      default: true,
+    })
 
     if (copyToClipboard) {
       ncp.copy(contextPrompt, () => {

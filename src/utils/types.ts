@@ -14,6 +14,7 @@ export interface ClovingGPTOptions {
   prompt?: string
   save?: boolean
   interactive?: boolean
+  temperature?: number
 }
 
 export interface ClovingModelConfig {
@@ -22,6 +23,7 @@ export interface ClovingModelConfig {
   priority: number;
   silent: boolean;
   trust: boolean;
+  temperature: number;
 }
 
 export type ProjectConfig = {

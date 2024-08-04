@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs'
-import inquirer from 'inquirer'
+import { input } from '@inquirer/prompts'
 
 import ClovingGPT from '../../cloving_gpt'
 import { getConfig, saveProjectConfig } from '../../utils/config_utils'
@@ -54,13 +54,9 @@ export const initProject = async (options: ClovingGPTOptions) => {
     process.exit(1)
   }
 
-  const { projectTask } = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'projectTask',
-      message: 'Describe the task you want to accomplish with this project:',
-    },
-  ])
+  const projectTask = await input({
+    message: 'Describe the task you want to accomplish with this project:',
+  })
 
   const prompt = await generatePrompt(projectName, projectTask)
   const contextFiles = await gpt.generateText({ prompt })

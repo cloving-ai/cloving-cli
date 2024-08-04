@@ -1,5 +1,5 @@
 import highlight from 'cli-highlight'
-import inquirer from 'inquirer'
+import { select } from '@inquirer/prompts'
 import ncp from 'copy-paste'
 
 import ClovingGPT from '../../cloving_gpt'
@@ -16,7 +16,7 @@ const review = async (options: ClovingGPTOptions) => {
     // Define the prompt for analysis
     const gitDiff = await getGitDiff()
 
-    const prompt = `==== begin diff =====
+    const promptText = `==== begin diff =====
 ${gitDiff}
 ==== end diff =====
 
@@ -78,7 +78,7 @@ Also list any bugs in the new code as well as recommended fixes for those bugs w
 Format the output of this code review in Markdown format.`
 
     // get the analysis
-    const analysis = await gpt.generateText({ prompt })
+    const analysis = await gpt.generateText({ prompt: promptText })
 
     // Print the analysis to the console
     parseMarkdownInstructions(analysis).map(code => {
@@ -106,10 +106,8 @@ Format the output of this code review in Markdown format.`
     }
 
     // Prompt the user with options for copying to clipboard
-    const { clipboardOption } = await inquirer.prompt([
+    const clipboardOption = await select(
       {
-        type: 'list',
-        name: 'clipboardOption',
         message: 'What would you like to copy to the clipboard?',
         choices: [
           { name: 'Copy only the Changes Overview', value: 'Changes Overview' },
@@ -118,7 +116,7 @@ Format the output of this code review in Markdown format.`
           { name: 'Done', value: 'Done' }
         ]
       }
-    ])
+    )
 
     let contentToCopy = ''
 

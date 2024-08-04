@@ -1,5 +1,5 @@
 import ncp from 'copy-paste'
-import inquirer from 'inquirer'
+import { select, input, confirm } from '@inquirer/prompts'
 import highlight from 'cli-highlight'
 import fs from 'fs'
 import path from 'path'
@@ -134,41 +134,29 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
     return
   }
 
-  const { action } = await inquirer.prompt<{ action: string }>([
-    {
-      type: 'list',
-      name: 'action',
-      message: 'What would you like to do?',
-      choices: [
-        { name: 'Revise', value: 'revise' },
-        { name: 'Explain', value: 'explain' },
-        { name: 'Save a Source Code File', value: 'save' },
-        { name: 'Save All Source Code Files', value: 'saveAll' },
-        { name: 'Copy Source Code to Clipboard', value: 'copySource' },
-        { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
-        { name: 'Done', value: 'done' },
-      ],
-    },
-  ])
+  const action = await select({
+    message: 'What would you like to do?',
+    choices: [
+      { name: 'Revise', value: 'revise' },
+      { name: 'Explain', value: 'explain' },
+      { name: 'Save a Source Code File', value: 'save' },
+      { name: 'Save All Source Code Files', value: 'saveAll' },
+      { name: 'Copy Source Code to Clipboard', value: 'copySource' },
+      { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
+      { name: 'Done', value: 'done' },
+    ],
+  })
 
   switch (action) {
     case 'revise':
-      const { newPrompt } = await inquirer.prompt<{ newPrompt: string }>([
-        {
-          type: 'input',
-          name: 'newPrompt',
-          message: 'How would you like to modify the output:',
-        },
-      ])
+      const newPrompt = await input({
+        message: 'How would you like to modify the output:',
+      })
       let includeMoreFiles = true
       while (includeMoreFiles) {
-        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-          {
-            type: 'input',
-            name: 'contextFile',
-            message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
-          },
-        ])
+        const contextFile = await input({
+          message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+        })
 
         if (contextFile) {
           contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
@@ -188,14 +176,10 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
     case 'copySource':
       let copyAnother = true
       while (copyAnother) {
-        const { fileToCopy } = await inquirer.prompt<{ fileToCopy: string }>([
-          {
-            type: 'list',
-            name: 'fileToCopy',
-            message: 'Which file do you want to copy to the clipboard?',
-            choices: files.map(file => ({ name: file, value: file })),
-          },
-        ])
+        const fileToCopy = await select({
+          message: 'Which file do you want to copy to the clipboard?',
+          choices: files.map(file => ({ name: file, value: file })),
+        })
 
         if (fileContents[fileToCopy]) {
           ncp.copy(fileContents[fileToCopy], () => {
@@ -205,14 +189,10 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
           console.log('File content not found.')
         }
 
-        const { copyMore } = await inquirer.prompt<{ copyMore: boolean }>([
-          {
-            type: 'confirm',
-            name: 'copyMore',
-            message: 'Do you want to copy another file?',
-            default: true,
-          },
-        ])
+        const copyMore = await confirm({
+          message: 'Do you want to copy another file?',
+          default: true,
+        })
 
         copyAnother = copyMore
       }
@@ -225,14 +205,10 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
     case 'save':
       let saveAnother = true
       while (saveAnother) {
-        const { fileToSave } = await inquirer.prompt<{ fileToSave: string }>([
-          {
-            type: 'list',
-            name: 'fileToSave',
-            message: 'Which file do you want to save?',
-            choices: files.map(file => ({ name: file, value: file })),
-          },
-        ])
+        const fileToSave = await select({
+          message: 'Which file do you want to save?',
+          choices: files.map(file => ({ name: file, value: file })),
+        })
 
         if (fileContents[fileToSave]) {
           const filePath = path.resolve(fileToSave)
@@ -246,14 +222,10 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
           console.log('File content not found.')
         }
 
-        const { saveMore } = await inquirer.prompt<{ saveMore: boolean }>([
-          {
-            type: 'confirm',
-            name: 'saveMore',
-            message: 'Do you want to save another file?',
-            default: true,
-          },
-        ])
+        const saveMore = await confirm({
+          message: 'Do you want to save another file?',
+          default: true,
+        })
 
         saveAnother = saveMore
       }
@@ -288,13 +260,9 @@ const code = async (options: ClovingGPTOptions) => {
       let includeMoreFiles = true
 
       while (includeMoreFiles) {
-        const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-          {
-            type: 'input',
-            name: 'contextFile',
-            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
-          },
-        ])
+        const contextFile = await input({
+          message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
+        })
 
         if (contextFile) {
           contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
@@ -305,13 +273,9 @@ const code = async (options: ClovingGPTOptions) => {
     }
 
     if (!prompt) {
-      const { userPrompt } = await inquirer.prompt<{ userPrompt: string }>([
-        {
-          type: 'input',
-          name: 'userPrompt',
-          message: 'What would you like the code to do:',
-        },
-      ])
+      const userPrompt = await input({
+        message: 'What would you like the code to do:',
+      })
       prompt = userPrompt
     }
 
@@ -329,26 +293,18 @@ const code = async (options: ClovingGPTOptions) => {
     if (options.interactive) {
       let continueInteractive = true
       while (continueInteractive) {
-        const { newPrompt } = await inquirer.prompt<{ newPrompt: string }>([
-          {
-            type: 'input',
-            name: 'newPrompt',
-            message: 'Revise the code (or press enter to finish):',
-          },
-        ])
+        const newPrompt = await input({
+          message: 'Revise the code (or press enter to finish):',
+        })
 
         if (newPrompt.trim() === '') {
           continueInteractive = false
         } else {
           let includeMoreFiles = true
           while (includeMoreFiles) {
-            const { contextFile } = await inquirer.prompt<{ contextFile: string }>([
-              {
-                type: 'input',
-                name: 'contextFile',
-                message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
-              },
-            ])
+            const contextFile = await input({
+              message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+            })
 
             if (contextFile) {
               contextFiles = await addFileOrDirectoryToContext(contextFile, contextFiles, options)
