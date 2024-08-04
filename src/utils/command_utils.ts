@@ -2,6 +2,7 @@ import { spawn, execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { getAllFiles } from './config_utils'
+import { isBinaryFile } from 'isbinaryfile'
 
 export const SPECIAL_FILES = [
   'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
@@ -32,10 +33,16 @@ export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => 
   const subdirs = await fs.promises.readdir(dir)
   const files = await Promise.all(subdirs.map(async (subdir) => {
     const res = path.resolve(dir, subdir)
-    if (subdir === 'node_modules' || subdir === '.git') {
+    if (subdir === 'node_modules' || subdir === '.git' || subdir === '.DS_Store') {
       return []
     }
-    return (await fs.promises.stat(res)).isDirectory() ? getAllFilesInDirectory(res) : res
+    const stat = await fs.promises.stat(res)
+    if (stat.isDirectory()) {
+      return getAllFilesInDirectory(res)
+    } else {
+      const isBinary = await isBinaryFile(res)
+      return isBinary ? [] : res
+    }
   }))
   return files.flat()
 }
