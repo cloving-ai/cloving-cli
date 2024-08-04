@@ -28,6 +28,18 @@ export const collectSpecialFileContents = (): Record<string, string | Record<str
 
 export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some(file => fs.existsSync(file))
 
+export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
+  const subdirs = await fs.promises.readdir(dir)
+  const files = await Promise.all(subdirs.map(async (subdir) => {
+    const res = path.resolve(dir, subdir)
+    if (subdir === 'node_modules' || subdir === '.git') {
+      return []
+    }
+    return (await fs.promises.stat(res)).isDirectory() ? getAllFilesInDirectory(res) : res
+  }))
+  return files.flat()
+}
+
 export const generateFileList = async (): Promise<string[]> => {
   try {
     const lsOutput = await runCommand('ls', [])
