@@ -1,8 +1,7 @@
-
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import inquirer from 'inquirer'
+import { input, confirm } from '@inquirer/prompts'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
@@ -41,14 +40,10 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    const { technologies } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'technologies',
-        message: 'No special files detected. Please describe the main technologies used in your project:',
-        validate: (input) => input.trim().length > 0 || 'Please provide a description of the technologies used.',
-      },
-    ])
+    const technologies = await input({
+      message: 'No special files detected. Please describe the main technologies used in your project:',
+      validate: (input) => input.trim().length > 0 || 'Please provide a description of the technologies used.',
+    })
     specialFileContents['description'] = technologies
   }
 
@@ -215,14 +210,10 @@ Here is an example response:
 
     // Prompt the user if they want to review the generated cloving.json
     if (!options.silent) {
-      const { reviewAnswer } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'reviewAnswer',
-          message: 'Do you want to review the generated data?',
-          default: true,
-        },
-      ])
+      const reviewAnswer = await confirm({
+        message: 'Do you want to review the generated data?',
+        default: true,
+      })
       if (reviewAnswer) {
         console.log(cleanAiChatResponse)
       }

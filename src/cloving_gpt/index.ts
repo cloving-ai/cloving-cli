@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
-import inquirer from 'inquirer'
+import { confirm } from '@inquirer/prompts'
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
@@ -61,14 +61,12 @@ class ClovingGPT {
     if (this.silent) return
 
     const tokenCount = Math.ceil(prompt.length / 4).toLocaleString()
-    const { reviewPrompt } = await inquirer.prompt([
+    const reviewPrompt = await confirm(
       {
-        type: 'confirm',
-        name: 'reviewPrompt',
         message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
         default: true
       }
-    ])
+    )
 
     if (reviewPrompt) {
       const less = spawn('less', ['-R'], { stdio: ['pipe', process.stdout, process.stderr] })
@@ -84,14 +82,12 @@ class ClovingGPT {
             return
           }
 
-          const { confirmContinue } = await inquirer.prompt([
+          const confirmContinue = await confirm(
             {
-              type: 'confirm',
-              name: 'confirmContinue',
               message: 'Do you want to continue?',
               default: true
             }
-          ])
+          )
 
           if (!confirmContinue) {
             console.error('Operation cancelled')
