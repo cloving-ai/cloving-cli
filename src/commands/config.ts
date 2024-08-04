@@ -60,7 +60,7 @@ export const config = async (): Promise<void> => {
         message: `Enter your API key for ${selectedModel}: `,
       },
     ])
-    const [provider, ...modelParts] = selectedModel.split(':')
+    const [provider, ...modelParts] = selectedModel?.split(':') || []
     const model = modelParts.join(':')
 
     if (!currentConfig.models[provider]) {
@@ -110,12 +110,28 @@ export const config = async (): Promise<void> => {
       },
     ])
 
+    const { temperature } = await inquirer.prompt<{ temperature: number }>([
+      {
+        type: 'number',
+        name: 'temperature',
+        message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
+        default: 0.2,
+        validate: (value: number | undefined) => {
+          if (value && (isNaN(value) || value < 0 || value > 1)) {
+            return 'Please enter a valid number between 0.0 and 1.0.'
+          }
+          return true
+        },
+      },
+    ])
+
     const modelConfig: ClovingModelConfig = {
       apiKey,
       primary,
       priority: parseInt(priority, 10),
       silent: !review,
       trust,
+      temperature,
     }
 
     currentConfig.models[provider][model] = modelConfig

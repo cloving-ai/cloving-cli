@@ -38,7 +38,8 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
             primary: true,
             priority: 10,
             silent: options.silent || false,
-            trust: false
+            trust: false,
+            temperature: options.temperature || 0.2,
           }
         }
       },
