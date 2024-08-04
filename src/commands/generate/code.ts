@@ -15,7 +15,11 @@ const generateCodePrompt = (prompt: string | undefined, files: string[], context
   const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
   const contextFileContents = Object.keys(contextFiles).map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`).join('\n')
 
-  let promptText = `### Description of App
+  let promptText = `### Request
+
+Generate code that does the following: ${prompt}
+
+### Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
