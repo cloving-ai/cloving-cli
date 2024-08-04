@@ -1,24 +1,64 @@
 import highlight from 'cli-highlight'
 import { select } from '@inquirer/prompts'
 import ncp from 'copy-paste'
+import fs from 'fs'
+import path from 'path'
 
 import ClovingGPT from '../../cloving_gpt'
 import { getGitDiff } from '../../utils/git_utils'
-import { getConfig } from '../../utils/config_utils'
 import { parseMarkdownInstructions } from '../../utils/string_utils'
+import { getAllFilesInDirectory } from '../../utils/command_utils'
+import { getConfig, getClovingConfig } from '../../utils/config_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
+  let { prompt, files } = options
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
+  let promptText = ''
+  let contextFiles: Record<string, string> = {}
 
   try {
     // Define the prompt for analysis
-    const gitDiff = await getGitDiff()
+    if (files) {
+      let expandedFiles: string[] = []
+      for (const file of files) {
+        const filePath = path.resolve(file)
+        if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+          const dirFiles = await getAllFilesInDirectory(filePath)
+          expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
+        } else {
+          expandedFiles.push(path.relative(process.cwd(), filePath))
+        }
+      }
+      files = expandedFiles
 
-    const promptText = `==== begin diff =====
+      for (const file of files) {
+        const filePath = path.resolve(file)
+        if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+          const content = await fs.promises.readFile(filePath, 'utf-8')
+          contextFiles[file] = content
+        }
+      }
+
+      const contextFileContents = Object.keys(contextFiles).map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`).join('\n')
+      promptText = `### Description of App
+
+${JSON.stringify(getClovingConfig(), null, 2)}
+
+${contextFileContents}
+
+`
+    } else {
+      const gitDiff = await getGitDiff()
+
+      promptText = `==== begin diff =====
 ${gitDiff}
-==== end diff =====
+==== end diff =====`
+
+    }
+
+    promptText += `
 
 ### Example of a well-structured response
 
@@ -76,6 +116,13 @@ Do not use any data from the example response structure, only use the structure.
 I would like you to explain why these change are being made and document a description of these changes.
 Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
 Format the output of this code review in Markdown format.`
+
+    if (prompt) {
+      promptText += `
+
+### Additional Context
+${prompt}`
+    }
 
     // get the analysis
     const analysis = await gpt.generateText({ prompt: promptText })

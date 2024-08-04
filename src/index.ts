@@ -116,6 +116,8 @@ generate
   .alias('r')
   .description('Review the code for commited changes that differ from the main/master branch')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-f, --files <filenames...>', 'Specify filenames for files you want to review')
+  .option('-p, --prompt <prompt>', 'Add a prompt to the review')
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(analyze)

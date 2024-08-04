@@ -4,7 +4,7 @@ import highlight from 'cli-highlight'
 import fs from 'fs'
 import path from 'path'
 
-import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/command_utils'
+import { collectSpecialFileContents, addFileOrDirectoryToContext, getAllFilesInDirectory } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
 import { parseMarkdownInstructions, extractFilesAndContent } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
@@ -238,18 +238,6 @@ const handleUserAction = async (gpt: ClovingGPT, rawCodeCommand: string, prompt:
     case 'done':
       break
   }
-}
-
-const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
-  const subdirs = await fs.promises.readdir(dir)
-  const files = await Promise.all(subdirs.map(async (subdir) => {
-    const res = path.resolve(dir, subdir)
-    if (subdir === 'node_modules' || subdir === '.git') {
-      return []
-    }
-    return (await fs.promises.stat(res)).isDirectory() ? getAllFilesInDirectory(res) : res
-  }))
-  return files.flat()
 }
 
 const code = async (options: ClovingGPTOptions) => {
