@@ -22,6 +22,7 @@ export interface ClovingGPTOptions {
   temperature?: number
   port?: number
   stream?: boolean
+  timeout?: number
 }
 
 export interface ClovingModelConfig {

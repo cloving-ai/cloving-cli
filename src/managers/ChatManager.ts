@@ -191,11 +191,6 @@ class ChatManager {
     })
   }
 
-  private containsCode(content: string): boolean {
-    // Check if the content contains any code blocks
-    return /```[\s\S]*?```/.test(content)
-  }
-
   private isGitCommand(command: string): boolean {
     return command.split(' ').length <= 3 && command.startsWith('git ')
   }
@@ -230,6 +225,12 @@ class ChatManager {
                 process.stdout.write(content)
                 accumulatedContent += content
               }
+
+              if (jsonData?.choices) {
+                const content = jsonData.choices[0].delta.content
+                process.stdout.write(content)
+                accumulatedContent += content
+              }
             } catch (error) {
               // Ignore parsing errors for incomplete chunks
             }
@@ -238,6 +239,7 @@ class ChatManager {
       })
 
       responseStream.data.on('end', () => {
+        console.log('got end')
         this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
         this.rl.prompt()
       })

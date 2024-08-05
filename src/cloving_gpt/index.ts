@@ -1,7 +1,11 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import axios, { AxiosResponse } from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
 import { confirm } from '@inquirer/prompts'
+
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
 import { OpenAIAdapter } from './adapters/openai'
@@ -9,11 +13,8 @@ import { MistralAdapter } from './adapters/mistral'
 import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
+
 import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import { error } from 'console'
 
 class ClovingGPT {
   public adapter: Adapter
@@ -21,6 +22,7 @@ class ClovingGPT {
   public temperature: number
   public stream: boolean
   private apiKey: string
+  private timeout: number
 
   constructor(options: ClovingGPTOptions) {
     const { model: partialModel } = options
@@ -41,6 +43,7 @@ class ClovingGPT {
     this.temperature = options.temperature || modelConfig.temperature || 0.2
     this.silent = options.silent || modelConfig.silent
     this.stream = options.stream || false
+    this.timeout = options.timeout || 60000 // Default timeout of 60 seconds
 
     switch (provider) {
       case 'claude':
@@ -139,6 +142,7 @@ class ClovingGPT {
           data: payload,
           headers: headers,
           responseType: 'stream',
+          timeout: this.timeout
         })
       } catch (err) {
         const error = err as any
