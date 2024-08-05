@@ -23,21 +23,59 @@ const repl = async (options: ClovingGPTOptions) => {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: 'cloving> '
+    prompt: 'cloving> ',
+    historySize: 1000,
   })
 
   console.log('Welcome to Cloving REPL. Type "exit" to quit.')
   rl.prompt()
 
   let chatHistory: ChatMessage[] = []
+  let commandHistory: string[] = []
+  let historyIndex = -1
+  let multilineInput = ''
+  let isMultilineMode = false
+
+  // Disable the default behavior of readline
+  readline.emitKeypressEvents(process.stdin)
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+  }
 
   rl.on('line', async (line) => {
+    if (isMultilineMode) {
+      if (line.trim() === '```') {
+        isMultilineMode = false
+        line = multilineInput
+        multilineInput = ''
+      } else {
+        multilineInput += line + '\n'
+        rl.prompt()
+        return
+      }
+    } else if (line.trim() === '```') {
+      isMultilineMode = true
+      multilineInput = ''
+      console.log('Entering multiline mode. Type ``` on a new line to end.')
+      rl.prompt()
+      return
+    }
+
     const trimmedLine = line.trim().toLowerCase()
 
     if (trimmedLine === '') {
       rl.prompt()
       return
     }
+
+    // Add the command to history
+    if (commandHistory[0] !== trimmedLine) {
+      commandHistory.unshift(trimmedLine)
+      if (commandHistory.length > 1000) {
+        commandHistory.pop()
+      }
+    }
+    historyIndex = -1
 
     if (trimmedLine === 'exit') {
       rl.close()
@@ -165,6 +203,8 @@ ${contextFileContents}
 
 ### Task
 
+Don't apologize.
+
 ${chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}`
 
       const responseStream = await gpt.streamText({ prompt })
@@ -210,6 +250,24 @@ ${chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n
   rl.on('close', () => {
     console.log('Goodbye!')
     process.exit(0)
+  })
+
+  // Handle up and down arrow keys
+  process.stdin.on('keypress', (_, key) => {
+    if (key && (key.name === 'up' || key.name === 'down')) {
+      if (key.name === 'up' && historyIndex < commandHistory.length - 1) {
+        historyIndex++
+      } else if (key.name === 'down' && historyIndex > -1) {
+        historyIndex--
+      }
+
+      if (historyIndex >= 0) {
+        rl.write(null, { ctrl: true, name: 'u' }) // Clear the current line
+        rl.write(commandHistory[historyIndex])
+      } else if (historyIndex === -1) {
+        rl.write(null, { ctrl: true, name: 'u' }) // Clear the current line
+      }
+    }
   })
 }
 
