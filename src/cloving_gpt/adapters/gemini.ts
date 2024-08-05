@@ -31,8 +31,9 @@ export class GeminiAdapter implements Adapter {
     }
   }
 
-  getPayload(request: GPTRequest): Record<string, any> {
+  getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
+      stream,
       contents: [
         {
           parts: [
@@ -43,7 +44,7 @@ export class GeminiAdapter implements Adapter {
         }
       ],
       generationConfig: {
-        temperature: 0.2,
+        temperature: request.temperature || 0.2,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 1024
@@ -63,5 +64,9 @@ export class GeminiAdapter implements Adapter {
       console.error('Error extracting response:', error)
       throw error
     }
+  }
+
+  convertStream(data: string): string | null {
+    return data
   }
 }

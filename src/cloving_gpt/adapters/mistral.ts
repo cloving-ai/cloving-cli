@@ -37,17 +37,21 @@ export class MistralAdapter implements Adapter {
     }
   }
 
-  getPayload(request: GPTRequest): Record<string, any> {
+  getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model.replace(':', '-'),
       messages: [{ role: "user", content: request.prompt }],
       max_tokens: request.maxTokens,
       temperature: request.temperature || 0.2,
-      stream: false
+      stream
     }
   }
 
   extractResponse(data: any): string {
     return data.choices[0].message.content
+  }
+
+  convertStream(data: string): string | null {
+    return data
   }
 }

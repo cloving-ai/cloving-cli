@@ -15,6 +15,8 @@ export interface ClovingGPTOptions {
   save?: boolean
   interactive?: boolean
   temperature?: number
+  port?: number
+  stream?: boolean
 }
 
 export interface ClovingModelConfig {

@@ -45,11 +45,11 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
-  getPayload(request: GPTRequest): Record<string, any> {
+  getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model,
       prompt: request.prompt,
-      stream: request.stream ?? false
+      stream
     }
   }
 
@@ -65,5 +65,9 @@ export class OllamaAdapter implements Adapter {
       console.error('Error extracting response:', error)
       throw error
     }
+  }
+
+  convertStream(data: string): string | null {
+    return data
   }
 }

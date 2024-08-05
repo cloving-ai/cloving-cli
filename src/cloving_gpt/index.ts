@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
 import { confirm } from '@inquirer/prompts'
@@ -13,11 +13,13 @@ import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/type
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import { error } from 'console'
 
 class ClovingGPT {
   public adapter: Adapter
   public silent: boolean
   public temperature: number
+  public stream: boolean
   private apiKey: string
 
   constructor(options: ClovingGPTOptions) {
@@ -38,6 +40,7 @@ class ClovingGPT {
     this.apiKey = modelConfig.apiKey
     this.temperature = options.temperature || modelConfig.temperature || 0.2
     this.silent = options.silent || modelConfig.silent
+    this.stream = options.stream || false
 
     switch (provider) {
       case 'claude':
@@ -110,11 +113,54 @@ class ClovingGPT {
     return prompt
   }
 
+  public async streamText(request: GPTRequest): Promise<AxiosResponse> {
+    request.stream = true
+    request.temperature ||= this.temperature
+
+    const endpoint = this.adapter.getEndpoint()
+    const payload = this.adapter.getPayload(request, this.stream)
+    const headers = this.adapter.getHeaders(this.apiKey)
+
+    const reviewedPrompt = await this.reviewPrompt(request.prompt, endpoint)
+    if (reviewedPrompt === null) {
+      throw new Error('Operation cancelled by user')
+    }
+    request.prompt = reviewedPrompt
+
+    const maxRetries = 5
+    let attempt = 0
+    let delay = 1000 // Initial delay of 1 second
+
+    while (attempt < maxRetries) {
+      try {
+        return await axios({
+          method: 'post',
+          url: endpoint,
+          data: payload,
+          headers: headers,
+          responseType: 'stream',
+        })
+      } catch (err) {
+        const error = err as any
+        if (error.response && error.response.status === 429) {
+          attempt++
+          console.warn(`Rate limited. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          delay *= 2 // Exponential backoff
+        } else {
+          throw error
+        }
+      }
+    }
+
+    throw new Error('Max retries exceeded')
+  }
+
   public async generateText(request: GPTRequest): Promise<string> {
     request.temperature ||= this.temperature
 
     const endpoint = this.adapter.getEndpoint()
-    const payload = this.adapter.getPayload(request)
+    const payload = this.adapter.getPayload(request, this.stream)
     const headers = this.adapter.getHeaders(this.apiKey)
 
     const reviewedPrompt = await this.reviewPrompt(request.prompt, endpoint)
@@ -134,6 +180,10 @@ class ClovingGPT {
       console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint()}):`, errorMessage)
       throw error
     }
+  }
+
+  public convertStream(data: string): string | null {
+    return this.adapter.convertStream(data)
   }
 }
 
