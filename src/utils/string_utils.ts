@@ -112,22 +112,21 @@ export const extractFilesAndContent = (rawCodeCommand: string | undefined): [str
   for (const match of matches) {
     const fileName = match.replace(/\*{2}/g, '').trim()
     const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g');
+    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\s*\n\\s*\`\`\`(?:\\w+)?\\s*([\\s\\S]*?)\\s*\`\`\`\n`, 'g');
     const contentMatch = regex.exec(rawCodeCommand)
-    if (contentMatch) {
+    if (contentMatch && contentMatch[1]) {
       files.push(fileName)
-      let content = contentMatch[1]
+      let content = contentMatch[1].trim()
 
-      // Remove the first word after the opening triple backticks
-      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
+      // Remove the language identifier if present
+      content = content.replace(/^(\w+\s*\n)/, '')
 
-      fileContents[fileName] = content.trim()
+      fileContents[fileName] = content
     }
   }
 
   return [files, fileContents]
 }
-
 export const saveGeneratedFiles = async (files: string[], fileContents: Record<string, string>): Promise<void> => {
   for (const file of files) {
     if (fileContents[file]) {

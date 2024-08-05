@@ -71,7 +71,7 @@ An example of the output for this should look like the following:
 
 Generate code that does the following: ${prompt}
 
-Do not use any data from the example response structure, only use the structure. Please generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
+Do not use any data from the example response structure, only use the structure. Generate the code and include filenames with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`
 
   return promptText
 }

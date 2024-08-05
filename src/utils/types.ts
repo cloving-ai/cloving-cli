@@ -1,5 +1,10 @@
 export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface GPTRequest {
   prompt: string
   maxTokens?: number
