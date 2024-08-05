@@ -148,7 +148,8 @@ class ClovingGPT {
         const error = err as any
         if (error.response && error.response.status === 429) {
           attempt++
-          console.warn(`Rate limited. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`)
+          const tokenCount = payload.messages.reduce((acc: number, message: any) => acc + Math.ceil(message.content.length / 4), 0).toLocaleString()
+          console.warn(`Rate limit error for this ${tokenCount} token prompt. Possibly past the token limit for this AI API. Try including fewer code files. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, delay))
           delay *= 2 // Exponential backoff
         } else {

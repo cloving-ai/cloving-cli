@@ -10,6 +10,8 @@ import { extractFilesAndContent, saveGeneratedFiles, extractMarkdown } from '../
 import { getAllFilesInDirectory } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
+const PREAMBLE = `Don't apologize and when generating code, always include filenames in bold with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`;
+
 class ChatManager {
   private gpt: ClovingGPT
   private rl: readline.Interface
@@ -104,7 +106,6 @@ class ChatManager {
     }
 
     await this.handleCommand(trimmedLine)
-    this.rl.prompt()
   }
 
   private updateCommandHistory(command: string) {
@@ -239,7 +240,6 @@ class ChatManager {
       })
 
       responseStream.data.on('end', () => {
-        console.log('got end')
         this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
         this.rl.prompt()
       })
@@ -259,15 +259,11 @@ class ChatManager {
       .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
       .join('\n')
 
-    return `### Chat History
-
-${this.chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}
-
-${contextFileContents}
+    return `${contextFileContents}
 
 ### Task
 
-Don't apologize and when generating code, always include filenames in bold with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.
+${PREAMBLE}
 
 ${this.chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}`
   }
