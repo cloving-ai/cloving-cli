@@ -6,7 +6,7 @@ import path from 'path'
 
 import { collectSpecialFileContents, addFileOrDirectoryToContext, getAllFilesInDirectory } from '../../utils/command_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
-import { parseMarkdownInstructions, extractFilesAndContent } from '../../utils/string_utils'
+import { parseMarkdownInstructions, extractFilesAndContent, saveGeneratedFiles } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
@@ -106,19 +106,6 @@ const displayGeneratedCode = (rawCodeCommand: string) => {
       console.log(highlight(code, { language: 'markdown' }))
     }
   })
-}
-
-const saveGeneratedFiles = async (files: string[], fileContents: Record<string, string>): Promise<void> => {
-  for (const file of files) {
-    if (fileContents[file]) {
-      const filePath = path.resolve(file)
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-      await fs.promises.writeFile(filePath, fileContents[file])
-      console.log(`${file} has been saved.`)
-    } else {
-      console.log(`File content not found for ${file}.`)
-    }
-  }
 }
 
 const updateContextFiles = async (contextFiles: Record<string, string>, files: string[], fileContents: Record<string, string>): Promise<void> => {
