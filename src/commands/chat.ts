@@ -34,6 +34,11 @@ const repl = async (options: ClovingGPTOptions) => {
   rl.on('line', async (line) => {
     const trimmedLine = line.trim().toLowerCase()
 
+    if (trimmedLine === '') {
+      rl.prompt()
+      return
+    }
+
     if (trimmedLine === 'exit') {
       rl.close()
       return
@@ -76,6 +81,7 @@ const repl = async (options: ClovingGPTOptions) => {
       // Check if the diff is blank
       if (!diff) {
         console.error('No changes to commit.')
+        rl.prompt()
         return
       }
 
@@ -107,6 +113,18 @@ const repl = async (options: ClovingGPTOptions) => {
         if (err) throw err
       })
 
+      rl.prompt()
+      return
+    }
+
+    // if trimmedLine is two words or three words and starts with the word git then run the command in shell
+    if (trimmedLine.split(' ').length <= 3 && trimmedLine.startsWith('git ')) {
+      try {
+        execSync(trimmedLine, { stdio: 'inherit' })
+      } catch (error) {
+        console.error('Error running command:', error)
+      }
+      rl.prompt()
       return
     }
 
