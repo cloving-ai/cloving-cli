@@ -1,5 +1,10 @@
 export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
+export interface OpenAIStreamChunk {
+  output: string
+  lastChar: number
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string

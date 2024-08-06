@@ -1,6 +1,5 @@
-import { randomBytes } from 'crypto'
 import { Adapter } from '.'
-import { GPTRequest } from '../../utils/types'
+import type { GPTRequest, OpenAIStreamChunk } from '../../utils/types'
 
 export class ClaudeAdapter implements Adapter {
   private model: string
@@ -64,102 +63,35 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 
-  // input example: {"type": "completion", "completion": " Hello", "stop_reason": null, "model": "claude-2.0"}
-  // output example: {"id":"chatcmpl-9svCVWp4OnkwlmOfKSwDiCT3gp0sJ","object":"chat.completion.chunk","created":1722876619,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_4e2b2da518","choices":[{"index":0,"delta":{"content":" Hello"},"logprobs":null,"finish_reason":null}]}
-  convertStream(data: string): string | null {
-    const pieces = data.split('data: ').map(piece => {
-      // find the { } in the input string
-      const firstBracket = piece.indexOf('{')
-      const lastBracket = piece.lastIndexOf('}')
-      const jsonData = piece.slice(firstBracket, lastBracket + 1)
+  // data example: data: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hello, how are you?' } }
+  convertStream(data: string): OpenAIStreamChunk | null {
+    let beginningChar = 0
+    let lastChar = 0
 
-      // Parse the input string into an object
-      let parsedData = {} as any
+    while (lastChar < data.length) {
       try {
-        parsedData = JSON.parse(jsonData)
+        let remainingString = data.slice(beginningChar, lastChar)
+
+        // Strip any leading characters until we encounter the first '{' in this block
+        const firstBraceIndex = remainingString.indexOf('{')
+        if (firstBraceIndex > -1) {
+          remainingString = remainingString.slice(firstBraceIndex)
+        }
+
+        const parsedObject = JSON.parse(remainingString)
+        const output = parsedObject?.delta?.text || ''
+
+        return {
+          output,
+          lastChar
+        }
+
       } catch (error) {
-        parsedData = { type: 'ping' }
+        // Incrementally increase the size of the JSON string to parse
+        lastChar += 1
       }
-
-      // Destructure necessary fields from input
-      const { type, delta, stop_reason, model, message } = parsedData
-
-      if (type === 'content_block_delta') {
-        // Build the output object structure
-        const dataObject = {
-          id: `chatcmpl-9svvv3j9Xat1HCcNy5eknFVFIpj04`,
-          object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
-          model: model,
-          system_fingerprint: `fp_3cd8b62c3b`,
-          choices: [
-            {
-              index: 0,
-              delta: {
-                content: delta.text
-              },
-              logprobs: null,
-              finish_reason: stop_reason
-            }
-          ]
-        }
-
-        return JSON.stringify(dataObject)
-      } else if (type === 'message_start') {
-        // Build the output object structure
-        const dataObject = {
-          id: `chatcmpl-9svvv3j9Xat1HCcNy5eknFVFIpj04`,
-          object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
-          model: 'cloving',
-          system_fingerprint: `fp_3cd8b62c3b`,
-          choices: [
-            {
-              index: 0,
-              delta: {
-                role: message.role,
-                content: message.content[0] || ""
-              },
-              logprobs: null,
-              finish_reason: null
-            }
-          ]
-        }
-
-        return JSON.stringify(dataObject)
-      } else if (type === 'content_block_delta') {
-        // Build the output object structure
-        const dataObject = {
-          id: `chatcmpl-9svvv3j9Xat1HCcNy5eknFVFIpj04`,
-          object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
-          model: 'cloving',
-          system_fingerprint: `fp_3cd8b62c3b`,
-          choices: [
-            {
-              index: 0,
-              delta: {
-                content: delta.text
-              },
-              logprobs: null,
-              finish_reason: stop_reason
-            }
-          ]
-        }
-
-        return JSON.stringify(dataObject)
-      } else {
-        return null
-      }
-    })
-
-    const output = 'data: ' + pieces.filter(piece => piece !== null).join('\n\ndata: ') + '\n\n'
-
-    if (pieces.filter(piece => piece !== null).length === 0) {
-      return null
-    } else {
-      // Return the stringified output object
-      return output
     }
+
+    return null
   }
 }

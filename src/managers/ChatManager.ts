@@ -3,7 +3,9 @@ import path from 'path'
 import fs from 'fs'
 import readline from 'readline'
 import { execFileSync, execSync } from 'child_process'
+import type { AxiosError } from 'axios'
 
+import ChunkManager from './ChunkManager'
 import ClovingGPT from '../cloving_gpt'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { extractFilesAndContent, saveGeneratedFiles, extractMarkdown } from '../utils/string_utils'
@@ -21,6 +23,8 @@ class ChatManager {
   private multilineInput: string = ''
   private isMultilineMode: boolean = false
   private contextFiles: Record<string, string> = {}
+  private chunkManager: ChunkManager
+  private prompt: string = ''
 
   constructor(private options: ClovingGPTOptions) {
     options.stream = true
@@ -32,6 +36,7 @@ class ChatManager {
       prompt: 'cloving> ',
       historySize: 1000,
     })
+    this.chunkManager = new ChunkManager()
   }
 
   async initialize() {
@@ -172,9 +177,9 @@ class ChatManager {
       return
     }
 
-    const prompt = generateCommitMessagePrompt(diff)
+    this.prompt = generateCommitMessagePrompt(diff)
     this.gpt.stream = false
-    const rawCommitMessage = await this.gpt.generateText({ prompt })
+    const rawCommitMessage = await this.gpt.generateText({ prompt: this.prompt })
     this.gpt.stream = true
 
     const commitMessage = extractMarkdown(rawCommitMessage)
@@ -208,35 +213,25 @@ class ChatManager {
     try {
       this.chatHistory.push({ role: 'user', content: input })
 
-      const prompt = this.generatePrompt(input)
-      const responseStream = await this.gpt.streamText({ prompt })
+      this.prompt = this.generatePrompt(input)
+      const responseStream = await this.gpt.streamText({ prompt: this.prompt })
 
       let accumulatedContent = ''
 
+      this.chunkManager.on('content', (buffer: string) => {
+        const convertedStream = this.gpt.convertStream(buffer)
+
+        if (convertedStream !== null) {
+          const { output, lastChar } = convertedStream
+          process.stdout.write(output)
+          accumulatedContent += output
+          this.chunkManager.clearBuffer(lastChar)
+        }
+      })
+
       responseStream.data.on('data', (chunk: Buffer) => {
         const chunkString = chunk.toString()
-        const lines = chunkString.split('\n')
-
-        for (const line of lines) {
-          if (line.trim().startsWith('data: ')) {
-            try {
-              const jsonData = JSON.parse(line.slice(6))
-              if (jsonData?.delta?.text) {
-                const content = jsonData.delta.text
-                process.stdout.write(content)
-                accumulatedContent += content
-              }
-
-              if (jsonData?.choices) {
-                const content = jsonData.choices[0].delta.content
-                process.stdout.write(content)
-                accumulatedContent += content
-              }
-            } catch (error) {
-              // Ignore parsing errors for incomplete chunks
-            }
-          }
-        }
+        this.chunkManager.addChunk(chunkString)
       })
 
       responseStream.data.on('end', () => {
@@ -248,8 +243,30 @@ class ChatManager {
         console.error('Error streaming response:', error)
         this.rl.prompt()
       })
-    } catch (error) {
-      console.error('Error processing request:', error)
+    } catch (err) {
+      const error = err as AxiosError
+      let errorMessage = error.message || 'An error occurred.'
+      const errorNumber = error.response?.status || 'unknown'
+      // switch case
+      switch (errorNumber) {
+        case 400:
+          errorMessage = "Invalid model or prompt size too large. Try specifying fewer files."
+          break;
+        case 403:
+          errorMessage = "Inactive subscription or usage limit reached"
+          break;
+        case 429:
+          errorMessage = "Rate limit error"
+          break;
+        case 500:
+          errorMessage = "Internal server error"
+          break;
+      }
+
+      // get token estimate for prompt
+      const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
+
+      console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})`)
       this.rl.prompt()
     }
   }

@@ -1,6 +1,7 @@
-import { Adapter } from '.'
-import { GPTRequest } from '../../utils/types'
 import axios from 'axios'
+
+import { Adapter } from '.'
+import type { OpenAIStreamChunk, GPTRequest } from '../../utils/types'
 
 export class OllamaAdapter implements Adapter {
   private model: string
@@ -67,7 +68,42 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
-  convertStream(data: string): string | null {
-    return data
+  // data example: 
+  // {
+  //   model: 'dolphin-llama3:latest',
+  //   created_at: '2024-08-06T21:04:34.616355Z',
+  //   response: 'The',
+  //   done: false
+  // }
+
+  convertStream(data: string): OpenAIStreamChunk | null {
+    let beginningChar = 0
+    let lastChar = 0
+
+    while (lastChar < data.length) {
+      try {
+        let remainingString = data.slice(beginningChar, lastChar)
+
+        // Strip any leading characters until we encounter the first '{' in this block
+        const firstBraceIndex = remainingString.indexOf('{')
+        if (firstBraceIndex > -1) {
+          remainingString = remainingString.slice(firstBraceIndex)
+        }
+
+        const parsedObject = JSON.parse(remainingString)
+        const output = parsedObject?.response || ''
+
+        return {
+          output,
+          lastChar
+        }
+
+      } catch (error) {
+        // Incrementally increase the size of the JSON string to parse
+        lastChar += 1
+      }
+    }
+
+    return null
   }
 }

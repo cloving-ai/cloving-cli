@@ -14,7 +14,7 @@ import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 
-import type { GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
+import type { OpenAIStreamChunk, GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
 
 class ClovingGPT {
   public adapter: Adapter
@@ -120,7 +120,7 @@ class ClovingGPT {
     request.stream = true
     request.temperature ||= this.temperature
 
-    const endpoint = this.adapter.getEndpoint()
+    const endpoint = this.adapter.getEndpoint(this.stream)
     const payload = this.adapter.getPayload(request, this.stream)
     const headers = this.adapter.getHeaders(this.apiKey)
 
@@ -164,7 +164,7 @@ class ClovingGPT {
   public async generateText(request: GPTRequest): Promise<string> {
     request.temperature ||= this.temperature
 
-    const endpoint = this.adapter.getEndpoint()
+    const endpoint = this.adapter.getEndpoint(this.stream)
     const payload = this.adapter.getPayload(request, this.stream)
     const headers = this.adapter.getHeaders(this.apiKey)
 
@@ -182,12 +182,12 @@ class ClovingGPT {
       if (errorMessage === '') {
         errorMessage = 'connection error'
       }
-      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint()}):`, errorMessage)
+      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)}):`, errorMessage)
       throw error
     }
   }
 
-  public convertStream(data: string): string | null {
+  convertStream(data: string): OpenAIStreamChunk | null {
     return this.adapter.convertStream(data)
   }
 }

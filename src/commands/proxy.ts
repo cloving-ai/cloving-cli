@@ -77,7 +77,8 @@ ${content}`
           const chunkString = chunk.toString()
           const convertedChunk = gpt.convertStream(chunkString)
           if (convertedChunk) {
-            convertedChunks.push(convertedChunk)
+            const { output } = convertedChunk
+            convertedChunks.push(output)
             // check if convertedChunks.join('\n') has two 'data:' strings in it
             if (convertedChunks.join('\n').split('data: ').length > 2) {
               res.write(convertedChunks.join('\n'))
