@@ -1,5 +1,15 @@
 export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
+export interface OpenAIStreamChunk {
+  output: string
+  lastChar: number
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface GPTRequest {
   prompt: string
   maxTokens?: number
@@ -15,6 +25,9 @@ export interface ClovingGPTOptions {
   save?: boolean
   interactive?: boolean
   temperature?: number
+  port?: number
+  stream?: boolean
+  timeout?: number
 }
 
 export interface ClovingModelConfig {

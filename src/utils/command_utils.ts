@@ -9,7 +9,7 @@ export const SPECIAL_FILES = [
   '.csproj', 'packages.config', 'composer.json', 'CMakeLists.txt', 'conanfile.txt', 'conanfile.py',
   'go.mod', 'Cargo.toml', 'Package.swift', 'build.gradle.kts', 'Podfile', 'Cartfile', 'cpanfile',
   'DESCRIPTION', 'mix.exs', 'build.sbt', 'pubspec.yaml', 'stack.yaml', 'cabal.project', 'Project.toml',
-  'rockspec', 'rebar.config', 'project.clj'
+  'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json'
 ]
 
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {

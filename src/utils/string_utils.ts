@@ -1,3 +1,6 @@
+import fs from 'fs'
+import path from 'path'
+
 // Function to estimate token count
 export const estimateTokens = async (text: string): Promise<number> => {
   const charCount = text.length
@@ -109,7 +112,7 @@ export const extractFilesAndContent = (rawCodeCommand: string | undefined): [str
   for (const match of matches) {
     const fileName = match.replace(/\*{2}/g, '').trim()
     const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}`, 'g');
+    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}(\n|$)`, 'g');
     const contentMatch = regex.exec(rawCodeCommand)
     if (contentMatch) {
       files.push(fileName)
@@ -123,4 +126,17 @@ export const extractFilesAndContent = (rawCodeCommand: string | undefined): [str
   }
 
   return [files, fileContents]
+}
+
+export const saveGeneratedFiles = async (files: string[], fileContents: Record<string, string>): Promise<void> => {
+  for (const file of files) {
+    if (fileContents[file]) {
+      const filePath = path.resolve(file)
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+      await fs.promises.writeFile(filePath, fileContents[file])
+      console.log(`${file} has been saved.`)
+    } else {
+      console.log(`File content not found for ${file}.`)
+    }
+  }
 }

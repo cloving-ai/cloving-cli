@@ -1,5 +1,5 @@
 import { Adapter } from '.'
-import { GPTRequest } from '../../utils/types'
+import type { GPTRequest, OpenAIStreamChunk } from '../../utils/types'
 
 export class ClaudeAdapter implements Adapter {
   private model: string
@@ -36,7 +36,7 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 
-  getPayload(request: GPTRequest): Record<string, any> {
+  getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model.replace(':', '-'),
       system: 'You are a computer programmer giving advice on how to write better code.',
@@ -44,7 +44,8 @@ export class ClaudeAdapter implements Adapter {
         { role: 'user', content: request.prompt }
       ],
       max_tokens: request.maxTokens || 4096,
-      temperature: request.temperature || 0.2
+      temperature: request.temperature || 0.2,
+      stream
     }
   }
 
@@ -60,5 +61,37 @@ export class ClaudeAdapter implements Adapter {
       console.error('Error extracting response:', error)
       throw error
     }
+  }
+
+  // data example: data: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hello, how are you?' } }
+  convertStream(data: string): OpenAIStreamChunk | null {
+    let beginningChar = 0
+    let lastChar = 0
+
+    while (lastChar < data.length) {
+      try {
+        let remainingString = data.slice(beginningChar, lastChar)
+
+        // Strip any leading characters until we encounter the first '{' in this block
+        const firstBraceIndex = remainingString.indexOf('{')
+        if (firstBraceIndex > -1) {
+          remainingString = remainingString.slice(firstBraceIndex)
+        }
+
+        const parsedObject = JSON.parse(remainingString)
+        const output = parsedObject?.delta?.text || ''
+
+        return {
+          output,
+          lastChar
+        }
+
+      } catch (error) {
+        // Incrementally increase the size of the JSON string to parse
+        lastChar += 1
+      }
+    }
+
+    return null
   }
 }

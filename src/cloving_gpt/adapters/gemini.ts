@@ -1,5 +1,5 @@
 import { Adapter } from '.'
-import { GPTRequest } from '../../utils/types'
+import type { OpenAIStreamChunk, GPTRequest } from '../../utils/types'
 
 export class GeminiAdapter implements Adapter {
   private model: string
@@ -20,8 +20,12 @@ export class GeminiAdapter implements Adapter {
     })
   }
 
-  getEndpoint(): string {
-    return `https://generativelanguage.googleapis.com/v1beta/models/${this.model.replace(':', '-')}:generateContent`
+  getEndpoint(stream: boolean = false): string {
+    if (stream) {
+      return `https://generativelanguage.googleapis.com/v1beta/models/${this.model.replace(':', '-')}:streamGenerateContent`
+    } else {
+      return `https://generativelanguage.googleapis.com/v1beta/models/${this.model.replace(':', '-')}:generateContent`
+    }
   }
 
   getHeaders(apiKey: string): Record<string, string> {
@@ -31,7 +35,7 @@ export class GeminiAdapter implements Adapter {
     }
   }
 
-  getPayload(request: GPTRequest): Record<string, any> {
+  getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       contents: [
         {
@@ -43,7 +47,7 @@ export class GeminiAdapter implements Adapter {
         }
       ],
       generationConfig: {
-        temperature: 0.2,
+        temperature: request.temperature || 0.2,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 1024
@@ -63,5 +67,36 @@ export class GeminiAdapter implements Adapter {
       console.error('Error extracting response:', error)
       throw error
     }
+  }
+
+  convertStream(data: string): OpenAIStreamChunk | null {
+    let beginningChar = 0
+    let lastChar = 0
+
+    while (lastChar < data.length) {
+      try {
+        let remainingString = data.slice(beginningChar, lastChar)
+
+        // Strip any leading characters until we encounter the first '{' in this block
+        const firstBraceIndex = remainingString.indexOf('{')
+        if (firstBraceIndex > -1) {
+          remainingString = remainingString.slice(firstBraceIndex)
+        }
+
+        const parsedObject = JSON.parse(remainingString)
+        const output = parsedObject?.candidates[0]?.content?.parts[0]?.text || ''
+
+        return {
+          output,
+          lastChar
+        }
+
+      } catch (error) {
+        // Incrementally increase the size of the JSON string to parse
+        lastChar += 1
+      }
+    }
+
+    return null
   }
 }

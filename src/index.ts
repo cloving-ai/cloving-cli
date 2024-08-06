@@ -5,7 +5,10 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import config from './commands/config'
 import init from './commands/init'
+import proxy from './commands/proxy'
+import tokens from './commands/tokens'
 import models from './commands/models'
+import chat from './commands/chat'
 import shell from './commands/generate/shell'
 import code from './commands/generate/code'
 import commit from './commands/generate/commit'
@@ -44,10 +47,33 @@ program
   .action(init)
 
 program
+  .command('chat')
+  .option('-f, --files <filenames...>', 'Specify filenames of files with context to use for generating code')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5:sonnet-20240620)')
+  .description('Start an interactive chat with cloving')
+  .action(chat)
+
+program
+  .command('proxy')
+  .option('-f, --files <filenames...>', 'Specify filenames of files with context to use for generating code')
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
+  .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5:sonnet-20240620)')
+  .description('Start a proxy server to use with cloving')
+  .action(proxy)
+
+program
   .command('models')
   .alias('m')
   .description('List available models')
   .action(models)
+
+program
+  .command('tokens')
+  .alias('t')
+  .option('-f, --files <filenames...>', 'Specify filenames of files with context to use for generating code')
+  .description('Estimate the number of tokens in the current working directory or specified files')
+  .action(tokens)
 
 program
   .command('commit')
