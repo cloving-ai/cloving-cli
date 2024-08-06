@@ -219,13 +219,15 @@ class ChatManager {
       let accumulatedContent = ''
 
       this.chunkManager.on('content', (buffer: string) => {
-        const convertedStream = this.gpt.convertStream(buffer)
+        let convertedStream = this.gpt.convertStream(buffer)
 
-        if (convertedStream !== null) {
+        while (convertedStream !== null) {
           const { output, lastChar } = convertedStream
           process.stdout.write(output)
           accumulatedContent += output
           this.chunkManager.clearBuffer(lastChar)
+          buffer = buffer.slice(lastChar)
+          convertedStream = this.gpt.convertStream(buffer)
         }
       })
 
