@@ -215,6 +215,7 @@ class ChatManager {
     fs.unlink(tempCommitFilePath, (err) => {
       if (err) throw err
     })
+    this.rl.prompt()
   }
 
   private isGitCommand(command: string): boolean {
