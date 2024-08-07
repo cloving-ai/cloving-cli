@@ -162,9 +162,9 @@ class ChatManager {
   private async handleSave() {
     const lastResponse = this.chatHistory.filter(msg => msg.role === 'assistant').pop()
     if (lastResponse) {
-      const [files, fileContents] = extractFilesAndContent(lastResponse.content)
-      if (files.length > 0) {
-        await saveGeneratedFiles(files, fileContents)
+      const fileContents = extractFilesAndContent(lastResponse.content)
+      if (Object.keys(fileContents).length > 0) {
+        await saveGeneratedFiles(fileContents)
         console.info('Files have been saved.')
       } else {
         console.info('No files found to save in the last response.')

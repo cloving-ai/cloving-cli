@@ -101,35 +101,69 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-export const extractFilesAndContent = (rawCodeCommand: string | undefined): [string[], Record<string, string>] => {
-  if (!rawCodeCommand) return [[], {}]
+export const extractFilesAndContent = (rawCodeCommand: string | undefined): Record<string, string> => {
+  if (!rawCodeCommand) return {}
   const files: string[] = []
   const fileContents: Record<string, string> = {}
 
-  const matches = rawCodeCommand.match(/(\*{2})([^\*]+)(\*{2})/g)
-  if (!matches) return [files, fileContents]
+  let currentIndex = 0
+  const commandLength = rawCodeCommand.length
 
-  for (const match of matches) {
-    const fileName = match.replace(/\*{2}/g, '').trim()
-    const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\*\\*${escapedFileName}\\*\\*\\n\\n\\\`{3}([\\s\\S]+?)\\\`{3}(\n|$)`, 'g');
-    const contentMatch = regex.exec(rawCodeCommand)
-    if (contentMatch) {
-      files.push(fileName)
-      let content = contentMatch[1]
+  while (currentIndex < commandLength) {
+    let fileNameStart = rawCodeCommand.indexOf('**', currentIndex)
+    if (fileNameStart === -1) break
 
-      // Remove the first word after the opening triple backticks
-      content = content.split('\n').map((line, idx) => idx === 0 ? line.replace(/^\w+\s*/, '') : line).join('\n')
+    let fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
+    if (fileNameEnd === -1) break
 
-      fileContents[fileName] = content.trim()
+    let nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
+    let nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
+
+    while (nextBoldStart !== -1 && nextCodeStart > nextBoldStart) {
+      fileNameStart = nextBoldStart
+      fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
+
+      nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
+      nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
     }
+
+    const fileName = rawCodeCommand.slice(fileNameStart + 2, fileNameEnd).trim()
+    files.push(fileName)
+
+    const codeBlockStart = rawCodeCommand.indexOf('\n```', fileNameEnd)
+    if (codeBlockStart === -1) break
+
+    let codeBlockEnd = codeBlockStart + 4
+    while (codeBlockEnd < commandLength) {
+      if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 5) === '\n```\n') {
+        break
+      } else if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 4) === '\n```' && codeBlockEnd + 4 === commandLength) {
+        break
+      }
+      codeBlockEnd++
+    }
+
+    if (codeBlockEnd >= commandLength) break
+
+    let content = rawCodeCommand.slice(codeBlockStart + 4, codeBlockEnd).trim()
+
+    const firstNewlineIndex = content.indexOf('\n')
+    if (firstNewlineIndex !== -1) {
+      content = content.slice(firstNewlineIndex + 1)
+    } else {
+      content = content.replace(/^\w+\s*/, '')
+    }
+
+    fileContents[fileName] = content.trim()
+
+    currentIndex = codeBlockEnd + 5
   }
 
-  return [files, fileContents]
+  return fileContents
 }
 
-export const saveGeneratedFiles = async (files: string[], fileContents: Record<string, string>): Promise<void> => {
-  for (const file of files) {
+export const saveGeneratedFiles = async (fileContents: Record<string, string>): Promise<void> => {
+  for (const file of Object.keys(fileContents)) {
     if (fileContents[file]) {
       const filePath = path.resolve(file)
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
