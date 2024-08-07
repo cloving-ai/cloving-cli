@@ -104,8 +104,8 @@ Do not use any data from the example response structure, only use the structure.
     })
   }
 
-  private async updateContextFiles(files: string[], fileContents: Record<string, string>): Promise<void> {
-    for (const file of files) {
+  private async updateContextFiles(fileContents: Record<string, string>): Promise<void> {
+    for (const file of Object.keys(fileContents)) {
       if (fileContents[file]) {
         this.contextFiles[file] = fileContents[file]
       }
@@ -113,11 +113,12 @@ Do not use any data from the example response structure, only use the structure.
   }
 
   private async handleUserAction(rawCodeCommand: string, prompt: string): Promise<void> {
-    const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
+    const fileContents = extractFilesAndContent(rawCodeCommand)
+    const files = Object.keys(fileContents)
 
     if (this.options.save) {
-      await saveGeneratedFiles(files, fileContents)
-      await this.updateContextFiles(files, fileContents)
+      await saveGeneratedFiles(fileContents)
+      await this.updateContextFiles(fileContents)
       return
     }
 
@@ -204,7 +205,7 @@ Do not use any data from the example response structure, only use the structure.
             await fs.promises.writeFile(filePath, fileContents[fileToSave])
 
             console.log(`${fileToSave} has been saved.`)
-            await this.updateContextFiles([fileToSave], fileContents)
+            await this.updateContextFiles({ [fileToSave]: fileContents[fileToSave] })
           } else {
             console.log('File content not found.')
           }
@@ -218,8 +219,8 @@ Do not use any data from the example response structure, only use the structure.
         }
         break
       case 'saveAll':
-        await saveGeneratedFiles(files, fileContents)
-        await this.updateContextFiles(files, fileContents)
+        await saveGeneratedFiles(fileContents)
+        await this.updateContextFiles(fileContents)
         console.log('All files have been saved.')
         break
       case 'done':
@@ -289,9 +290,9 @@ Please briefly explain how the code works in this.`
       this.displayGeneratedCode(rawCodeCommand)
 
       if (this.options.save) {
-        const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
-        await saveGeneratedFiles(files, fileContents)
-        await this.updateContextFiles(files, fileContents)
+        const fileContents = extractFilesAndContent(rawCodeCommand)
+        await saveGeneratedFiles(fileContents)
+        await this.updateContextFiles(fileContents)
       } else {
         await this.handleUserAction(rawCodeCommand, prompt)
       }
@@ -322,9 +323,9 @@ Please briefly explain how the code works in this.`
             this.displayGeneratedCode(rawCodeCommand)
 
             if (this.options.save || this.options.interactive) {
-              const [files, fileContents] = extractFilesAndContent(rawCodeCommand)
-              await saveGeneratedFiles(files, fileContents)
-              await this.updateContextFiles(files, fileContents)
+              const fileContents = extractFilesAndContent(rawCodeCommand)
+              await saveGeneratedFiles(fileContents)
+              await this.updateContextFiles(fileContents)
             } else {
               await this.handleUserAction(rawCodeCommand, newPrompt)
             }

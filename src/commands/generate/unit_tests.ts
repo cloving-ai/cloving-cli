@@ -67,7 +67,8 @@ Also, list any test files that might be relevant to these files.`
 }
 
 const handleUserAction = async (analysis: string, autoSave: boolean = false): Promise<void> => {
-  const [files, fileContents] = extractFilesAndContent(analysis)
+  const fileContents = extractFilesAndContent(analysis)
+  const files = Object.keys(fileContents)
 
   if (autoSave) {
     for (const file of files) {
