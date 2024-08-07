@@ -12,7 +12,7 @@ import { extractFilesAndContent, saveGeneratedFiles, extractMarkdown } from '../
 import { getAllFilesInDirectory } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
-const PREAMBLE = `Don't apologize and when generating code, always include filenames in bold with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`;
+const PREAMBLE = `When generating code, don't apologize and wherever possible include filenames in bold with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`;
 
 class ChatManager {
   private gpt: ClovingGPT
@@ -25,6 +25,7 @@ class ChatManager {
   private contextFiles: Record<string, string> = {}
   private chunkManager: ChunkManager
   private prompt: string = ''
+  private isProcessing: boolean = false
 
   constructor(private options: ClovingGPTOptions) {
     options.stream = true
@@ -78,6 +79,10 @@ class ChatManager {
   }
 
   private async handleLine(line: string) {
+    if (this.isProcessing) {
+      return
+    }
+
     if (this.isMultilineMode) {
       if (line.trim() === '```') {
         this.isMultilineMode = false
@@ -91,12 +96,12 @@ class ChatManager {
     } else if (line.trim() === '```') {
       this.isMultilineMode = true
       this.multilineInput = ''
-      console.log('Entering multiline mode. Type ``` on a new line to end.')
+      console.log('Entering multiline mode. Type ``` on a new line to end.\n')
       this.rl.prompt()
       return
     }
 
-    const trimmedLine = line.trim().toLowerCase()
+    const trimmedLine = line.trim()
 
     if (trimmedLine === '') {
       this.rl.prompt()
@@ -105,7 +110,7 @@ class ChatManager {
 
     this.updateCommandHistory(trimmedLine)
 
-    if (trimmedLine === 'exit') {
+    if (trimmedLine.toLowerCase() === 'exit') {
       this.rl.close()
       return
     }
@@ -210,6 +215,14 @@ class ChatManager {
   }
 
   private async processUserInput(input: string) {
+    if (this.isProcessing) {
+      console.log('Please wait for the current request to complete.')
+      return
+    }
+
+    this.isProcessing = true
+    this.chunkManager = new ChunkManager()
+
     try {
       this.chatHistory.push({ role: 'user', content: input })
 
@@ -238,11 +251,15 @@ class ChatManager {
 
       responseStream.data.on('end', () => {
         this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
+        this.isProcessing = false
+        process.stdout.write('\n')
         this.rl.prompt()
       })
 
       responseStream.data.on('error', (error: Error) => {
         console.error('Error streaming response:', error)
+        this.isProcessing = false
+        process.stdout.write('\n')
         this.rl.prompt()
       })
     } catch (err) {
@@ -268,7 +285,8 @@ class ChatManager {
       // get token estimate for prompt
       const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
 
-      console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})`)
+      console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`)
+      this.isProcessing = false
       this.rl.prompt()
     }
   }
@@ -278,13 +296,24 @@ class ChatManager {
       .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
       .join('\n')
 
-    return `${contextFileContents}
+    const allButLast = this.chatHistory.slice(0, -1).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')
+    const lastUserMessage = this.chatHistory.slice(-1).map(msg => msg.content).join('\n\n')
 
-### Task
+    return `### Request
+
+${lastUserMessage}
+
+${contextFileContents}
+
+### Full Chat History Context
+
+${allButLast}
+
+### Current Request
 
 ${PREAMBLE}
 
-${this.chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')}`
+${lastUserMessage}`
   }
 
   private handleClose() {
