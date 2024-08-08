@@ -228,6 +228,7 @@ class ChatManager {
     } catch (error) {
       console.error('Error running command:', error)
     }
+    this.rl.prompt()
   }
 
   private async processUserInput(input: string) {
