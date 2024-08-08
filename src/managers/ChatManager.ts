@@ -6,6 +6,7 @@ import { execFileSync, execSync } from 'child_process'
 import type { AxiosError } from 'axios'
 
 import ChunkManager from './ChunkManager'
+import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { extractFilesAndContent, saveGeneratedFiles, extractMarkdown } from '../utils/string_utils'
@@ -139,6 +140,9 @@ class ChatManager {
       case 'commit':
         await this.handleCommit()
         break
+      case 'review':
+        await this.handleReview()
+        break
       default:
         if (this.isGitCommand(command)) {
           this.executeGitCommand(command)
@@ -159,6 +163,13 @@ class ChatManager {
     }
   }
 
+  private async handleReview() {
+    this.gpt.stream = false
+    const reviewManager = new ReviewManager(this.gpt, this.options)
+    await reviewManager.review()
+    this.gpt.stream = true
+  }
+
   private async handleSave() {
     const lastResponse = this.chatHistory.filter(msg => msg.role === 'assistant').pop()
     if (lastResponse) {
@@ -166,11 +177,14 @@ class ChatManager {
       if (Object.keys(fileContents).length > 0) {
         await saveGeneratedFiles(fileContents)
         console.info('Files have been saved.')
+        this.rl.prompt()
       } else {
         console.info('No files found to save in the last response.')
+        this.rl.prompt()
       }
     } else {
       console.error('No response to save files from.')
+      this.rl.prompt()
     }
   }
 
@@ -179,6 +193,7 @@ class ChatManager {
 
     if (!diff) {
       console.error('No changes to commit.')
+      this.rl.prompt()
       return
     }
 
@@ -200,6 +215,7 @@ class ChatManager {
     fs.unlink(tempCommitFilePath, (err) => {
       if (err) throw err
     })
+    this.rl.prompt()
   }
 
   private isGitCommand(command: string): boolean {
@@ -212,6 +228,7 @@ class ChatManager {
     } catch (error) {
       console.error('Error running command:', error)
     }
+    this.rl.prompt()
   }
 
   private async processUserInput(input: string) {
