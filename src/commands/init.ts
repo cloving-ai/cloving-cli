@@ -40,11 +40,8 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    const technologies = await input({
-      message: 'No special files detected. Please describe the main technologies used in your project:',
-      validate: (input) => input.trim().length > 0 || 'Please provide a description of the technologies used.',
-    })
-    specialFileContents['description'] = technologies
+    console.error('No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.')
+    return
   }
 
   const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)

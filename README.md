@@ -159,6 +159,30 @@ Options:
 - `-m, --model <model>`: Select the model to use
 - `-p, --prompt <prompt>`: Specify the prompt to use
 
+### Interactive Chat
+
+Start an interactive chat session with the AI:
+```bash
+cloving chat
+```
+Options:
+- `-f, --files <filenames...>`: Specify filenames of files with context to use for the chat
+- `-t, --temperature <temperature>`: Set the temperature for the model (default 0.2)
+- `-m, --model <model>`: Select the model to use
+
+### Token Estimation
+
+Estimate the number of tokens in the current working directory or specified files:
+```bash
+cloving tokens
+```
+or
+```bash
+cloving t
+```
+Options:
+- `-f, --files <filenames...>`: Specify filenames of files to estimate tokens for
+
 ### Generating Context
 
 Create a context string for generating prompts outside of the cloving cli:
@@ -179,30 +203,6 @@ Options:
 - `-f, --files <filenames...>`: Specify filenames for the unit tests
 - `-m, --model <model>`: Select the model to use
 
-### Project Commands
-
-Cloving now includes commands for managing entire projects:
-
-- Initialize a new project inside a git branch:
-  ```bash
-  cloving project init
-  ```
-
-- Plan the steps to complete the project:
-  ```bash
-  cloving project plan
-  ```
-
-- Generate code to build the project:
-  ```bash
-  cloving project build
-  ```
-
-- Clean up and finalize the project:
-  ```bash
-  cloving project complete
-  ```
-
 ## Command Line Options
 
 Usage: `cloving [command] [options]`
@@ -214,6 +214,8 @@ Options:
 Commands:
 - `config`: Configure Cloving with your API key and models to use
 - `init`: Setup Cloving in the current directory
+- `chat`: Start an interactive chat with Cloving
+- `tokens`: Estimate the number of tokens in the current working directory or specified files
 - `models`: List available models
 - `commit`: Alias for cloving generate commit
 - `generate`: Generate various items like unit-tests and code reviews
@@ -223,11 +225,6 @@ Commands:
   - `shell`: Generate a shell command based on a prompt
   - `unit-tests`: Generate unit tests
   - `review`: Review the code for committed changes
-- `project`: Commands for managing Cloving projects
-  - `init`: Setup a new Cloving project inside a git branch
-  - `plan`: Plan the steps to complete the project
-  - `build`: Generate code to build the project
-  - `complete`: Clean up and finalize the project
 
 Most commands support the following options:
 - `-s, --silent`: Run the command without asking for confirmation of submitting prompts
