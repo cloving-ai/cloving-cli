@@ -296,42 +296,6 @@ Please briefly explain how the code works in this.`
       } else {
         await this.handleUserAction(rawCodeCommand, prompt)
       }
-
-      if (this.options.interactive) {
-        let continueInteractive = true
-        while (continueInteractive) {
-          const newPrompt = await input({
-            message: 'Revise the code (or press enter to finish):',
-          })
-
-          if (newPrompt.trim() === '') {
-            continueInteractive = false
-          } else {
-            let includeMoreFiles = true
-            while (includeMoreFiles) {
-              const contextFile = await input({
-                message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
-              })
-
-              if (contextFile) {
-                this.contextFiles = await addFileOrDirectoryToContext(contextFile, this.contextFiles, this.options)
-              } else {
-                includeMoreFiles = false
-              }
-            }
-            rawCodeCommand = await this.generateCode(newPrompt, rawCodeCommand)
-            this.displayGeneratedCode(rawCodeCommand)
-
-            if (this.options.save || this.options.interactive) {
-              const fileContents = extractFilesAndContent(rawCodeCommand)
-              await saveGeneratedFiles(fileContents)
-              await this.updateContextFiles(fileContents)
-            } else {
-              await this.handleUserAction(rawCodeCommand, newPrompt)
-            }
-          }
-        }
-      }
     } catch (error) {
       console.error('Could not generate code', error)
     }

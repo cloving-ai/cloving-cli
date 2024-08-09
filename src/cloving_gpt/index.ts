@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import axios, { AxiosResponse } from 'axios'
+import axios, { AxiosResponse, AxiosError } from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
 import { confirm } from '@inquirer/prompts'
@@ -145,7 +145,7 @@ class ClovingGPT {
           timeout: this.timeout
         })
       } catch (err) {
-        const error = err as any
+        const error = err as AxiosError
         if (error.response && error.response.status === 429) {
           attempt++
           const tokenCount = payload.messages.reduce((acc: number, message: any) => acc + Math.ceil(message.content.length / 4), 0).toLocaleString()
@@ -177,12 +177,13 @@ class ClovingGPT {
     try {
       const response = await axios.post(endpoint, payload, { headers })
       return this.adapter.extractResponse(response.data)
-    } catch (error) {
+    } catch (err) {
+      const error = err as AxiosError
       let errorMessage = error instanceof Error ? error.message : 'connection error'
       if (errorMessage === '') {
         errorMessage = 'connection error'
       }
-      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)}):`, errorMessage)
+      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${JSON.stringify(error.response?.data || "''", null, 2)}\n`)
       throw error
     }
   }

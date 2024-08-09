@@ -15,10 +15,6 @@ import commit from './commands/generate/commit'
 import context from './commands/generate/context'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
-import initProject from './commands/project/init'
-import planProject from './commands/project/plan'
-import buildProject from './commands/project/build'
-import completeProject from './commands/project/complete'
 
 // Function to get version from package.json
 const getPackageVersion = () => {
@@ -147,35 +143,5 @@ generate
   .option('-m, --model <model>', 'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)')
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(analyze)
-
-// Project commands
-const project = program
-  .command('project')
-  .alias('p')
-  .description('Commands for cloving a project')
-
-project
-  .command('init')
-  .alias('i')
-  .description('Setup a new cloving project inside a git branch')
-  .action(initProject)
-
-project
-  .command('plan')
-  .alias('p')
-  .description('Plan the steps to complete the project')
-  .action(planProject)
-
-project
-  .command('build')
-  .alias('b')
-  .description('Generate code to build the project')
-  .action(buildProject)
-
-project
-  .command('complete')
-  .alias('c')
-  .description('Clean up and finalize the project')
-  .action(completeProject)
 
 program.parse(process.argv)
