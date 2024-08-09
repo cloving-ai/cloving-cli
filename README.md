@@ -170,6 +170,19 @@ Options:
 - `-t, --temperature <temperature>`: Set the temperature for the model (default 0.2)
 - `-m, --model <model>`: Select the model to use
 
+### Proxy Server
+
+Start a proxy server to use with Cloving:
+```bash
+cloving proxy
+```
+Options:
+- `-f, --files <filenames...>`: Specify filenames of files with context to use for generating code
+- `-t, --temperature <temperature>`: Set the temperature for the model (default 0.2)
+- `-m, --model <model>`: Select the model to use
+
+The proxy server allows you to integrate Cloving with other tools or applications. It starts a local server that can receive requests and forward them to the AI model, returning the responses. This is useful for creating custom integrations or using Cloving in scenarios where a direct CLI interaction isn't suitable.
+
 ### Token Estimation
 
 Estimate the number of tokens in the current working directory or specified files:
@@ -216,6 +229,7 @@ Commands:
 - `init`: Setup Cloving in the current directory
 - `chat`: Start an interactive chat with Cloving
 - `tokens`: Estimate the number of tokens in the current working directory or specified files
+- `proxy`: Start a proxy server to use with Cloving
 - `models`: List available models
 - `commit`: Alias for cloving generate commit
 - `generate`: Generate various items like unit-tests and code reviews
