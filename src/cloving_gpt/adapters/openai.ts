@@ -5,6 +5,7 @@ export class OpenAIAdapter implements Adapter {
   private model: string
 
   static supportedModels: string[] = [
+    'openai:gpt:4o-2024-08-06',
     'openai:gpt:4o',
     'openai:gpt:4o-mini',
     'openai:gpt:4-turbo',
