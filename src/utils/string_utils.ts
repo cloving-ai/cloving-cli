@@ -103,7 +103,10 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-export const extractCurrentNewBlocks = (input: string): CurrentNewBlock[] => {
+export const extractCurrentNewBlocks = (input?: string | undefined): CurrentNewBlock[] => {
+  if (!input)
+    return []
+
   const blocks: CurrentNewBlock[] = []
   let currentIndex = 0
   const inputLength = input.length
