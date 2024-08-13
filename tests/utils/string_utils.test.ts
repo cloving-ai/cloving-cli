@@ -1,29 +1,69 @@
-import { extractFilesAndContent, extractMarkdown } from '../../src/utils/string_utils';
+import { extractCurrentNewBlocks, extractMarkdown } from '../../src/utils/string_utils';
 
 describe('stringUtils', () => {
-  describe('extractFilesAndContent', () => {
-    test('should extract file names and content from raw code command', () => {
-      const rawCodeCommand = "**file1.txt**\n\n```plaintext\nContent of file 1\n```\n**file2.txt**\n\n```plaintext\nContent of file 2\n```";
-      const fileContents = extractFilesAndContent(rawCodeCommand);
-      expect(fileContents).toEqual({
-        "file1.txt": "Content of file 1",
-        "file2.txt": "Content of file 2"
-      });
+  describe('extractCurrentNewBlocks', () => {
+    test('should extract current and new blocks from input', () => {
+      const input = `
+<<<<<<< CURRENT src/file1.ts
+const oldVar = 1;
+=======
+const newVar = 2;
+>>>>>>> NEW
+
+Some text in between
+
+<<<<<<< CURRENT src/file2.ts
+function oldFunction() {
+  return 'old';
+}
+=======
+function newFunction() {
+  return 'new';
+}
+>>>>>>> NEW
+      `;
+
+      const result = extractCurrentNewBlocks(input);
+
+      expect(result).toEqual([
+        {
+          filePath: 'src/file1.ts',
+          currentContent: 'const oldVar = 1;',
+          newContent: 'const newVar = 2;'
+        },
+        {
+          filePath: 'src/file2.ts',
+          currentContent: 'function oldFunction() {\n  return \'old\';\n}',
+          newContent: 'function newFunction() {\n  return \'new\';\n}'
+        }
+      ]);
     });
 
-    test('should extract file names and content from plain text descriptions', () => {
-      const rawCodeCommand = "here is the **file1.txt** as requested:\n\n```plaintext\nContent of file 1\n```\n\nand **maybe** here is **file2.txt**\n\n```plaintext\nContent of file 2\n```";
-      const fileContents = extractFilesAndContent(rawCodeCommand);
-      expect(fileContents).toEqual({
-        "file1.txt": "Content of file 1",
-        "file2.txt": "Content of file 2"
-      });
+    test('should handle empty current content', () => {
+      const input = `
+<<<<<<< CURRENT src/newfile.ts
+=======
+const newContent = 'This is new';
+>>>>>>> NEW
+      `;
+
+      const result = extractCurrentNewBlocks(input);
+
+      expect(result).toEqual([
+        {
+          filePath: 'src/newfile.ts',
+          currentContent: '',
+          newContent: 'const newContent = \'This is new\';'
+        }
+      ]);
     });
 
-    test('should return empty arrays if no matches are found', () => {
-      const rawCodeCommand = "No files here.";
-      const fileContents = extractFilesAndContent(rawCodeCommand);
-      expect(fileContents).toEqual({});
+    test('should return an empty array if no blocks are found', () => {
+      const input = 'No blocks here';
+
+      const result = extractCurrentNewBlocks(input);
+
+      expect(result).toEqual([]);
     });
   });
 

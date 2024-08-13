@@ -226,8 +226,6 @@ class ChatManager {
 
       this.prompt = this.generatePrompt(input)
 
-      console.log(this.chatHistory)
-
       const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
 
       let accumulatedContent = ''
