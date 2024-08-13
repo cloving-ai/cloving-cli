@@ -1,5 +1,4 @@
 import unitTests from '../../../src/commands/generate/unit_tests';
-import { getGitDiff } from '../../../src/utils/git_utils';
 import ClovingGPT from '../../../src/cloving_gpt';
 
 jest.mock('../../../src/utils/git_utils', () => ({
