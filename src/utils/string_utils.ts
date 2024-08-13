@@ -148,6 +148,12 @@ export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): P
       // Read the current file content
       let fileContent = await fs.promises.readFile(filePath, 'utf-8')
 
+      // Check if the current content exists in the file
+      if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
+        console.error(`ERROR: Current content not found in ${block.filePath}`)
+        continue
+      }
+
       // Replace the current content with the new content
       if (block.currentContent.trim() === '') {
         fileContent = block.newContent

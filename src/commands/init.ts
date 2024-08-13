@@ -1,13 +1,13 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { input, confirm } from '@inquirer/prompts'
+import { confirm } from '@inquirer/prompts'
 import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
 import { generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
-import type { ClovingGPTOptions } from '../utils/types'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 // Main function for the describe command
 export const init = async (options: ClovingGPTOptions) => {
@@ -16,62 +16,11 @@ export const init = async (options: ClovingGPTOptions) => {
   const specialFileContents = collectSpecialFileContents()
   const specialFileNames = Object.keys(specialFileContents).map(file => ' - ' + file)
 
-  if (!options.silent) {
-    if (specialFileNames.length > 0) {
-      console.log(`Cloving will analyze the list of files and the contents of the following files:
-
-${specialFileNames.join("\n")}
-
-Cloving will send AI a request to summarize the technologies used in this project.
-
-This will provide better context for future Cloving requests.`)
-    } else {
-      console.log(`
-This script will analyze the list of files in the current directory using GPT to summarize the
-technologies used. This will provide better context for future Cloving requests.
-      `)
-    }
-  }
-
-  const config = getConfig(options)
-  if (!config || !config?.models) {
-    console.error('No cloving configuration found. Please run `cloving config`')
-    return
-  }
-
-  if (!checkForSpecialFiles()) {
-    console.error('No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.')
-    return
-  }
-
-  const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
-
-  try {
-    const gitignorePath = path.join(process.cwd(), '.gitignore')
-    const ig = ignore()
-    if (fs.existsSync(gitignorePath)) {
-      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8')
-      ig.add(gitignoreContent)
-    }
-
-    const fileList = await generateFileList()
-    const filteredFileList = fileList.filter(file => {
-      try {
-        return !ig.ignores(file)
-      } catch (error) {
-        return false
-      }
-    })
-
-    const limitedFileList = filteredFileList.slice(0, 100)
-
-    const projectDetails = {
-      files: limitedFileList,
-      specialFiles: specialFileContents
-    }
-
-    const prompt = `Here is a JSON object describing my project:
-${JSON.stringify(projectDetails, null, 2)}
+  // Initialize chat history
+  const chatHistory: ChatMessage[] = [
+    {
+      role: 'system',
+      content: `You are an AI assistant helping to initialize a project by analyzing its structure and technologies.
 
 Please return JSON-formatted metadata about the project, including:
 
@@ -195,8 +144,72 @@ Here is an example response:
   ],
   "projectType": "Command-line tool",
 }`
+    }
+  ]
 
-    const aiChatResponse = await gpt.generateText({ prompt })
+  if (!options.silent) {
+    if (specialFileNames.length > 0) {
+      console.log(`Cloving will analyze the list of files and the contents of the following files:
+
+${specialFileNames.join("\n")}
+
+Cloving will send AI a request to summarize the technologies used in this project.
+
+This will provide better context for future Cloving requests.`)
+    } else {
+      console.log(`
+This script will analyze the list of files in the current directory using GPT to summarize the
+technologies used. This will provide better context for future Cloving requests.
+      `)
+    }
+  }
+
+  const config = getConfig(options)
+  if (!config || !config?.models) {
+    console.error('No cloving configuration found. Please run `cloving config`')
+    return
+  }
+
+  if (!checkForSpecialFiles()) {
+    console.error('No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.')
+    return
+  }
+
+  const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
+
+  try {
+    const gitignorePath = path.join(process.cwd(), '.gitignore')
+    const ig = ignore()
+    if (fs.existsSync(gitignorePath)) {
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8')
+      ig.add(gitignoreContent)
+    }
+
+    const fileList = await generateFileList()
+    const filteredFileList = fileList.filter(file => {
+      try {
+        return !ig.ignores(file)
+      } catch (error) {
+        return false
+      }
+    })
+
+    const limitedFileList = filteredFileList.slice(0, 100)
+
+    const projectDetails = {
+      files: limitedFileList,
+      specialFiles: specialFileContents
+    }
+
+    const prompt = `Here is a JSON object describing my project:
+${JSON.stringify(projectDetails, null, 2)}`
+
+    chatHistory.push({ role: 'user', content: prompt })
+
+    const aiChatResponse = await gpt.generateText({ prompt, messages: chatHistory })
+
+    chatHistory.push({ role: 'assistant', content: aiChatResponse })
+
     const cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
 
     fs.writeFileSync(tempFilePath, cleanAiChatResponse)
