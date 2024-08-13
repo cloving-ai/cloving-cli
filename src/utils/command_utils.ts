@@ -15,16 +15,20 @@ export const SPECIAL_FILES = [
 
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
-  const specialFiles = Object.keys(specialFileContents).map((file) => `## Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
-  const contextFileContents = Object.keys(contextFilesContent).map((file) => `## Contents of ${file}\n\n${contextFilesContent[file]}\n\n`).join('\n')
+  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
+  const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of ${file}\n\n${contextFilesContent[file]}\n\n`).join('\n')
 
   const prompt = `## Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
-${specialFiles}
+## Special Files
 
-${contextFileContents}
+${specialFiles.length > 0 ? specialFiles : 'No special files provided.'}
+
+## Context Files
+
+${contextFileContents.length > 0 ? contextFileContents : 'No context files provided.'}
 
 ## Directory structure
 
@@ -52,16 +56,15 @@ Every *CURRENT/NEW* Block must follow all of these rules:
 
 1. Start a *CURRENT/NEW* Block with three backticks and the code's programming language name, eg: \`\`\`typescript
 2. On the next line, there should be with seven < chars, then the word CURRENT in capitals, and finally the file path alone at the end of the line, eg: <<<<<<< CURRENT path/to/file.ts
-4. Then there should be a contiguous chunk of code with the spaces and newlines intact from the original source
+4. Then put a chunk of text that *EXACTLY MATCHES* the existing source code that will be replaced, character for character, space for space, semi-colon for semi-colon, including all comments, docstrings, ;, etc. Nothing missing. Nothing extra. The only exception is that if you are going to replace a whole file, this part should be empty.
 5. Put a single dividing line of seven = chars, eg: =======
-6. The code lines to replace into the source code, with the spaces at the beginning and end of the block matching the original source code
+6. Put the new code that will replace this existing code, with the spaces at the beginning and end of the block matching the original source code
 7. The end of the *CURRENT/NEW* Block with seven > and the word NEW in capitals: >>>>>>> NEW
 8. Finally close the *CURRENT/NEW* Block with just three backticks on its own line: \`\`\`
-9. Every *CURRENT* area must *EXACTLY MATCH* the existing source code, character for character, space for space, including all comments, docstrings, etc.
-10. Every *CURRENT* area must include the code that will change and a few lines around it if needed for uniqueness, you only need to show a few lines of unique code, not an entire function
-11. To move code, make two *CURRENT/NEW* blocks, one to remove the code from the old location and one to add it to the new location
-12. If you need to add code, the *CURRENT* block will be empty, and the *NEW* block will contain the new code with a file path to the full path of the new file, including the directory and file name
-13. Code should only use *CURRENT/NEW* Blocks, never show code without them
+9. Every *CURRENT* area must include the code that will change and a few lines around it if needed for uniqueness, you only need to show a few lines of unique code, not an entire function
+10. To move code, make two *CURRENT/NEW* blocks, one to remove the code from the old location and one to add it to the new location
+11. If you need to add code, the *CURRENT* block will be empty, and the *NEW* block will contain the new code with a file path to the full path of the new file, including the directory and file name
+12. Code should only use *CURRENT/NEW* Blocks, never show code without them
 
 ## Examples of *CURRENT/NEW* Blocks
 
@@ -69,13 +72,15 @@ Every *CURRENT/NEW* Block must follow all of these rules:
 
 \`\`\`typescript
 <<<<<<< CURRENT path/to/file.ts
+const myVariable = 'exact'
 const oldVariable = 1
 =======
+const myVariable = 'exact'
 const newVariable = 2
 >>>>>>> NEW
 \`\`\`
 
-### Example 2: Adding a New File
+### Example 2: Create a New File
 
 \`\`\`ruby
 <<<<<<< CURRENT path/to/newfile.rb
@@ -119,11 +124,28 @@ def old_function():
 \`\`\`java
 <<<<<<< CURRENT path/to/file.java
 public void oldFunction() {
-  System.out.println("Old function");
+  System.out.println("Old function")
 }
 =======
 >>>>>>> NEW
-\`\`\``
+\`\`\`
+
+### Example 5: Replace a file
+
+This will replace the entire contents of **path/to/file.rb** with the new content:
+
+\`\`\`ruby
+<<<<<<< CURRENT path/to/file.rb
+=======
+def new_function
+  puts 'Hello, world!'
+end
+>>>>>>> NEW
+\`\`\`
+
+## Golden Rule
+
+Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section. If a needed filename hasn't been provided in the *Context Files* section, ask the user to provide it in the context by adding -f path/to/file to the command.`
   return prompt
 }
 
@@ -235,29 +257,56 @@ export const readFileContent = (file: string): string => {
   }
 }
 
+const addFileToContext = async (
+  filePath: string,
+  contextFiles: Record<string, string>,
+  baseDir: string
+): Promise<void> => {
+  const relativePath = path.relative(baseDir, filePath)
+  if (await isBinaryFile(filePath)) {
+    return
+  }
+  const content = await fs.promises.readFile(filePath, 'utf-8')
+  contextFiles[relativePath] = content
+}
+
+const addDirectoryToContext = async (
+  dirPath: string,
+  contextFiles: Record<string, string>,
+  baseDir: string
+): Promise<void> => {
+  const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules' && entry.name !== '.git') {
+        await addDirectoryToContext(fullPath, contextFiles, baseDir)
+      }
+    } else {
+      await addFileToContext(fullPath, contextFiles, baseDir)
+    }
+  }
+}
+
 export const addFileOrDirectoryToContext = async (
   contextFile: string,
   contextFiles: Record<string, string>,
   options: Record<string, any>
 ): Promise<Record<string, string>> => {
   const filePath = path.resolve(contextFile)
-  if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
-    // Add all files in the specified directory
-    const files = await getAllFiles(options, false)
-    for (const file of files) {
-      // if the file is in the same directory as the context file, add it to the context
-      if (path.dirname(file) === path.dirname(filePath)) {
-        const content = await fs.promises.readFile(file, 'utf-8')
-        contextFiles[path.relative(process.cwd(), file)] = content
-      }
+  const baseDir = process.cwd()
+
+  try {
+    const stats = await fs.promises.stat(filePath)
+    if (stats.isDirectory()) {
+      await addDirectoryToContext(filePath, contextFiles, baseDir)
+      console.log(`Added contents of ${contextFile} to context.`)
+    } else if (stats.isFile()) {
+      await addFileToContext(filePath, contextFiles, baseDir)
     }
-    console.log(`Added contents of ${contextFile} to context.`)
-  } else if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
-    const content = await fs.promises.readFile(filePath, 'utf-8')
-    contextFiles[contextFile] = content
-    console.log(`Added ${filePath} to context.`)
-  } else {
+  } catch (error) {
     console.log(`File or directory ${contextFile} does not exist.`)
   }
+
   return contextFiles
 }

@@ -216,7 +216,7 @@ ${JSON.stringify(projectDetails, null, 2)}`
 
     // Save the AI chat response to cloving.json
     fs.writeFileSync('cloving.json', cleanAiChatResponse)
-    console.log('[done] Project data saved to cloving.json')
+    console.log('Project data saved to cloving.json')
 
     // Prompt the user if they want to review the generated cloving.json
     if (!options.silent) {
