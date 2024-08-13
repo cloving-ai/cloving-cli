@@ -5,12 +5,19 @@ export interface OpenAIStreamChunk {
   lastChar: number
 }
 
+export interface CurrentNewBlock {
+  filePath: string;
+  currentContent: string;
+  newContent: string;
+}
+
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
 }
 
 export interface GPTRequest {
+  messages?: ChatMessage[]
   prompt: string
   maxTokens?: number
   temperature?: number

@@ -8,7 +8,7 @@ import ClovingGPT from '../cloving_gpt'
 import { getGitDiff } from '../utils/git_utils'
 import { parseMarkdownInstructions } from '../utils/string_utils'
 import { getAllFilesInDirectory } from '../utils/command_utils'
-import { getClovingConfig } from '../utils/config_utils'
+import { getConfig, getClovingConfig } from '../utils/config_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 class ReviewManager {
@@ -16,9 +16,10 @@ class ReviewManager {
   private options: ClovingGPTOptions
   private contextFiles: Record<string, string> = {}
 
-  constructor(gpt: ClovingGPT, options: ClovingGPTOptions) {
-    this.gpt = gpt
+  constructor(options: ClovingGPTOptions) {
+    options.silent = getConfig(options).globalSilent || false
     this.options = options
+    this.gpt = new ClovingGPT(options)
   }
 
   private async loadContextFiles() {

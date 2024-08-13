@@ -254,5 +254,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Acknowledgements
 
-- This project is inspired by [aichat](https://github.com/sigoden/aichat) for interfacing with AI models.
+- This project is inspired by [aichat](https://github.com/sigoden/aichat) and [aider](https://github.com/paul-gauthier/aider)
 - Special thanks to the open-source community for inspiration and support.

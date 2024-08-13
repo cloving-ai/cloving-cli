@@ -2,11 +2,10 @@ import { promises as fs } from 'fs'
 import { execFileSync } from 'child_process'
 import highlight from 'cli-highlight'
 import { select, confirm } from '@inquirer/prompts'
-import path from 'path'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
-import { extractFilesAndContent, extractMarkdown } from '../../utils/string_utils'
+import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks, extractMarkdown } from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
@@ -67,31 +66,21 @@ Also, list any test files that might be relevant to these files.`
 }
 
 const handleUserAction = async (analysis: string, autoSave: boolean = false): Promise<void> => {
-  const fileContents = extractFilesAndContent(analysis)
-  const files = Object.keys(fileContents)
+  const blocks = extractCurrentNewBlocks(analysis)
 
   if (autoSave) {
-    for (const file of files) {
-      if (fileContents[file]) {
-        const filePath = path.resolve(file)
-
-        await fs.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.writeFile(filePath, fileContents[file])
-        console.log(`${file} has been saved.`)
-      } else {
-        console.log(`File content not found for ${file}.`)
-      }
-    }
+    await applyAndSaveCurrentNewBlocks(blocks)
     console.log('All unit test files have been saved.')
     return
   }
+
+  const files = Array.from(new Set(blocks.map(block => block.filePath)))
 
   const action = await select({
     message: 'What would you like to do?',
     choices: [
       { name: 'Save a Unit Test File', value: 'save' },
       { name: 'Save All Unit Test Files', value: 'saveAll' },
-      { name: 'Copy Unit Test to Clipboard', value: 'copyTest' },
       { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
       { name: 'Done', value: 'done' },
     ],
@@ -106,15 +95,7 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
           choices: files.map(file => ({ name: file, value: file })),
         })
 
-        if (fileContents[fileToSave]) {
-          const filePath = path.resolve(fileToSave)
-
-          await fs.mkdir(path.dirname(filePath), { recursive: true })
-          await fs.writeFile(filePath, fileContents[fileToSave])
-          console.log(`${fileToSave} has been saved.`)
-        } else {
-          console.log('File content not found.')
-        }
+        await applyAndSaveCurrentNewBlocks(blocks.filter(block => block.filePath === fileToSave))
 
         saveAnother = await confirm({
           message: 'Do you want to save another file?',
@@ -123,34 +104,8 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
       }
       break
     case 'saveAll':
-      for (const file of files) {
-        if (fileContents[file]) {
-          const filePath = path.resolve(file)
-
-          await fs.mkdir(path.dirname(filePath), { recursive: true })
-          await fs.writeFile(filePath, fileContents[file])
-          console.log(`${file} has been saved.`)
-        } else {
-          console.log(`File content not found for ${file}.`)
-        }
-      }
+      await applyAndSaveCurrentNewBlocks(blocks)
       console.log('All unit test files have been saved.')
-      break
-    case 'copyTest':
-      const fileToCopy = await select({
-        message: 'Which unit test file do you want to copy to the clipboard?',
-        choices: files.map(file => ({ name: file, value: file })),
-      })
-
-      if (fileContents[fileToCopy]) {
-        process.nextTick(() => {
-          require('copy-paste').copy(fileContents[fileToCopy], () => {
-            console.log(`${fileToCopy} copied to clipboard`)
-          })
-        })
-      } else {
-        console.log('File content not found.')
-      }
       break
     case 'copyAll':
       process.nextTick(() => {

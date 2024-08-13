@@ -2,18 +2,16 @@ import ncp from 'copy-paste'
 import path from 'path'
 import fs from 'fs'
 import readline from 'readline'
-import { execFileSync, execSync } from 'child_process'
+import { execSync } from 'child_process'
 import type { AxiosError } from 'axios'
 
+import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
-import { generateCommitMessagePrompt } from '../utils/git_utils'
-import { extractFilesAndContent, saveGeneratedFiles, extractMarkdown } from '../utils/string_utils'
-import { getAllFilesInDirectory } from '../utils/command_utils'
+import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
+import { generateSystemPrompt, getAllFilesInDirectory } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
-
-const PREAMBLE = `When generating code, don't apologize and wherever possible include filenames in bold with paths to the code files mentioned and do not be lazy and ask me to keep the existing code or show things like previous code remains unchanged, always include existing code in the response.`;
 
 class ChatManager {
   private gpt: ClovingGPT
@@ -164,18 +162,26 @@ class ChatManager {
   }
 
   private async handleReview() {
-    this.gpt.stream = false
-    const reviewManager = new ReviewManager(this.gpt, this.options)
+    this.options.stream = false
+    const reviewManager = new ReviewManager(this.options)
     await reviewManager.review()
-    this.gpt.stream = true
+    this.options.stream = true
+  }
+
+  private async handleCommit() {
+    this.options.stream = false
+    const commitManager = new CommitManager(this.options)
+    await commitManager.commit()
+    this.options.stream = true
   }
 
   private async handleSave() {
-    const lastResponse = this.chatHistory.filter(msg => msg.role === 'assistant').pop()
+    const lastResponse = this.chatHistory.slice().reverse().find(msg => msg.role === 'assistant')
+
     if (lastResponse) {
-      const fileContents = extractFilesAndContent(lastResponse.content)
-      if (Object.keys(fileContents).length > 0) {
-        await saveGeneratedFiles(fileContents)
+      const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content)
+      if (Object.keys(currentNewBlocks).length > 0) {
+        await applyAndSaveCurrentNewBlocks(currentNewBlocks)
         console.info('Files have been saved.')
         this.rl.prompt()
       } else {
@@ -186,36 +192,6 @@ class ChatManager {
       console.error('No response to save files from.')
       this.rl.prompt()
     }
-  }
-
-  private async handleCommit() {
-    const diff = execSync('git diff HEAD').toString().trim()
-
-    if (!diff) {
-      console.error('No changes to commit.')
-      this.rl.prompt()
-      return
-    }
-
-    this.prompt = generateCommitMessagePrompt(diff)
-    this.gpt.stream = false
-    const rawCommitMessage = await this.gpt.generateText({ prompt: this.prompt })
-    this.gpt.stream = true
-
-    const commitMessage = extractMarkdown(rawCommitMessage)
-    const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
-    fs.writeFileSync(tempCommitFilePath, commitMessage)
-
-    try {
-      execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], { stdio: 'inherit' })
-    } catch (commitError) {
-      console.error('Commit was canceled or failed.')
-    }
-
-    fs.unlink(tempCommitFilePath, (err) => {
-      if (err) throw err
-    })
-    this.rl.prompt()
   }
 
   private isGitCommand(command: string): boolean {
@@ -241,10 +217,18 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     try {
+      if (this.chatHistory.length === 0) {
+        const systemPrompt = generateSystemPrompt(this.contextFiles)
+        this.chatHistory.push({ role: 'system', content: systemPrompt })
+      }
+
       this.chatHistory.push({ role: 'user', content: input })
 
       this.prompt = this.generatePrompt(input)
-      const responseStream = await this.gpt.streamText({ prompt: this.prompt })
+
+      console.log(this.chatHistory)
+
+      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
 
       let accumulatedContent = ''
 
@@ -308,17 +292,16 @@ class ChatManager {
     }
   }
 
-  private generatePrompt(input: string): string {
+  private generatePrompt(prompt: string): string {
     const contextFileContents = Object.keys(this.contextFiles)
       .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
       .join('\n')
 
     const allButLast = this.chatHistory.slice(0, -1).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')
-    const lastUserMessage = this.chatHistory.slice(-1).map(msg => msg.content).join('\n\n')
 
     return `### Request
 
-${lastUserMessage}
+${prompt}
 
 ${contextFileContents}
 
@@ -328,9 +311,7 @@ ${allButLast}
 
 ### Current Request
 
-${PREAMBLE}
-
-${lastUserMessage}`
+${prompt}`
   }
 
   private handleClose() {

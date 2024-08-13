@@ -39,12 +39,13 @@ export class GeminiAdapter implements Adapter {
     return {
       contents: [
         {
+          role: 'user', // or 'model' if generated from the model
           parts: [
             {
               text: request.prompt
             }
           ]
-        }
+        },
       ],
       generationConfig: {
         temperature: request.temperature || 0.2,

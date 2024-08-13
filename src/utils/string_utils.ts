@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
+import type { CurrentNewBlock } from './types'
+
 // Function to estimate token count
 export const estimateTokens = async (text: string): Promise<number> => {
   const charCount = text.length
@@ -101,76 +103,75 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-export const extractFilesAndContent = (rawCodeCommand: string | undefined): Record<string, string> => {
-  if (!rawCodeCommand) return {}
-  const files: string[] = []
-  const fileContents: Record<string, string> = {}
-
+export const extractCurrentNewBlocks = (input: string): CurrentNewBlock[] => {
+  const blocks: CurrentNewBlock[] = []
   let currentIndex = 0
-  const commandLength = rawCodeCommand.length
+  const inputLength = input.length
 
-  while (currentIndex < commandLength) {
-    let fileNameStart = rawCodeCommand.indexOf('**', currentIndex)
-    if (fileNameStart === -1) break
+  while (currentIndex < inputLength) {
+    const blockStart = input.indexOf('<<<<<<< CURRENT', currentIndex)
+    if (blockStart === -1) break
 
-    let fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
-    if (fileNameEnd === -1) break
+    const filePathStart = blockStart + '<<<<<<< CURRENT'.length
+    const filePathEnd = input.indexOf('\n', filePathStart)
+    const filePath = input.slice(filePathStart, filePathEnd).trim()
 
-    let nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
-    let nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
+    const dividerIndex = input.indexOf('=======', filePathEnd)
+    if (dividerIndex === -1) break
 
-    while (nextBoldStart !== -1 && nextCodeStart > nextBoldStart) {
-      fileNameStart = nextBoldStart
-      fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
+    const blockEnd = input.indexOf('>>>>>>> NEW', dividerIndex)
+    if (blockEnd === -1) break
 
-      nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
-      nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
-    }
+    const currentContent = input.slice(filePathEnd + 1, dividerIndex).trim()
+    const newContent = input.slice(dividerIndex + '======='.length, blockEnd).trim()
 
-    const fileName = rawCodeCommand.slice(fileNameStart + 2, fileNameEnd).trim()
-    files.push(fileName)
+    blocks.push({
+      filePath,
+      currentContent,
+      newContent,
+    })
 
-    const codeBlockStart = rawCodeCommand.indexOf('\n```', fileNameEnd)
-    if (codeBlockStart === -1) break
-
-    let codeBlockEnd = codeBlockStart + 4
-    while (codeBlockEnd < commandLength) {
-      if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 5) === '\n```\n') {
-        break
-      } else if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 4) === '\n```' && codeBlockEnd + 4 === commandLength) {
-        break
-      }
-      codeBlockEnd++
-    }
-
-    if (codeBlockEnd >= commandLength) break
-
-    let content = rawCodeCommand.slice(codeBlockStart + 4, codeBlockEnd).trim()
-
-    const firstNewlineIndex = content.indexOf('\n')
-    if (firstNewlineIndex !== -1) {
-      content = content.slice(firstNewlineIndex + 1)
-    } else {
-      content = content.replace(/^\w+\s*/, '')
-    }
-
-    fileContents[fileName] = content.trim()
-
-    currentIndex = codeBlockEnd + 5
+    currentIndex = blockEnd + '>>>>>>> NEW'.length
   }
 
-  return fileContents
+  return blocks
 }
 
-export const saveGeneratedFiles = async (fileContents: Record<string, string>): Promise<void> => {
-  for (const file of Object.keys(fileContents)) {
-    if (fileContents[file]) {
-      const filePath = path.resolve(file)
+export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): Promise<void> => {
+  for (const block of blocks) {
+    const filePath = path.resolve(block.filePath)
+
+    try {
+      // Read the current file content
+      let fileContent = await fs.promises.readFile(filePath, 'utf-8')
+
+      // Replace the current content with the new content
+      if (block.currentContent.trim() === '') {
+        fileContent = block.newContent
+      } else {
+        fileContent = fileContent.replace(block.currentContent, block.newContent)
+      }
+
+      console.log(`#### Updating ${block.filePath} #####`)
+      console.log(fileContent)
+      console.log('#### End of File #####')
+
+      // Ensure the directory exists
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-      await fs.promises.writeFile(filePath, fileContents[file])
-      console.log(`${file} has been saved.`)
-    } else {
-      console.log(`File content not found for ${file}.`)
+
+      // Write the updated content back to the file
+      await fs.promises.writeFile(filePath, fileContent)
+
+      console.log(`${block.filePath} has been updated and saved.`)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // If the file doesn't exist, create it with the new content
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+        await fs.promises.writeFile(filePath, block.newContent)
+        console.log(`${block.filePath} has been created and saved.`)
+      } else {
+        console.error(`Error processing ${block.filePath}:`, error)
+      }
     }
   }
 }
