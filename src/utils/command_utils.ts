@@ -15,8 +15,8 @@ export const SPECIAL_FILES = [
 
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
-  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
-  const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of ${file}\n\n${contextFilesContent[file]}\n\n`).join('\n')
+  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${JSON.stringify(specialFileContents[file], null, 2)}\n\`\`\`\n\n`).join('\n')
+  const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`).join('\n')
 
   const prompt = `## Description of App
 
@@ -36,7 +36,7 @@ ${Object.keys(contextFilesContent).join('\n')}
 
 ## Instructions
 
-Respond as an expert software developer and always follow best practices when coding. Adhere to existing conventions and libraries in the codebase.
+Respond as an expert software developer and always follow best practices and use the latest standards when coding. Adhere to existing conventions and libraries in the codebase.
 
 Take requests for changes to the supplied code. If the request is unclear, ask questions.
 
@@ -145,7 +145,9 @@ end
 
 ## Golden Rule
 
-Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section. If a needed filename hasn't been provided in the *Context Files* section, ask the user to provide it in the context by adding -f path/to/file to the command.`
+Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
+
+If a needed filename hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command.`
   return prompt
 }
 

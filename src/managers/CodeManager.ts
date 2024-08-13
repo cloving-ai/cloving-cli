@@ -1,4 +1,5 @@
 import { select, input, confirm } from '@inquirer/prompts'
+import { AxiosError } from 'axios'
 import highlight from 'cli-highlight'
 import fs from 'fs'
 import path from 'path'
@@ -75,15 +76,17 @@ class CodeManager {
       } else {
         await this.handleUserAction(response, this.options.prompt)
       }
-    } catch (error) {
-      console.error('Could not generate code', error)
+    } catch (err) {
+      const error = err as AxiosError
+      console.error('Could not generate code', error.message)
     }
   }
 
   public async generateCode(userPrompt: string): Promise<string> {
     if (this.chatHistory.length === 0) {
       const systemPrompt = generateCodegenPrompt(this.contextFiles)
-      this.chatHistory.push({ role: 'system', content: systemPrompt })
+      this.chatHistory.push({ role: 'user', content: systemPrompt })
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
     }
     this.chatHistory.push({ role: 'user', content: userPrompt })
     return await this.gpt.generateText({ prompt: userPrompt, messages: this.chatHistory })

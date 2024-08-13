@@ -219,7 +219,8 @@ class ChatManager {
     try {
       if (this.chatHistory.length === 0) {
         const systemPrompt = generateCodegenPrompt(this.contextFiles)
-        this.chatHistory.push({ role: 'system', content: systemPrompt })
+        this.chatHistory.push({ role: 'user', content: systemPrompt })
+        this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
       }
 
       this.chatHistory.push({ role: 'user', content: input })

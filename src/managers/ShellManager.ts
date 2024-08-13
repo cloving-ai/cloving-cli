@@ -30,7 +30,8 @@ Please briefly explain how this shell script works.`
   private async generateShell(prompt: string): Promise<string> {
     if (this.chatHistory.length === 0) {
       const systemPrompt = generateShellPrompt()
-      this.chatHistory.push({ role: 'system', content: systemPrompt })
+      this.chatHistory.push({ role: 'user', content: systemPrompt })
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
     }
     this.chatHistory.push({ role: 'user', content: prompt })
     return await this.gpt.generateText({ prompt, messages: this.chatHistory })
