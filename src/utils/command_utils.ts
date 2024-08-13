@@ -1,8 +1,9 @@
-import { spawn, execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { getAllFiles, getClovingConfig } from './config_utils'
+import { execSync, spawn } from 'child_process'
 import { isBinaryFile } from 'isbinaryfile'
+
+import { getAllFiles, getClovingConfig } from './config_utils'
 
 export const SPECIAL_FILES = [
   'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
@@ -12,7 +13,7 @@ export const SPECIAL_FILES = [
   'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json'
 ]
 
-export const generateSystemPrompt = (contextFilesContent: Record<string, string>): string => {
+export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
   const specialFiles = Object.keys(specialFileContents).map((file) => `## Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
   const contextFileContents = Object.keys(contextFilesContent).map((file) => `## Contents of ${file}\n\n${contextFilesContent[file]}\n\n`).join('\n')
@@ -122,12 +123,25 @@ public void oldFunction() {
 }
 =======
 >>>>>>> NEW
+\`\`\``
+  return prompt
+}
+
+
+export const generateShellPrompt = (): string => {
+  const shell = execSync('echo $SHELL').toString().trim()
+  const os = execSync('echo $OSTYPE').toString().trim()
+  return `Generate an executable ${shell} script that works on ${os}. Try to make it a single line if possible and as simple and straightforward as possible.
+
+Do not add any commentary or context to the message other than the commit message itself.
+
+An example of the output for this should look like the following:
+
+\`\`\`sh
+find . -type f -name "*.ts" -exec sed -i '' 's/old/new/g' {} +
 \`\`\`
 
-
-
-`
-  return prompt
+Don't use that script, it is only an example.`
 }
 
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {

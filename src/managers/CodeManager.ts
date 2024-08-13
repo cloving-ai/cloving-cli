@@ -5,7 +5,7 @@ import path from 'path'
 
 import ClovingGPT from '../cloving_gpt'
 
-import { generateSystemPrompt, addFileOrDirectoryToContext, getAllFilesInDirectory } from '../utils/command_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext, getAllFilesInDirectory } from '../utils/command_utils'
 import { parseMarkdownInstructions, extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
 
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
@@ -82,7 +82,7 @@ class CodeManager {
 
   public async generateCode(userPrompt: string): Promise<string> {
     if (this.chatHistory.length === 0) {
-      const systemPrompt = generateSystemPrompt(this.contextFiles)
+      const systemPrompt = generateCodegenPrompt(this.contextFiles)
       this.chatHistory.push({ role: 'system', content: systemPrompt })
     }
     this.chatHistory.push({ role: 'user', content: userPrompt })

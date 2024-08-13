@@ -155,10 +155,6 @@ export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): P
         fileContent = fileContent.replace(block.currentContent, block.newContent)
       }
 
-      console.log(`#### Updating ${block.filePath} #####`)
-      console.log(fileContent)
-      console.log('#### End of File #####')
-
       // Ensure the directory exists
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
 
