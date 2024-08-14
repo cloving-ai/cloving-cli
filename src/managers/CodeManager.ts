@@ -6,7 +6,7 @@ import path from 'path'
 
 import ClovingGPT from '../cloving_gpt'
 
-import { generateCodegenPrompt, addFileOrDirectoryToContext, getAllFilesInDirectory } from '../utils/command_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
 import { parseMarkdownInstructions, extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
 
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
@@ -25,24 +25,8 @@ class CodeManager {
   public async initialize(): Promise<void> {
     try {
       if (this.options.files) {
-        let expandedFiles: string[] = []
         for (const file of this.options.files) {
-          const filePath = path.resolve(file)
-          if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
-            const dirFiles = await getAllFilesInDirectory(filePath)
-            expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
-          } else {
-            expandedFiles.push(path.relative(process.cwd(), filePath))
-          }
-        }
-        this.options.files = expandedFiles
-
-        for (const file of this.options.files) {
-          const filePath = path.resolve(file)
-          if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
-            const content = await fs.promises.readFile(filePath, 'utf-8')
-            this.contextFiles[file] = content
-          }
+          this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
         }
       } else {
         let includeMoreFiles = true

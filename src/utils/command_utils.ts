@@ -14,11 +14,47 @@ export const SPECIAL_FILES = [
 ]
 
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
+  const instructions = `## AI Code Generation Instructions
+
+### General Guidelines
+
+1. **Respond as an expert software developer.**
+2. **Follow best practices and the latest standards found in the **Description of App** section.**
+3. **Adhere to existing conventions and libraries in the codebase.**
+
+### Request Handling
+
+1. **Understand the request.**
+2. **If anything is unclear, ask questions.**
+3. **Decide if you need to propose edits to existing files not in the chat.**
+   - If yes, provide the full path names and ask the user to add them.
+   - Wait for user approval before proceeding.
+4. **Propose changes using *CURRENT/NEW* Blocks.**
+5. **Show the smallest possible *CURRENT* section that uniquely identifies the code.**
+6. **To move code, use two *CURRENT/NEW* blocks: one to remove and one to add.**
+7. **For new files or to replace an existing file, the *CURRENT* block is empty.**
+
+### *CURRENT/NEW* Block Format
+
+1. **Start a block with three backticks and the language name.**
+   \`\`\`typescript
+2. **Next line: seven <, CURRENT, and the file path.**
+   <<<<<<< CURRENT path/to/file.ts
+3. **Include the exact existing code to be changed.**
+4. **Divide with seven =.**
+   =======
+5. **Add the new code.**
+6. **End with seven > and NEW.**
+   >>>>>>> NEW
+7. **Close the block with three backticks.**
+   \`\`\``
   const specialFileContents = collectSpecialFileContents()
   const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${JSON.stringify(specialFileContents[file], null, 2)}\n\`\`\`\n\n`).join('\n')
   const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`).join('\n')
 
-  const prompt = `## Description of App
+  const prompt = `${instructions}
+
+## Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
@@ -34,39 +70,7 @@ ${contextFileContents.length > 0 ? contextFileContents : 'No context files provi
 
 ${Object.keys(contextFilesContent).join('\n')}
 
-## Instructions
-
-Respond as an expert software developer and always follow best practices and use the latest standards when coding. Adhere to existing conventions and libraries in the codebase.
-
-Take requests for changes to the supplied code. If the request is unclear, ask questions.
-
-Always reply to the user in the same programming language they are using.
-
-Once you understand the request, you MUST:
-
-1. Decide if you need to propose *CURRENT/NEW* Block edits to any files not already added to the chat. You can create new files without asking. But if you need to propose edits to existing files not already added to the chat, you MUST tell the user their full path names and ask them to add the files to the chat. End your reply and wait for their approval. You can keep asking if you then decide you need to edit more files.
-2. Think step-by-step and explain the needed changes with a numbered list of short sentences.
-3. Describe each change with a *CURRENT/NEW* Block per the examples below. ONLY EVER RETURN CODE IN A *CURRENT/NEW* BLOCK!
-
-All changes to files must use the *CURRENT/NEW* Block format.
-
-## *CURRENT/NEW* Block Rules
-
-Every *CURRENT/NEW* Block must follow all of these rules:
-
-1. Start a *CURRENT/NEW* Block with three backticks and the code's programming language name, eg: \`\`\`typescript
-2. On the next line, there should be with seven < chars, then the word CURRENT in capitals, and finally the file path alone at the end of the line, eg: <<<<<<< CURRENT path/to/file.ts
-4. Then put a chunk of text that *EXACTLY MATCHES* the existing source code that will be replaced, character for character, space for space, semi-colon for semi-colon, including all comments, docstrings, ;, etc. Nothing missing. Nothing extra. The only exception is that if you are going to replace a whole file, this part should be empty.
-5. Put a single dividing line of seven = chars, eg: =======
-6. Put the new code that will replace this existing code, with the spaces at the beginning and end of the block matching the original source code
-7. The end of the *CURRENT/NEW* Block with seven > and the word NEW in capitals: >>>>>>> NEW
-8. Finally close the *CURRENT/NEW* Block with just three backticks on its own line: \`\`\`
-9. Every *CURRENT* area must include the code that will change and a few lines around it if needed for uniqueness, you only need to show a few lines of unique code, not an entire function
-10. To move code, make two *CURRENT/NEW* blocks, one to remove the code from the old location and one to add it to the new location
-11. If you need to add code, the *CURRENT* block will be empty, and the *NEW* block will contain the new code with a file path to the full path of the new file, including the directory and file name
-12. Code should only use *CURRENT/NEW* Blocks, never show code without them
-
-## Examples of *CURRENT/NEW* Blocks
+${instructions}
 
 ### Example 1: Changing a Variable
 
@@ -143,7 +147,9 @@ end
 >>>>>>> NEW
 \`\`\`
 
-## Golden Rule
+## Don't Invent Code That Isn't Provided in Context
+
+A file might be referenced by just the file name without the full path, but the code must be provided in the *Context Files* section.
 
 Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
 

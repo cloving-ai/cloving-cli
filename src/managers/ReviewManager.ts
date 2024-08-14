@@ -9,12 +9,13 @@ import { getGitDiff } from '../utils/git_utils'
 import { parseMarkdownInstructions } from '../utils/string_utils'
 import { getAllFilesInDirectory } from '../utils/command_utils'
 import { getConfig, getClovingConfig } from '../utils/config_utils'
-import type { ClovingGPTOptions } from '../utils/types'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 class ReviewManager {
   private gpt: ClovingGPT
   private options: ClovingGPTOptions
   private contextFiles: Record<string, string> = {}
+  private chatHistory: ChatMessage[] = []
 
   constructor(options: ClovingGPTOptions) {
     options.silent = getConfig(options).globalSilent || false
@@ -46,12 +47,9 @@ class ReviewManager {
     }
   }
 
-  private generatePrompt(): string {
-    let promptText = `### Prompt
-
-${this.options.prompt || 'Please provide a code review.'}
-
-### Example of a well-structured response
+  private generateReviewPrompt(): string {
+    if (this.chatHistory.length === 0) {
+      let systemPrompt = `### Example of a well-structured response
 
     # Code Review: Enhanced Code Generation and File Handling
 
@@ -100,12 +98,11 @@ ${this.options.prompt || 'Please provide a code review.'}
       // ...
     }
     \`\`\`
-`
 
-    if (this.options.files) {
-      const contextFileContents = Object.keys(this.contextFiles).map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`).join('\n')
-      promptText += `
-### Description of App
+`
+      if (this.options.files) {
+        const contextFileContents = Object.keys(this.contextFiles).map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`).join('\n')
+        systemPrompt += `### Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
@@ -116,27 +113,34 @@ ${contextFileContents}
 I would like you to explain the code and document a description of it.
 List any bugs in the new code as well as recommended fixes for those bugs with code examples.
 Format the output of this code review in Markdown format.`
-    } else {
-      promptText += `
-
-### Request
+      } else {
+        systemPrompt += `### Request
 
 Do not use any data from the example response structure, only use the structure.
 I would like you to explain why these change are being made and document a description of these changes.
 Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
 Format the output of this code review in Markdown format.`
-    }
+      }
 
-    return promptText
+      this.chatHistory.push({ role: 'user', content: systemPrompt })
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
+    }
+    this.chatHistory.push({ role: 'user', content: this.options.prompt || 'Please provide a code review.' })
+
+    return this.options.prompt || 'Please provide a code review.'
   }
 
   private async getGitDiffPrompt(): Promise<string> {
     const gitDiff = await getGitDiff()
-    return `==== begin diff =====
+    this.options.prompt = `## Diff Content
 ${gitDiff}
-==== end diff =====
 
-${this.generatePrompt()}`
+## Task
+
+${this.options.prompt || 'Please provide a code review.'}`
+
+    const prompt = this.generateReviewPrompt()
+    return prompt
   }
 
   private displayAnalysis(analysis: string) {
@@ -209,8 +213,8 @@ ${this.generatePrompt()}`
     try {
       await this.loadContextFiles()
 
-      const prompt = this.options.files ? this.generatePrompt() : await this.getGitDiffPrompt()
-      const analysis = await this.gpt.generateText({ prompt })
+      const prompt = this.options.files ? this.generateReviewPrompt() : await this.getGitDiffPrompt()
+      const analysis = await this.gpt.generateText({ prompt, messages: this.chatHistory })
 
       this.displayAnalysis(analysis)
       await this.handleUserAction(analysis)

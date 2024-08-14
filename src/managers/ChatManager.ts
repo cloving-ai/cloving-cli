@@ -1,6 +1,4 @@
 import ncp from 'copy-paste'
-import path from 'path'
-import fs from 'fs'
 import readline from 'readline'
 import { execSync } from 'child_process'
 import type { AxiosError } from 'axios'
@@ -10,7 +8,7 @@ import ChunkManager from './ChunkManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
-import { generateCodegenPrompt, getAllFilesInDirectory } from '../utils/command_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 class ChatManager {
@@ -40,11 +38,11 @@ class ChatManager {
   }
 
   async initialize() {
+    await this.loadContextFiles()
     console.log('Welcome to Cloving REPL. Type "exit" to quit.')
     this.rl.prompt()
 
     this.setupEventListeners()
-    await this.loadContextFiles()
   }
 
   private setupEventListeners() {
@@ -54,26 +52,10 @@ class ChatManager {
   }
 
   private async loadContextFiles() {
-    let files = this.options.files || '.'
-    let expandedFiles: string[] = []
-
+    let files = this.options.files || ['.']
     for (const file of files) {
-      const filePath = path.resolve(file)
-      if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
-        const dirFiles = await getAllFilesInDirectory(filePath)
-        expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
-      } else {
-        expandedFiles.push(path.relative(process.cwd(), filePath))
-      }
-    }
-    files = expandedFiles
-
-    for (const file of files) {
-      const filePath = path.resolve(file)
-      if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        this.contextFiles[file] = content
-      }
+      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
+      console.log(`Loaded context from ${file}`, Object.keys(this.contextFiles))
     }
   }
 
