@@ -24,15 +24,14 @@ export const generateCodegenPrompt = (contextFilesContent: Record<string, string
 
 ### Request Handling
 
-1. **Understand the request.**
-2. **If anything is unclear, ask questions.**
-3. **Decide if you need to propose edits to existing files not in the chat.**
+1. **Try to understand the request, but if anything is unclear, ask questions.**
+2. **Decide if you need to propose edits to existing files not in the chat.**
    - If yes, provide the full path names and ask the user to add them.
    - Wait for user approval before proceeding.
-4. **Propose changes using *CURRENT/NEW* Blocks.**
-5. **Show the smallest possible *CURRENT* section that uniquely identifies the code.**
-6. **To move code, use two *CURRENT/NEW* blocks: one to remove and one to add.**
-7. **For new files or to replace an existing file, the *CURRENT* block is empty.**
+3. **Propose changes using *CURRENT/NEW* Blocks.**
+4. **Show the smallest possible *CURRENT* section that uniquely identifies the code.**
+5. **To move code, use two *CURRENT/NEW* blocks: one to remove and one to add.**
+6. **For new files or to replace an existing file, the *CURRENT* block is empty.**
 
 ### *CURRENT/NEW* Block Format
 
@@ -308,7 +307,6 @@ export const addFileOrDirectoryToContext = async (
     const stats = await fs.promises.stat(filePath)
     if (stats.isDirectory()) {
       await addDirectoryToContext(filePath, contextFiles, baseDir)
-      console.log(`Added contents of ${contextFile} to context.`)
     } else if (stats.isFile()) {
       await addFileToContext(filePath, contextFiles, baseDir)
     }

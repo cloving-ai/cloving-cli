@@ -2,6 +2,7 @@ import ncp from 'copy-paste'
 import readline from 'readline'
 import { execSync } from 'child_process'
 import type { AxiosError } from 'axios'
+import colors from 'colors'
 
 import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
@@ -61,42 +62,56 @@ class ChatManager {
 
   private async handleLine(line: string) {
     if (this.isProcessing) {
-      return
+      return;
     }
 
-    if (this.isMultilineMode) {
-      if (line.trim() === '```') {
-        this.isMultilineMode = false
-        line = this.multilineInput
-        this.multilineInput = ''
-      } else {
-        this.multilineInput += line + '\n'
-        this.rl.prompt()
-        return
-      }
-    } else if (line.trim() === '```') {
-      this.isMultilineMode = true
-      this.multilineInput = ''
-      console.log('Entering multiline mode. Type ``` on a new line to end.\n')
-      this.rl.prompt()
-      return
-    }
+    const trimmedLine = line.trim();
 
-    const trimmedLine = line.trim()
+    if (this.handleMultilineInput(trimmedLine)) {
+      return;
+    }
 
     if (trimmedLine === '') {
-      this.rl.prompt()
-      return
+      this.rl.prompt();
+      return;
     }
 
-    this.updateCommandHistory(trimmedLine)
+    this.updateCommandHistory(trimmedLine);
 
-    if (trimmedLine.toLowerCase() === 'exit') {
-      this.rl.close()
-      return
+    if (this.handleExitCommand(trimmedLine)) {
+      return;
     }
 
-    await this.handleCommand(trimmedLine)
+    await this.handleCommand(trimmedLine);
+  }
+
+  private handleMultilineInput(line: string): boolean {
+    if (this.isMultilineMode) {
+      if (line === '```') {
+        this.isMultilineMode = false;
+        this.handleCommand(this.multilineInput);
+        this.multilineInput = '';
+      } else {
+        this.multilineInput += line + '\n';
+        this.rl.prompt();
+      }
+      return true;
+    } else if (line === '```') {
+      this.isMultilineMode = true;
+      this.multilineInput = '';
+      console.log('Entering multiline mode. Type ``` on a new line to end.\n');
+      this.rl.prompt();
+      return true;
+    }
+    return false;
+  }
+
+  private handleExitCommand(command: string): boolean {
+    if (command.toLowerCase() === 'exit') {
+      this.rl.close();
+      return true;
+    }
+    return false;
   }
 
   private updateCommandHistory(command: string) {
@@ -120,16 +135,107 @@ class ChatManager {
       case 'commit':
         await this.handleCommit()
         break
+      case 'ls':
+        await this.handleList("ls *")
+        break
+      case 'rm':
+        await this.handleRemove("rm *")
+        break
       case 'review':
         await this.handleReview()
         break
       default:
-        if (this.isGitCommand(command)) {
+        if (this.isAddCommand(command)) {
+          await this.handleAdd(command)
+        } else if (this.isRemoveCommand(command)) {
+          await this.handleRemove(command)
+        } else if (this.isListCommand(command)) {
+          this.handleList(command)
+        } else if (this.isGitCommand(command)) {
           this.executeGitCommand(command)
         } else {
           await this.processUserInput(command)
         }
     }
+  }
+
+  private isAddCommand(command: string): boolean {
+    const parts = command.trim().split(/\s+/)
+    return parts.length === 2 && parts[0] === 'add'
+  }
+
+  private async handleAdd(command: string) {
+    const filePath = command.slice(4).trim()
+
+    if (filePath) {
+      try {
+        this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
+        console.log(`Added ${colors.green(filePath)} to context.`)
+      } catch (error) {
+        console.error(`Failed to add ${colors.red(filePath)} to context:`, error)
+      }
+    } else {
+      console.log('No file path provided.')
+    }
+
+    this.rl.prompt()
+  }
+
+  private isRemoveCommand(command: string): boolean {
+    return command.startsWith('rm ')
+  }
+
+  // Function to convert glob-like pattern to a regular expression
+  private globToRegExp(glob: string): RegExp {
+    const escapedGlob = glob.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&')
+    const regexString = escapedGlob.replace(/\*/g, '.*')
+    return new RegExp(`^${regexString}$`)
+  }
+
+  // Function to filter paths using the pattern
+  private filterPaths(paths: string[], pattern: string): string[] {
+    const regex = this.globToRegExp(pattern)
+    return paths.filter(path => regex.test(path))
+  }
+
+  private async handleRemove(command: string) {
+    const pattern = command.slice(3).trim()
+
+    if (pattern) {
+      const matchedFiles = this.filterPaths(Object.keys(this.contextFiles), pattern)
+
+      if (matchedFiles.length > 0) {
+        matchedFiles.forEach(filePath => {
+          delete this.contextFiles[filePath]
+          console.log(`Removed ${colors.green(filePath)} from context.`)
+        })
+      } else {
+        console.log(`No files matching pattern "${pattern}" found in context.`)
+      }
+    } else {
+      console.log('No pattern provided.')
+    }
+
+    this.rl.prompt()
+  }
+
+  private isListCommand(command: string): boolean {
+    return command.startsWith('ls ')
+  }
+
+  private handleList(command: string) {
+    const pattern = command.slice(3).trim()
+    const fileNames = Object.keys(this.contextFiles)
+
+    const matchedFiles = pattern ? this.filterPaths(fileNames, pattern) : fileNames
+
+    if (matchedFiles.length > 0) {
+      console.log('Files in context:')
+      matchedFiles.forEach(fileName => console.log(`- ${colors.green(fileName)}`))
+    } else {
+      console.log('No files currently in context.')
+    }
+    this.rl.prompt()
   }
 
   private async handleCopy() {
@@ -234,7 +340,19 @@ class ChatManager {
       responseStream.data.on('end', () => {
         this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
         this.isProcessing = false
-        process.stdout.write('\n')
+        process.stdout.write(`
+
+You can follow up with another request or:
+ - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
+ - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git
+ - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
+ - type ${colors.yellow(colors.bold('"review"'))} to start a code review
+ - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the context
+ - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the context
+ - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the context
+ - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
+ - type ${colors.yellow(colors.bold('"exit"'))} to quit
+`)
         this.rl.prompt()
       })
 
