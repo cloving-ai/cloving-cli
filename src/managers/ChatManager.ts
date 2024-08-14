@@ -12,6 +12,19 @@ import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/
 import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
+const specialCommands = [
+  'save',
+  'commit',
+  'copy',
+  'review',
+  'add <file-path>',
+  'rm <pattern>',
+  'ls <pattern>',
+  'git <command>',
+  'help',
+  'exit'
+]
+
 class ChatManager {
   private gpt: ClovingGPT
   private rl: readline.Interface
@@ -33,6 +46,7 @@ class ChatManager {
     options.stream = true
     options.silent = true
     this.gpt = new ClovingGPT(options)
+
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -539,7 +553,11 @@ ${allButLast}
 
 ### Current Request
 
-${prompt}`
+${prompt}
+
+### Note
+
+Whenever possible, break up the changes into pieces and keep any beginning whitespace in tact.`
   }
 
   private handleClose() {
@@ -570,6 +588,13 @@ ${prompt}`
         this.rl.write(this.commandHistory[this.historyIndex])
       } else if (this.historyIndex === -1) {
         this.rl.write(null, { ctrl: true, name: 'u' })
+      }
+    } else if (key && key.name === 'tab') {
+      const line = this.rl.line.trim();
+      const hits = specialCommands.filter((command) => command.startsWith(line));
+      if (hits.length > 0) {
+        this.rl.write(null, { ctrl: true, name: 'u' });
+        this.rl.write(hits[0]);
       }
     }
   }
