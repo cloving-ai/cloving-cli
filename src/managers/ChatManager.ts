@@ -73,21 +73,21 @@ class ChatManager {
     this.setupEventListeners()
   }
 
-  private displayAvailableCommands(): void {
-    console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
-    console.log('Available special commands:')
-    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
-    console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
-    console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
-    console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
-    console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context`)
-    console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context`)
-    console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context`)
-    console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context`)
-    console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
-    console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
-    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
-  }
+    private displayAvailableCommands(): void {
+      console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
+      console.log('Available special commands:')
+      console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
+      console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
+      console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
+      console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
+      console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`)
+      console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`)
+      console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`)
+      console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`)
+      console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
+      console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
+      console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
+    }
 
   /**
    * Sets up event listeners for the readline interface and process input.
@@ -282,14 +282,18 @@ class ChatManager {
     if (fileName) {
       try {
         const foundFiles = await this.findFiles(fileName)
-        for (const filePath of foundFiles) {
-          this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
-          const content = this.contextFiles[filePath]
-          const tokenEstimate = this.estimateTokens(content)
-          console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
+        if (foundFiles.length === 0) {
+          console.log(`No files found matching ${colors.bold(colors.red(fileName))}.`)
+        } else {
+          for (const filePath of foundFiles) {
+            this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
+            const content = this.contextFiles[filePath]
+            const tokenEstimate = this.estimateTokens(content)
+            console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
+          }
+          const totalTokens = this.calculateTotalTokens()
+          console.log(colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`))
         }
-        const totalTokens = this.calculateTotalTokens()
-        console.log(colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`))
       } catch (error) {
         console.error(`Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`, error)
       }
@@ -303,11 +307,12 @@ class ChatManager {
   private async findFiles(fileName: string): Promise<string[]> {
     const { exec } = require('child_process')
     return new Promise((resolve, reject) => {
-      exec(`find . -name "${fileName}"`, (error: Error, stdout: string) => {
+      exec(`find . -name "${fileName}"`, (error: Error | null, stdout: string) => {
         if (error) {
           return reject(error)
         }
         const files = stdout.split('\n').filter((filePath) => filePath.trim() !== '')
+          .map((filePath) => filePath.startsWith('./') ? filePath.slice(2) : filePath)
         resolve(files)
       })
     })
@@ -331,7 +336,7 @@ class ChatManager {
     if (filePath) {
       try {
         this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
-        console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context`)
+        console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`)
       } catch (error) {
         console.error(`Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`, error)
       }
