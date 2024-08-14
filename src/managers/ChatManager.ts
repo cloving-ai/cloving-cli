@@ -60,7 +60,7 @@ class ChatManager {
   private displayAvailableCommands(): void {
     console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
     console.log('Available special commands:')
-    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes to files`)
+    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
     console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
     console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
     console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
@@ -325,7 +325,7 @@ class ChatManager {
     const matchedFiles = pattern ? this.filterPaths(fileNames, pattern) : fileNames
 
     if (matchedFiles.length > 0) {
-      console.log(`\nFiles in the current chat context:`)
+      console.log(`\nFiles in the current chat session context:`)
       let totalTokens = 0;
       matchedFiles.forEach(fileName => {
         const content = this.contextFiles[fileName];
