@@ -1,6 +1,6 @@
 {
   "name": "cloving",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "packageManager": "yarn@1.22.22",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -39,6 +39,7 @@
     "@inquirer/prompts": "^5.3.8",
     "axios": "^1.7.3",
     "cli-highlight": "^2.1.11",
+    "colors": "^1.4.0",
     "commander": "^12.1.0",
     "copy-paste": "^1.5.3",
     "eslint": "^9.9.0",

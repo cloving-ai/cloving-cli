@@ -14,7 +14,7 @@ import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 
-import type { OpenAIStreamChunk, GPTRequest, ClovingGPTOptions, ClovingConfig } from '../utils/types'
+import type { OpenAIStreamChunk, GPTRequest, ClovingGPTOptions, ClovingConfig, ChatMessage } from '../utils/types'
 
 class ClovingGPT {
   public adapter: Adapter
@@ -66,22 +66,24 @@ class ClovingGPT {
     }
   }
 
-  private async reviewPrompt(prompt: string, endpoint: string): Promise<string | null> {
+  private async reviewPrompt(prompt: string, messages: ChatMessage[], endpoint: string): Promise<string | null> {
     if (this.silent) return prompt
 
-    const tokenCount = Math.ceil(prompt.length / 4).toLocaleString()
+    const fullPrompt = messages.map(m => m.role === 'user' ? `# Task\n\n${m.content}` : m.content).join('\n\n')
+
+    const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
     const reviewPrompt = await confirm(
       {
-        message: `Do you want to review/edit the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
+        message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
         default: true
       }
     )
 
     if (reviewPrompt) {
       const tempFile = path.join(os.tmpdir(), `cloving_prompt_${Date.now()}.txt`)
-      fs.writeFileSync(tempFile, prompt)
+      fs.writeFileSync(tempFile, fullPrompt)
 
-      const editor = process.env.EDITOR || 'nano'
+      const editor = 'less'
       const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' })
 
       return new Promise<string | null>((resolve, reject) => {
@@ -98,6 +100,18 @@ class ClovingGPT {
 
           if (editedPrompt === '') {
             console.log('Prompt is empty.')
+            resolve(null)
+            return
+          }
+
+          const confirmPrompt = await confirm(
+            {
+              message: `Are you sure you want to continue?`,
+              default: true
+            }
+          )
+
+          if (!confirmPrompt) {
             resolve(null)
             return
           }
@@ -124,7 +138,7 @@ class ClovingGPT {
     const payload = this.adapter.getPayload(request, this.stream)
     const headers = this.adapter.getHeaders(this.apiKey)
 
-    const reviewedPrompt = await this.reviewPrompt(request.prompt, endpoint)
+    const reviewedPrompt = await this.reviewPrompt(request.prompt, request.messages || [], endpoint)
     if (reviewedPrompt === null) {
       throw new Error('Operation cancelled by user')
     }
@@ -168,7 +182,7 @@ class ClovingGPT {
     const payload = this.adapter.getPayload(request, this.stream)
     const headers = this.adapter.getHeaders(this.apiKey)
 
-    const reviewedPrompt = await this.reviewPrompt(request.prompt, endpoint)
+    const reviewedPrompt = await this.reviewPrompt(request.prompt, request.messages || [], endpoint)
     if (reviewedPrompt === null) {
       throw new Error('Operation cancelled by user')
     }

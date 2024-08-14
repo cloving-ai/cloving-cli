@@ -37,12 +37,15 @@ export class ClaudeAdapter implements Adapter {
   }
 
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
+    let system = 'You are a computer programmer giving advice on how to write better code.'
+    if (request.messages && request.messages.length > 0 && request.messages[0].role === 'system') {
+      system = request.messages[0].content
+      request = { ...request, messages: request.messages.slice(1) }
+    }
     return {
       model: this.model.replace(':', '-'),
-      system: 'You are a computer programmer giving advice on how to write better code.',
-      messages: [
-        { role: 'user', content: request.prompt }
-      ],
+      system,
+      messages: request.messages && request.messages.length > 0 ? request.messages : [{ role: "user", content: request.prompt }],
       max_tokens: request.maxTokens || 4096,
       temperature: request.temperature || 0.2,
       stream

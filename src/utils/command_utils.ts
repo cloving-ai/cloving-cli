@@ -1,8 +1,10 @@
-import { spawn, execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { getAllFiles } from './config_utils'
+import { execSync, spawn } from 'child_process'
 import { isBinaryFile } from 'isbinaryfile'
+import colors from 'colors'
+
+import { getClovingConfig } from './config_utils'
 
 export const SPECIAL_FILES = [
   'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
@@ -11,6 +13,166 @@ export const SPECIAL_FILES = [
   'DESCRIPTION', 'mix.exs', 'build.sbt', 'pubspec.yaml', 'stack.yaml', 'cabal.project', 'Project.toml',
   'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json'
 ]
+
+export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
+  const instructions = `## AI Code Generation Instructions
+
+### General Guidelines
+
+1. **Respond as an expert software developer.**
+2. **Follow best practices and the latest standards found in the **Description of App** section.**
+3. **Adhere to existing conventions and libraries in the codebase.**
+
+### Request Handling
+
+1. **Try to understand the request, but if anything is unclear, ask questions.**
+2. **Decide if you need to propose edits to existing files not in the chat.**
+   - If yes, provide the full path names and ask the user to add them.
+   - Wait for user approval before proceeding.
+3. **Propose changes using *CURRENT/NEW* Blocks.**
+4. **Show the smallest possible *CURRENT* section that uniquely identifies the code.**
+5. **To move code, use two *CURRENT/NEW* blocks: one to remove and one to add.**
+6. **For new files or to replace an existing file, the *CURRENT* block is empty.**
+
+### *CURRENT/NEW* Block Format
+
+1. **Start a block with three backticks and the language name.**
+   \`\`\`typescript
+2. **Next line: seven <, CURRENT, and the file path.**
+   <<<<<<< CURRENT path/to/file.ts
+3. **Include the exact existing code to be changed.**
+4. **Divide with seven =.**
+   =======
+5. **Add the new code.**
+6. **End with seven > and NEW.**
+   >>>>>>> NEW
+7. **Close the block with three backticks.**
+   \`\`\``
+  const specialFileContents = collectSpecialFileContents()
+  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${JSON.stringify(specialFileContents[file], null, 2)}\n\`\`\`\n\n`).join('\n')
+  const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`).join('\n')
+
+  const prompt = `${instructions}
+
+## Description of App
+
+${JSON.stringify(getClovingConfig(), null, 2)}
+
+## Special Files
+
+${specialFiles.length > 0 ? specialFiles : 'No special files provided.'}
+
+## Context Files
+
+${contextFileContents.length > 0 ? contextFileContents : 'No context files provided.'}
+
+## Directory structure
+
+${Object.keys(contextFilesContent).join('\n')}
+
+${instructions}
+
+### Example 1: Changing a Variable
+
+\`\`\`typescript
+<<<<<<< CURRENT path/to/file.ts
+const myVariable = 'exact'
+const oldVariable = 1
+=======
+const myVariable = 'exact'
+const newVariable = 2
+>>>>>>> NEW
+\`\`\`
+
+### Example 2: Create a New File
+
+\`\`\`ruby
+<<<<<<< CURRENT path/to/newfile.rb
+=======
+def new_function
+  puts 'Hello, world!'
+end
+>>>>>>> NEW
+\`\`\`
+
+### Example 3: Moving a Function
+
+Removing it from path/to/file.py
+
+\`\`\`python
+<<<<<<< CURRENT path/to/file.py
+def old_function():
+  return 'Old function'
+=======
+>>>>>>> NEW
+\`\`\`
+
+Adding it to path/to/newfile.py
+
+\`\`\`python
+<<<<<<< CURRENT path/to/newfile.py
+def existing_function():
+  return 'Existing function'
+
+=======
+def existing_function():
+  return 'Existing function'
+
+def old_function():
+  return 'Old function'
+>>>>>>> NEW
+\`\`\`
+
+### Example 4: Removing a Function
+
+\`\`\`java
+<<<<<<< CURRENT path/to/file.java
+public void oldFunction() {
+  System.out.println("Old function")
+}
+=======
+>>>>>>> NEW
+\`\`\`
+
+### Example 5: Replace a file
+
+This will replace the entire contents of **path/to/file.rb** with the new content:
+
+\`\`\`ruby
+<<<<<<< CURRENT path/to/file.rb
+=======
+def new_function
+  puts 'Hello, world!'
+end
+>>>>>>> NEW
+\`\`\`
+
+## Don't Invent Code That Isn't Provided in Context
+
+A file might be referenced by just the file name without the full path, but the code must be provided in the *Context Files* section.
+
+Unless you believe you are creating a whole new file, never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
+
+If a required file hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command or add path/to/file in the interactive chat.`
+  return prompt
+}
+
+
+export const generateShellPrompt = (): string => {
+  const shell = execSync('echo $SHELL').toString().trim()
+  const os = execSync('echo $OSTYPE').toString().trim()
+  return `Generate an executable ${shell} script that works on ${os}. Try to make it a single line if possible and as simple and straightforward as possible.
+
+Do not add any commentary or context to the message other than the commit message itself.
+
+An example of the output for this should look like the following:
+
+\`\`\`sh
+find . -type f -name "*.ts" -exec sed -i '' 's/old/new/g' {} +
+\`\`\`
+
+Don't use that script, it is only an example.`
+}
 
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {
   const specialFileContents: Record<string, string | Record<string, unknown>> = {}
@@ -103,29 +265,56 @@ export const readFileContent = (file: string): string => {
   }
 }
 
+const addFileToContext = async (
+  filePath: string,
+  contextFiles: Record<string, string>,
+  baseDir: string
+): Promise<void> => {
+  const relativePath = path.relative(baseDir, filePath)
+  if (await isBinaryFile(filePath)) {
+    return
+  }
+  const content = await fs.promises.readFile(filePath, 'utf-8')
+  contextFiles[relativePath] = content
+}
+
+const addDirectoryToContext = async (
+  dirPath: string,
+  contextFiles: Record<string, string>,
+  baseDir: string
+): Promise<void> => {
+  const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules' && entry.name !== '.git') {
+        await addDirectoryToContext(fullPath, contextFiles, baseDir)
+      }
+    } else {
+      await addFileToContext(fullPath, contextFiles, baseDir)
+    }
+  }
+}
+
 export const addFileOrDirectoryToContext = async (
   contextFile: string,
   contextFiles: Record<string, string>,
   options: Record<string, any>
 ): Promise<Record<string, string>> => {
   const filePath = path.resolve(contextFile)
-  if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
-    // Add all files in the specified directory
-    const files = await getAllFiles(options, false)
-    for (const file of files) {
-      // if the file is in the same directory as the context file, add it to the context
-      if (path.dirname(file) === path.dirname(filePath)) {
-        const content = await fs.promises.readFile(file, 'utf-8')
-        contextFiles[path.relative(process.cwd(), file)] = content
-      }
+  const baseDir = process.cwd()
+
+  try {
+    const stats = await fs.promises.stat(filePath)
+    if (stats.isDirectory()) {
+      await addDirectoryToContext(filePath, contextFiles, baseDir)
+    } else if (stats.isFile()) {
+      await addFileToContext(filePath, contextFiles, baseDir)
     }
-    console.log(`Added contents of ${contextFile} to context.`)
-  } else if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
-    const content = await fs.promises.readFile(filePath, 'utf-8')
-    contextFiles[contextFile] = content
-    console.log(`Added ${filePath} to context.`)
-  } else {
-    console.log(`File or directory ${contextFile} does not exist.`)
+  } catch (error) {
+    console.error(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`)
+    process.exit(1)
   }
+
   return contextFiles
 }

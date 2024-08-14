@@ -1,5 +1,12 @@
 import fs from 'fs'
 import path from 'path'
+import colors from 'colors'
+
+import type { BlockIndices, CurrentNewBlock } from './types'
+
+const BLOCK_START = '\n<<<<<<< CURRENT'
+const BLOCK_DIVIDER = '\n======='
+const BLOCK_END = '\n>>>>>>> NEW'
 
 // Function to estimate token count
 export const estimateTokens = async (text: string): Promise<number> => {
@@ -8,9 +15,35 @@ export const estimateTokens = async (text: string): Promise<number> => {
   return tokenCount
 }
 
-// Function to extract JSON metadata from the AI response
+/**
+ * Extracts JSON metadata from an AI response string.
+ * 
+ * This function attempts to extract a valid JSON string from the given response.
+ * It handles responses that may contain the JSON within a code block or as plain text.
+ * 
+ * The function performs the following steps:
+ * 1. Looks for a ```json code block and extracts its content if found.
+ * 2. If no code block is found, it treats the entire response as potential JSON.
+ * 3. Trims the extracted string to remove leading/trailing whitespace.
+ * 4. Removes any text before the first '{' and after the last '}'.
+ * 
+ * @param {string} response - The AI response string that may contain JSON metadata.
+ * @returns {string} A string containing only the JSON part of the response.
+ *                   If no valid JSON structure is found, it may return an empty string
+ *                   or a partial JSON string.
+ * 
+ * @example
+ * const aiResponse = '```json\n{"key": "value"}\n```\nOther text';
+ * const jsonMetadata = extractJsonMetadata(aiResponse);
+ * // jsonMetadata will be '{"key": "value"}'
+ * 
+ * @example
+ * const plainResponse = 'Some text {"key": "value"} more text';
+ * const jsonMetadata = extractJsonMetadata(plainResponse);
+ * // jsonMetadata will be '{"key": "value"}'
+ */
 export const extractJsonMetadata = (response: string): string => {
-  let jsonString
+  let jsonString: string
 
   // Extract the ```json block from the response
   const jsonBlockStart = response.indexOf('```json')
@@ -101,76 +134,220 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-export const extractFilesAndContent = (rawCodeCommand: string | undefined): Record<string, string> => {
-  if (!rawCodeCommand) return {}
-  const files: string[] = []
-  const fileContents: Record<string, string> = {}
+const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
+  const blockStart = input.indexOf(BLOCK_START, startIndex)
+  if (blockStart === -1) return null
 
-  let currentIndex = 0
-  const commandLength = rawCodeCommand.length
+  const filePathStart = blockStart + BLOCK_START.length
+  const filePathEnd = input.indexOf('\n', filePathStart)
+  const dividerIndex = input.indexOf(BLOCK_DIVIDER, filePathEnd)
+  if (dividerIndex === -1) return null
 
-  while (currentIndex < commandLength) {
-    let fileNameStart = rawCodeCommand.indexOf('**', currentIndex)
-    if (fileNameStart === -1) break
+  const blockEnd = input.indexOf(BLOCK_END, dividerIndex)
+  if (blockEnd === -1) return null
 
-    let fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
-    if (fileNameEnd === -1) break
-
-    let nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
-    let nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
-
-    while (nextBoldStart !== -1 && nextCodeStart > nextBoldStart) {
-      fileNameStart = nextBoldStart
-      fileNameEnd = rawCodeCommand.indexOf('**', fileNameStart + 2)
-
-      nextBoldStart = rawCodeCommand.indexOf('**', fileNameEnd + 2)
-      nextCodeStart = rawCodeCommand.indexOf('\n```', fileNameEnd + 2)
-    }
-
-    const fileName = rawCodeCommand.slice(fileNameStart + 2, fileNameEnd).trim()
-    files.push(fileName)
-
-    const codeBlockStart = rawCodeCommand.indexOf('\n```', fileNameEnd)
-    if (codeBlockStart === -1) break
-
-    let codeBlockEnd = codeBlockStart + 4
-    while (codeBlockEnd < commandLength) {
-      if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 5) === '\n```\n') {
-        break
-      } else if (rawCodeCommand.slice(codeBlockEnd, codeBlockEnd + 4) === '\n```' && codeBlockEnd + 4 === commandLength) {
-        break
-      }
-      codeBlockEnd++
-    }
-
-    if (codeBlockEnd >= commandLength) break
-
-    let content = rawCodeCommand.slice(codeBlockStart + 4, codeBlockEnd).trim()
-
-    const firstNewlineIndex = content.indexOf('\n')
-    if (firstNewlineIndex !== -1) {
-      content = content.slice(firstNewlineIndex + 1)
-    } else {
-      content = content.replace(/^\w+\s*/, '')
-    }
-
-    fileContents[fileName] = content.trim()
-
-    currentIndex = codeBlockEnd + 5
+  return {
+    start: blockStart,
+    filePathEnd,
+    divider: dividerIndex,
+    end: blockEnd
   }
-
-  return fileContents
 }
 
-export const saveGeneratedFiles = async (fileContents: Record<string, string>): Promise<void> => {
-  for (const file of Object.keys(fileContents)) {
-    if (fileContents[file]) {
-      const filePath = path.resolve(file)
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-      await fs.promises.writeFile(filePath, fileContents[file])
-      console.log(`${file} has been saved.`)
-    } else {
-      console.log(`File content not found for ${file}.`)
+const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
+  const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
+  const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
+  const newContent = input.slice(indices.divider + BLOCK_DIVIDER.length, indices.end).trim()
+
+  return { filePath, currentContent, newContent }
+}
+
+/**
+ * Extracts CURRENT/NEW blocks from the given input string.
+ * 
+ * This function parses the input string to find and extract all CURRENT/NEW blocks.
+ * Each block contains information about file paths, current content, and new content.
+ * 
+ * The blocks are defined by specific delimiters:
+ * - Start: '<<<<<<< CURRENT'
+ * - Divider: '======='
+ * - End: '>>>>>>> NEW'
+ * 
+ * @param {string} [input] - The input string containing CURRENT/NEW blocks.
+ * @returns {CurrentNewBlock[]} An array of CurrentNewBlock objects, each representing a parsed block.
+ *                              If the input is undefined or empty, an empty array is returned.
+ * 
+ * @example
+ * const input = `
+ * <<<<<<< CURRENT path/to/file.ts
+ * const oldCode = 'old';
+ * =======
+ * const newCode = 'new';
+ * >>>>>>> NEW
+ * `;
+ * const blocks = extractCurrentNewBlocks(input);
+ * // blocks will contain one CurrentNewBlock object with the parsed information
+ */
+
+export const extractCurrentNewBlocks = (input?: string): CurrentNewBlock[] => {
+  if (!input) return []
+
+  const blocks: CurrentNewBlock[] = []
+  let currentIndex = 0
+
+  while (currentIndex < input.length) {
+    const indices = findBlockIndices(input, currentIndex)
+    if (!indices) break
+
+    blocks.push(extractBlock(input, indices))
+    currentIndex = indices.end + BLOCK_END.length
+  }
+
+  return blocks
+}
+
+const readFileContent = async (filePath: string): Promise<string> => {
+  try {
+    return await fs.promises.readFile(filePath, 'utf-8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return ''
+    }
+    throw error
+  }
+}
+
+const ensureDirectoryExists = async (filePath: string): Promise<void> => {
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+}
+
+const writeFileContent = async (filePath: string, content: string): Promise<void> => {
+  await ensureDirectoryExists(filePath)
+  await fs.promises.writeFile(filePath, content)
+}
+
+/**
+ * Updates the content of a file by replacing a specified block of current content with new content.
+ * 
+ * This function searches for the `currentContent` within the `currentContent` of the file.
+ * If found, it replaces it with the `newContent` from the `block`, preserving the indentation
+ * level of the original content.
+ * 
+ * @param {string} currentContent - The existing content of the file.
+ * @param {CurrentNewBlock} block - An object containing the current and new content to be replaced.
+ * @returns {string} The updated file content with the specified block replaced.
+ * 
+ * @example
+ * const currentContent = `
+ * function example() {
+ *   console.log('Old content');
+ * }
+ * `;
+ * const block = {
+ *   currentContent: "console.log('Old content');",
+ *   newContent: "console.log('New content');"
+ * };
+ * const updatedContent = updateFileContent(currentContent, block);
+ * // updatedContent will be:
+ * // function example() {
+ * //   console.log('New content');
+ * // }
+ */
+const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
+  if (block.currentContent.trim() === '') {
+    return block.newContent
+  }
+
+  // Normalize the current content for comparison
+  const normalizedCurrentContent = block.currentContent.trim()
+  const normalizedFileContent = currentContent.replace(/\r\n/g, '\n')
+
+  // Find the index of the normalized current content in the file content
+  const index = normalizedFileContent.indexOf(normalizedCurrentContent)
+  if (index === -1) {
+    return currentContent
+  }
+
+  // Determine the indentation level of the current content in the file
+  const linesBefore = normalizedFileContent.substring(0, index).split('\n')
+  const lastLineBefore = linesBefore[linesBefore.length - 1]
+  const indentationMatch = lastLineBefore.match(/^\s*/)
+  const indentation = indentationMatch ? indentationMatch[0] : ''
+
+  // Calculate missing leading spaces in the current content
+  const currentContentLines = block.currentContent.split('\n')
+  const fileContentLines = normalizedFileContent.substring(index, index + normalizedCurrentContent.length).split('\n')
+  const missingSpaces = currentContentLines.map((line, i) => {
+    const fileLine = fileContentLines[i] || ''
+    const lineIndentationMatch = fileLine.match(/^\s*/)
+    const lineIndentation = lineIndentationMatch ? lineIndentationMatch[0] : ''
+    return Math.max(0, lineIndentation.length - line.length + line.trimStart().length)
+  })
+
+  // Apply the adjusted indentation to the new content
+  const indentedNewContent = block.newContent
+    .split('\n')
+    .map((line, i) => {
+      const additionalSpaces = ' '.repeat(missingSpaces[i] || 0)
+      return line.trim() ? indentation + additionalSpaces + line : line
+    })
+    .join('\n')
+
+  // Replace the current content with the indented new content
+  return currentContent.replace(block.currentContent, indentedNewContent)
+}
+
+const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
+  const filePath = path.resolve(block.filePath)
+  let fileContent = await readFileContent(filePath)
+
+  if (fileContent === '') {
+    await writeFileContent(filePath, block.newContent)
+    console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} has been ${colors.green.bold('created')}`)
+    return
+  }
+
+  if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
+    console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`)
+    return
+  }
+
+  const updatedContent = updateFileContent(fileContent, block)
+  await writeFileContent(filePath, updatedContent)
+  console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} has been ${colors.yellow.bold('updated')}`)
+}
+
+/**
+ * Applies and saves the changes specified in the CurrentNewBlock array.
+ * 
+ * This function iterates through an array of CurrentNewBlock objects, each representing
+ * a change to be made to a file. For each block, it attempts to process the change
+ * by either creating a new file, updating an existing file, or reporting an error
+ * if the current content doesn't match.
+ * 
+ * The function provides console output to inform the user about the status of each
+ * file operation (created, updated, or error).
+ * 
+ * @param {CurrentNewBlock[]} blocks - An array of CurrentNewBlock objects representing the changes to be applied.
+ * @returns {Promise<void>} A promise that resolves when all blocks have been processed.
+ * 
+ * @throws Will log errors to the console if any block processing fails, but won't stop execution for other blocks.
+ * 
+ * @example
+ * const blocks = [
+ *   { filePath: 'path/to/file.ts', currentContent: 'old code', newContent: 'new code' },
+ *   { filePath: 'path/to/newfile.ts', currentContent: '', newContent: 'new file content' }
+ * ];
+ * await applyAndSaveCurrentNewBlocks(blocks);
+ */
+export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): Promise<void> => {
+  console.log(`\nApplying and saving current/new blocks...\n`)
+
+  for (const [index, block] of blocks.entries()) {
+    try {
+      await processBlock(block, index)
+    } catch (error) {
+      console.error(`Error processing ${colors.red(block.filePath)}:`, error)
     }
   }
 }

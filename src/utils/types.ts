@@ -1,16 +1,30 @@
 export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
+export interface BlockIndices {
+  start: number
+  filePathEnd: number
+  divider: number
+  end: number
+}
+
 export interface OpenAIStreamChunk {
   output: string
   lastChar: number
 }
 
+export interface CurrentNewBlock {
+  filePath: string;
+  currentContent: string;
+  newContent: string;
+}
+
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
 }
 
 export interface GPTRequest {
+  messages?: ChatMessage[]
   prompt: string
   maxTokens?: number
   temperature?: number
