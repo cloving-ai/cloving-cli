@@ -2,8 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import { execSync, spawn } from 'child_process'
 import { isBinaryFile } from 'isbinaryfile'
+import colors from 'colors'
 
-import { getAllFiles, getClovingConfig } from './config_utils'
+import { getClovingConfig } from './config_utils'
 
 export const SPECIAL_FILES = [
   'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
@@ -311,8 +312,8 @@ export const addFileOrDirectoryToContext = async (
       await addFileToContext(filePath, contextFiles, baseDir)
     }
   } catch (error) {
-    console.error(`Error: File or directory "${contextFile}" does not exist.`)
-    throw new Error(`File or directory "${contextFile}" does not exist.`)
+    console.error(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`)
+    process.exit(1)
   }
 
   return contextFiles

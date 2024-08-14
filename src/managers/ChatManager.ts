@@ -89,10 +89,27 @@ class ChatManager {
    */
   private async loadContextFiles(): Promise<void> {
     let files = this.options.files || ['.']
-    for (const file of files) {
-      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
-      console.log(`Loaded context from ${file}`, Object.keys(this.contextFiles))
+    if (files.length > 0) {
+      console.log(`\nBuilding chat session context...\n`)
     }
+    for (const file of files) {
+      const previousCount = Object.keys(this.contextFiles).length
+      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
+      const newCount = Object.keys(this.contextFiles).length
+      const addedCount = newCount - previousCount
+
+      const totalTokens = this.calculateTotalTokens()
+
+      console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`))
+      console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`))
+      console.log(colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`))
+    }
+  }
+
+  private calculateTotalTokens(): number {
+    return Object.values(this.contextFiles).reduce((total, content) => {
+      return total + Math.ceil(content.length / 4)
+    }, 0)
   }
 
   /**
@@ -243,9 +260,9 @@ class ChatManager {
     if (filePath) {
       try {
         this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
-        console.log(`Added ${colors.bold(colors.green(filePath))} to context.`)
+        console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context`)
       } catch (error) {
-        console.error(`Failed to add ${colors.bold(colors.red(filePath))} to context:`, error)
+        console.error(`Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`, error)
       }
     } else {
       console.log('No file path provided.')
@@ -296,6 +313,11 @@ class ChatManager {
     return command.startsWith('ls ')
   }
 
+  private estimateTokens(text: string): number {
+    // A simple estimation: 1 token ≈ 4 characters
+    return Math.ceil(text.length / 4);
+  }
+
   private handleList(command: string) {
     const pattern = command.slice(3).trim()
     const fileNames = Object.keys(this.contextFiles)
@@ -304,8 +326,15 @@ class ChatManager {
 
     if (matchedFiles.length > 0) {
       console.log(`\nFiles in the current chat context:`)
-      matchedFiles.forEach(fileName => console.log(` - ${colors.bold(colors.green(fileName))}`))
-      console.log(`\nTotal files: ${matchedFiles.length}\n`)
+      let totalTokens = 0;
+      matchedFiles.forEach(fileName => {
+        const content = this.contextFiles[fileName];
+        const tokenEstimate = this.estimateTokens(content);
+        totalTokens += tokenEstimate;
+        console.log(` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`);
+      })
+      console.log(`\nTotal files: ${matchedFiles.length}`)
+      console.log(`Total estimated tokens: ${colors.yellow(totalTokens.toLocaleString())}\n`)
     } else {
       console.log('No files currently in context.')
     }
