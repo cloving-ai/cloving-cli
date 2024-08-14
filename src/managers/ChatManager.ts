@@ -69,7 +69,7 @@ class ChatManager {
     console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context`)
     console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
     console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
-    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit the application`)
+    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
   }
 
   /**
@@ -428,7 +428,7 @@ You can follow up with another request or:
  - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
  - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
  - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
- - type ${colors.yellow(colors.bold('"exit"'))} to quit
+ - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
 `)
         this.rl.prompt()
       })
