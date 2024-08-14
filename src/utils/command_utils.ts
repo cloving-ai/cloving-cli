@@ -152,7 +152,7 @@ A file might be referenced by just the file name without the full path, but the 
 
 Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
 
-If a needed filename hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command.`
+If a needed filename hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command or add path/to/file in the interactive chat.`
   return prompt
 }
 
@@ -311,7 +311,8 @@ export const addFileOrDirectoryToContext = async (
       await addFileToContext(filePath, contextFiles, baseDir)
     }
   } catch (error) {
-    console.log(`File or directory ${contextFile} does not exist.`)
+    console.error(`Error: File or directory "${contextFile}" does not exist.`)
+    throw new Error(`File or directory "${contextFile}" does not exist.`)
   }
 
   return contextFiles

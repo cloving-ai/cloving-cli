@@ -1,5 +1,12 @@
 export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
+export interface BlockIndices {
+  start: number
+  filePathEnd: number
+  divider: number
+  end: number
+}
+
 export interface OpenAIStreamChunk {
   output: string
   lastChar: number

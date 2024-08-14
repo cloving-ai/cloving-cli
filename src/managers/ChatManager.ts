@@ -25,6 +25,10 @@ class ChatManager {
   private prompt: string = ''
   private isProcessing: boolean = false
 
+  /**
+   * Creates an instance of ChatManager.
+   * @param {ClovingGPTOptions} options - Configuration options for the ChatManager.
+   */
   constructor(private options: ClovingGPTOptions) {
     options.stream = true
     options.silent = true
@@ -32,27 +36,58 @@ class ChatManager {
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
-      prompt: 'cloving> ',
+      prompt: colors.green.bold('cloving> '),
       historySize: 1000,
     })
     this.chunkManager = new ChunkManager()
   }
 
-  async initialize() {
+  /**
+   * Initializes the ChatManager by loading context files, displaying a welcome message,
+   * and setting up event listeners.
+   * @returns {Promise<void>}
+   */
+  async initialize(): Promise<void> {
     await this.loadContextFiles()
-    console.log('Welcome to Cloving REPL. Type "exit" to quit.')
+    console.log(`\n🍀 🍀 🍀 ${colors.bold('Welcome to Cloving REPL')} 🍀 🍀 🍀\n`)
+    this.displayAvailableCommands()
+    console.log('\nWhat would you like to do?')
     this.rl.prompt()
 
     this.setupEventListeners()
   }
 
-  private setupEventListeners() {
+  private displayAvailableCommands(): void {
+    console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
+    console.log('Available special commands:')
+    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes to files`)
+    console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
+    console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
+    console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
+    console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context`)
+    console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context`)
+    console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context`)
+    console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
+    console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
+    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit the application`)
+  }
+
+  /**
+   * Sets up event listeners for the readline interface and process input.
+   * @private
+   */
+  private setupEventListeners(): void {
     this.rl.on('line', this.handleLine.bind(this))
     this.rl.on('close', this.handleClose.bind(this))
     process.stdin.on('keypress', this.handleKeypress.bind(this))
   }
 
-  private async loadContextFiles() {
+  /**
+   * Loads context files specified in the options or defaults to the current directory.
+   * @private
+   * @returns {Promise<void>}
+   */
+  private async loadContextFiles(): Promise<void> {
     let files = this.options.files || ['.']
     for (const file of files) {
       this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
@@ -60,7 +95,13 @@ class ChatManager {
     }
   }
 
-  private async handleLine(line: string) {
+  /**
+   * Handles each line of input from the user.
+   * @private
+   * @param {string} line - The input line from the user.
+   * @returns {Promise<void>}
+   */
+  private async handleLine(line: string): Promise<void> {
     if (this.isProcessing) {
       return;
     }
@@ -72,7 +113,7 @@ class ChatManager {
     }
 
     if (trimmedLine === '') {
-      this.rl.prompt();
+      this.displayPrompt();
       return;
     }
 
@@ -124,8 +165,33 @@ class ChatManager {
     this.historyIndex = -1
   }
 
+  /**
+   * Handles various commands entered by the user.
+   * This function acts as a command router, delegating to specific handlers based on the input.
+   * 
+   * @private
+   * @param {string} command - The command entered by the user.
+   * @returns {Promise<void>}
+   * 
+   * @description
+   * Supported commands:
+   * - 'copy': Copies the last response to clipboard.
+   * - 'save': Saves changes to files.
+   * - 'commit': Commits changes to git with an AI-generated message.
+   * - 'ls': Lists files in the context (equivalent to 'ls *').
+   * - 'rm': Removes all files from the context (equivalent to 'rm *').
+   * - 'review': Starts a code review.
+   * - 'add <file-path>': Adds a file to the context.
+   * - 'rm <pattern>': Removes files matching the pattern from the context.
+   * - 'ls <pattern>': Lists files in the context matching the pattern.
+   * - 'git <command>': Executes a git command.
+   * - Any other input is processed as a user query to the AI.
+   */
   private async handleCommand(command: string) {
     switch (command) {
+      case 'help':
+        this.displayHelp()
+        break
       case 'copy':
         await this.handleCopy()
         break
@@ -136,7 +202,7 @@ class ChatManager {
         await this.handleCommit()
         break
       case 'ls':
-        await this.handleList("ls *")
+        this.handleList("ls *")
         break
       case 'rm':
         await this.handleRemove("rm *")
@@ -159,6 +225,13 @@ class ChatManager {
     }
   }
 
+  private displayHelp(): void {
+    console.log('')
+    this.displayAvailableCommands()
+    console.log('\nFor any other input, I will process it as a request or question.\n')
+    this.rl.prompt()
+  }
+
   private isAddCommand(command: string): boolean {
     const parts = command.trim().split(/\s+/)
     return parts.length === 2 && parts[0] === 'add'
@@ -170,9 +243,9 @@ class ChatManager {
     if (filePath) {
       try {
         this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
-        console.log(`Added ${colors.green(filePath)} to context.`)
+        console.log(`Added ${colors.bold(colors.green(filePath))} to context.`)
       } catch (error) {
-        console.error(`Failed to add ${colors.red(filePath)} to context:`, error)
+        console.error(`Failed to add ${colors.bold(colors.red(filePath))} to context:`, error)
       }
     } else {
       console.log('No file path provided.')
@@ -207,10 +280,10 @@ class ChatManager {
       if (matchedFiles.length > 0) {
         matchedFiles.forEach(filePath => {
           delete this.contextFiles[filePath]
-          console.log(`Removed ${colors.green(filePath)} from context.`)
+          console.log(`Removed ${colors.bold(colors.green(filePath))} from context.`)
         })
       } else {
-        console.log(`No files matching pattern "${pattern}" found in context.`)
+        console.log(`No files matching pattern "${colors.bold(pattern)}" found in context.`)
       }
     } else {
       console.log('No pattern provided.')
@@ -230,8 +303,9 @@ class ChatManager {
     const matchedFiles = pattern ? this.filterPaths(fileNames, pattern) : fileNames
 
     if (matchedFiles.length > 0) {
-      console.log('Files in context:')
-      matchedFiles.forEach(fileName => console.log(`- ${colors.green(fileName)}`))
+      console.log(`\nFiles in the current chat context:`)
+      matchedFiles.forEach(fileName => console.log(` - ${colors.bold(colors.green(fileName))}`))
+      console.log(`\nTotal files: ${matchedFiles.length}\n`)
     } else {
       console.log('No files currently in context.')
     }
@@ -243,6 +317,7 @@ class ChatManager {
     if (lastResponse) {
       ncp.copy(lastResponse.content, () => {
         console.info('Last response copied to clipboard.')
+        this.rl.prompt()
       })
     } else {
       console.error('No response to copy.')
@@ -270,10 +345,10 @@ class ChatManager {
       const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content)
       if (Object.keys(currentNewBlocks).length > 0) {
         await applyAndSaveCurrentNewBlocks(currentNewBlocks)
-        console.info('Files have been saved.')
+        console.info(`\n${colors.bold('save')} has finished\n`)
         this.rl.prompt()
       } else {
-        console.info('No files found to save in the last response.')
+        console.info('No changes found to save in the last response.')
         this.rl.prompt()
       }
     } else {
@@ -344,12 +419,12 @@ class ChatManager {
 
 You can follow up with another request or:
  - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
- - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git
+ - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git with a AI-generated message
  - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
  - type ${colors.yellow(colors.bold('"review"'))} to start a code review
- - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the context
- - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the context
- - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the context
+ - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the chat context
+ - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
+ - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
  - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
  - type ${colors.yellow(colors.bold('"exit"'))} to quit
 `)
@@ -391,6 +466,29 @@ You can follow up with another request or:
     }
   }
 
+  /**
+   * Generates a comprehensive prompt for the AI model.
+   * 
+   * This function constructs a detailed prompt that includes:
+   * 1. The user's current request
+   * 2. Contents of all context files
+   * 3. Full chat history (excluding the current request)
+   * 4. The current request repeated at the end
+   * 
+   * @private
+   * @param {string} prompt - The user's current request or input.
+   * @returns {string} A formatted string containing the complete prompt for the AI.
+   * 
+   * @description
+   * The generated prompt follows this structure:
+   * 1. "### Request" section with the current prompt
+   * 2. Contents of all context files, each prefixed with its file name
+   * 3. "### Full Chat History Context" section with all previous messages
+   * 4. "### Current Request" section repeating the current prompt
+   * 
+   * This structure provides the AI with comprehensive context for generating
+   * accurate and relevant responses.
+   */
   private generatePrompt(prompt: string): string {
     const contextFileContents = Object.keys(this.contextFiles)
       .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
@@ -416,6 +514,16 @@ ${prompt}`
   private handleClose() {
     console.log('Goodbye!')
     process.exit(0)
+  }
+
+  /**
+   * Displays the prompt in green and bold.
+   * This method should be used instead of directly calling this.rl.prompt().
+   * @private
+   */
+  private displayPrompt() {
+    this.rl.setPrompt(colors.green.bold('cloving> '))
+    this.rl.prompt()
   }
 
   private handleKeypress(_: any, key: { name: string }) {

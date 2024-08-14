@@ -1,7 +1,12 @@
 import fs from 'fs'
 import path from 'path'
+import colors from 'colors'
 
-import type { CurrentNewBlock } from './types'
+import type { BlockIndices, CurrentNewBlock } from './types'
+
+const BLOCK_START = '\n<<<<<<< CURRENT'
+const BLOCK_DIVIDER = '\n======='
+const BLOCK_END = '\n>>>>>>> NEW'
 
 // Function to estimate token count
 export const estimateTokens = async (text: string): Promise<number> => {
@@ -10,9 +15,35 @@ export const estimateTokens = async (text: string): Promise<number> => {
   return tokenCount
 }
 
-// Function to extract JSON metadata from the AI response
+/**
+ * Extracts JSON metadata from an AI response string.
+ * 
+ * This function attempts to extract a valid JSON string from the given response.
+ * It handles responses that may contain the JSON within a code block or as plain text.
+ * 
+ * The function performs the following steps:
+ * 1. Looks for a ```json code block and extracts its content if found.
+ * 2. If no code block is found, it treats the entire response as potential JSON.
+ * 3. Trims the extracted string to remove leading/trailing whitespace.
+ * 4. Removes any text before the first '{' and after the last '}'.
+ * 
+ * @param {string} response - The AI response string that may contain JSON metadata.
+ * @returns {string} A string containing only the JSON part of the response.
+ *                   If no valid JSON structure is found, it may return an empty string
+ *                   or a partial JSON string.
+ * 
+ * @example
+ * const aiResponse = '```json\n{"key": "value"}\n```\nOther text';
+ * const jsonMetadata = extractJsonMetadata(aiResponse);
+ * // jsonMetadata will be '{"key": "value"}'
+ * 
+ * @example
+ * const plainResponse = 'Some text {"key": "value"} more text';
+ * const jsonMetadata = extractJsonMetadata(plainResponse);
+ * // jsonMetadata will be '{"key": "value"}'
+ */
 export const extractJsonMetadata = (response: string): string => {
-  let jsonString
+  let jsonString: string
 
   // Extract the ```json block from the response
   const jsonBlockStart = response.indexOf('```json')
@@ -103,80 +134,156 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-export const extractCurrentNewBlocks = (input?: string | undefined): CurrentNewBlock[] => {
-  if (!input)
-    return []
+const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
+  const blockStart = input.indexOf(BLOCK_START, startIndex)
+  if (blockStart === -1) return null
+
+  const filePathStart = blockStart + BLOCK_START.length
+  const filePathEnd = input.indexOf('\n', filePathStart)
+  const dividerIndex = input.indexOf(BLOCK_DIVIDER, filePathEnd)
+  if (dividerIndex === -1) return null
+
+  const blockEnd = input.indexOf(BLOCK_END, dividerIndex)
+  if (blockEnd === -1) return null
+
+  return {
+    start: blockStart,
+    filePathEnd,
+    divider: dividerIndex,
+    end: blockEnd
+  }
+}
+
+const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
+  const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
+  const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
+  const newContent = input.slice(indices.divider + BLOCK_DIVIDER.length, indices.end).trim()
+
+  return { filePath, currentContent, newContent }
+}
+
+/**
+ * Extracts CURRENT/NEW blocks from the given input string.
+ * 
+ * This function parses the input string to find and extract all CURRENT/NEW blocks.
+ * Each block contains information about file paths, current content, and new content.
+ * 
+ * The blocks are defined by specific delimiters:
+ * - Start: '<<<<<<< CURRENT'
+ * - Divider: '======='
+ * - End: '>>>>>>> NEW'
+ * 
+ * @param {string} [input] - The input string containing CURRENT/NEW blocks.
+ * @returns {CurrentNewBlock[]} An array of CurrentNewBlock objects, each representing a parsed block.
+ *                              If the input is undefined or empty, an empty array is returned.
+ * 
+ * @example
+ * const input = `
+ * <<<<<<< CURRENT path/to/file.ts
+ * const oldCode = 'old';
+ * =======
+ * const newCode = 'new';
+ * >>>>>>> NEW
+ * `;
+ * const blocks = extractCurrentNewBlocks(input);
+ * // blocks will contain one CurrentNewBlock object with the parsed information
+ */
+
+export const extractCurrentNewBlocks = (input?: string): CurrentNewBlock[] => {
+  if (!input) return []
 
   const blocks: CurrentNewBlock[] = []
   let currentIndex = 0
-  const inputLength = input.length
 
-  while (currentIndex < inputLength) {
-    const blockStart = input.indexOf('<<<<<<< CURRENT', currentIndex)
-    if (blockStart === -1) break
+  while (currentIndex < input.length) {
+    const indices = findBlockIndices(input, currentIndex)
+    if (!indices) break
 
-    const filePathStart = blockStart + '<<<<<<< CURRENT'.length
-    const filePathEnd = input.indexOf('\n', filePathStart)
-    const filePath = input.slice(filePathStart, filePathEnd).trim()
-
-    const dividerIndex = input.indexOf('=======', filePathEnd)
-    if (dividerIndex === -1) break
-
-    const blockEnd = input.indexOf('>>>>>>> NEW', dividerIndex)
-    if (blockEnd === -1) break
-
-    const currentContent = input.slice(filePathEnd + 1, dividerIndex).trim()
-    const newContent = input.slice(dividerIndex + '======='.length, blockEnd).trim()
-
-    blocks.push({
-      filePath,
-      currentContent,
-      newContent,
-    })
-
-    currentIndex = blockEnd + '>>>>>>> NEW'.length
+    blocks.push(extractBlock(input, indices))
+    currentIndex = indices.end + BLOCK_END.length
   }
 
   return blocks
 }
 
+const readFileContent = async (filePath: string): Promise<string> => {
+  try {
+    return await fs.promises.readFile(filePath, 'utf-8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return ''
+    }
+    throw error
+  }
+}
+
+const ensureDirectoryExists = async (filePath: string): Promise<void> => {
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+}
+
+const writeFileContent = async (filePath: string, content: string): Promise<void> => {
+  await ensureDirectoryExists(filePath)
+  await fs.promises.writeFile(filePath, content)
+}
+
+const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
+  if (block.currentContent.trim() === '') {
+    return block.newContent
+  }
+  return currentContent.replace(block.currentContent, block.newContent)
+}
+
+const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
+  const filePath = path.resolve(block.filePath)
+  let fileContent = await readFileContent(filePath)
+
+  if (fileContent === '') {
+    await writeFileContent(filePath, block.newContent)
+    console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} has been ${colors.green.bold('created')}`)
+    return
+  }
+
+  if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
+    console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`)
+    return
+  }
+
+  const updatedContent = updateFileContent(fileContent, block)
+  await writeFileContent(filePath, updatedContent)
+  console.log(`[${index + 1}] ${colors.green.bold(block.filePath)} has been ${colors.yellow.bold('updated')}`)
+}
+
+/**
+ * Applies and saves the changes specified in the CurrentNewBlock array.
+ * 
+ * This function iterates through an array of CurrentNewBlock objects, each representing
+ * a change to be made to a file. For each block, it attempts to process the change
+ * by either creating a new file, updating an existing file, or reporting an error
+ * if the current content doesn't match.
+ * 
+ * The function provides console output to inform the user about the status of each
+ * file operation (created, updated, or error).
+ * 
+ * @param {CurrentNewBlock[]} blocks - An array of CurrentNewBlock objects representing the changes to be applied.
+ * @returns {Promise<void>} A promise that resolves when all blocks have been processed.
+ * 
+ * @throws Will log errors to the console if any block processing fails, but won't stop execution for other blocks.
+ * 
+ * @example
+ * const blocks = [
+ *   { filePath: 'path/to/file.ts', currentContent: 'old code', newContent: 'new code' },
+ *   { filePath: 'path/to/newfile.ts', currentContent: '', newContent: 'new file content' }
+ * ];
+ * await applyAndSaveCurrentNewBlocks(blocks);
+ */
 export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): Promise<void> => {
-  for (const block of blocks) {
-    const filePath = path.resolve(block.filePath)
+  console.log(`\nApplying and saving current/new blocks...\n`)
 
+  for (const [index, block] of blocks.entries()) {
     try {
-      // Read the current file content
-      let fileContent = await fs.promises.readFile(filePath, 'utf-8')
-
-      // Check if the current content exists in the file
-      if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
-        console.error(`ERROR: Current content not found in ${block.filePath}`)
-        continue
-      }
-
-      // Replace the current content with the new content
-      if (block.currentContent.trim() === '') {
-        fileContent = block.newContent
-      } else {
-        fileContent = fileContent.replace(block.currentContent, block.newContent)
-      }
-
-      // Ensure the directory exists
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-
-      // Write the updated content back to the file
-      await fs.promises.writeFile(filePath, fileContent)
-
-      console.log(`${block.filePath} has been updated and saved.`)
+      await processBlock(block, index)
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        // If the file doesn't exist, create it with the new content
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.promises.writeFile(filePath, block.newContent)
-        console.log(`${block.filePath} has been created and saved.`)
-      } else {
-        console.error(`Error processing ${block.filePath}:`, error)
-      }
+      console.error(`Error processing ${colors.red(block.filePath)}:`, error)
     }
   }
 }
