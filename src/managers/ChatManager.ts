@@ -9,6 +9,7 @@ import ChunkManager from './ChunkManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
+import { getClovingConfig } from '../utils/config_utils'
 import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
@@ -99,16 +100,26 @@ class ChatManager {
   }
 
   /**
-   * Loads context files specified in the options or defaults to the current directory.
+   * Loads context files specified in the options or defaults to the primary language's directory.
    * @private
    * @returns {Promise<void>}
    */
   private async loadContextFiles(): Promise<void> {
-    let files = this.options.files || ['.']
+    const config = getClovingConfig()
+    const primaryLanguage = config.languages.find(lang => lang.primary)
+    const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
+    const testingDirectories = config.testingFrameworks?.map(framework => framework.directory) || []
+    const testingDirectory = testingDirectories[0]
+
+    let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
     if (files.length > 0) {
       console.log(`\nBuilding chat session context...\n`)
     }
     for (const file of files) {
+      // Skip if the file is not a string
+      if (!file)
+        continue
+
       const previousCount = Object.keys(this.contextFiles).length
       this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
       const newCount = Object.keys(this.contextFiles).length
@@ -136,56 +147,56 @@ class ChatManager {
    */
   private async handleLine(line: string): Promise<void> {
     if (this.isProcessing) {
-      return;
+      return
     }
 
-    const trimmedLine = line.trim();
+    const trimmedLine = line.trim()
 
     if (this.handleMultilineInput(trimmedLine)) {
-      return;
+      return
     }
 
     if (trimmedLine === '') {
-      this.displayPrompt();
-      return;
+      this.displayPrompt()
+      return
     }
 
-    this.updateCommandHistory(trimmedLine);
+    this.updateCommandHistory(trimmedLine)
 
     if (this.handleExitCommand(trimmedLine)) {
-      return;
+      return
     }
 
-    await this.handleCommand(trimmedLine);
+    await this.handleCommand(trimmedLine)
   }
 
   private handleMultilineInput(line: string): boolean {
     if (this.isMultilineMode) {
       if (line === '```') {
-        this.isMultilineMode = false;
-        this.handleCommand(this.multilineInput);
-        this.multilineInput = '';
+        this.isMultilineMode = false
+        this.handleCommand(this.multilineInput)
+        this.multilineInput = ''
       } else {
-        this.multilineInput += line + '\n';
-        this.rl.prompt();
+        this.multilineInput += line + '\n'
+        this.rl.prompt()
       }
-      return true;
+      return true
     } else if (line === '```') {
-      this.isMultilineMode = true;
-      this.multilineInput = '';
-      console.log('Entering multiline mode. Type ``` on a new line to end.\n');
-      this.rl.prompt();
-      return true;
+      this.isMultilineMode = true
+      this.multilineInput = ''
+      console.log('Entering multiline mode. Type ``` on a new line to end.\n')
+      this.rl.prompt()
+      return true
     }
-    return false;
+    return false
   }
 
   private handleExitCommand(command: string): boolean {
     if (command.toLowerCase() === 'exit') {
-      this.rl.close();
-      return true;
+      this.rl.close()
+      return true
     }
-    return false;
+    return false
   }
 
   private updateCommandHistory(command: string) {
@@ -273,8 +284,12 @@ class ChatManager {
         const foundFiles = await this.findFiles(fileName)
         for (const filePath of foundFiles) {
           this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
-          console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context`)
+          const content = this.contextFiles[filePath]
+          const tokenEstimate = this.estimateTokens(content)
+          console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
         }
+        const totalTokens = this.calculateTotalTokens()
+        console.log(colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`))
       } catch (error) {
         console.error(`Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`, error)
       }
@@ -371,7 +386,7 @@ class ChatManager {
 
   private estimateTokens(text: string): number {
     // A simple estimation: 1 token ≈ 4 characters
-    return Math.ceil(text.length / 4);
+    return Math.ceil(text.length / 4)
   }
 
   private handleList(command: string) {
@@ -382,12 +397,12 @@ class ChatManager {
 
     if (matchedFiles.length > 0) {
       console.log(`\nFiles in the current chat session context:`)
-      let totalTokens = 0;
+      let totalTokens = 0
       matchedFiles.forEach(fileName => {
-        const content = this.contextFiles[fileName];
-        const tokenEstimate = this.estimateTokens(content);
-        totalTokens += tokenEstimate;
-        console.log(` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`);
+        const content = this.contextFiles[fileName]
+        const tokenEstimate = this.estimateTokens(content)
+        totalTokens += tokenEstimate
+        console.log(` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
       })
       console.log(`\nTotal files: ${matchedFiles.length}`)
       console.log(`Total estimated tokens: ${colors.yellow(totalTokens.toLocaleString())}\n`)
@@ -471,69 +486,69 @@ class ChatManager {
    */
   private async processUserInput(input: string): Promise<void> {
     if (this.isProcessing) {
-      console.log('Please wait for the current request to complete.');
-      return;
+      console.log('Please wait for the current request to complete.')
+      return
     }
 
-    this.isProcessing = true;
-    this.chunkManager = new ChunkManager();
+    this.isProcessing = true
+    this.chunkManager = new ChunkManager()
 
     try {
-      this.initializeChatHistory(input);
-      this.prompt = this.generatePrompt(input);
+      this.initializeChatHistory(input)
+      this.prompt = this.generatePrompt(input)
 
-      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory });
-      let accumulatedContent = '';
+      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
+      let accumulatedContent = ''
 
-      this.handleResponseStream(responseStream, accumulatedContent);
+      this.handleResponseStream(responseStream, accumulatedContent)
     } catch (err) {
-      this.handleError(err);
+      this.handleError(err)
     }
   }
 
   private initializeChatHistory(input: string) {
     if (this.chatHistory.length === 0) {
-      const systemPrompt = generateCodegenPrompt(this.contextFiles);
-      this.chatHistory.push({ role: 'user', content: systemPrompt });
-      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' });
+      const systemPrompt = generateCodegenPrompt(this.contextFiles)
+      this.chatHistory.push({ role: 'user', content: systemPrompt })
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
     }
-    this.chatHistory.push({ role: 'user', content: input });
+    this.chatHistory.push({ role: 'user', content: input })
   }
 
   private handleResponseStream(responseStream: any, accumulatedContent: string) {
     this.chunkManager.on('content', (buffer: string) => {
-      let convertedStream = this.gpt.convertStream(buffer);
+      let convertedStream = this.gpt.convertStream(buffer)
 
       while (convertedStream !== null) {
-        const { output, lastChar } = convertedStream;
-        process.stdout.write(output);
-        accumulatedContent += output;
-        this.chunkManager.clearBuffer(lastChar);
-        buffer = buffer.slice(lastChar);
-        convertedStream = this.gpt.convertStream(buffer);
+        const { output, lastChar } = convertedStream
+        process.stdout.write(output)
+        accumulatedContent += output
+        this.chunkManager.clearBuffer(lastChar)
+        buffer = buffer.slice(lastChar)
+        convertedStream = this.gpt.convertStream(buffer)
       }
-    });
+    })
 
     responseStream.data.on('data', (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      this.chunkManager.addChunk(chunkString);
-    });
+      const chunkString = chunk.toString()
+      this.chunkManager.addChunk(chunkString)
+    })
 
     responseStream.data.on('end', () => {
-      this.finalizeResponse(accumulatedContent);
-    });
+      this.finalizeResponse(accumulatedContent)
+    })
 
     responseStream.data.on('error', (error: Error) => {
-      console.error('Error streaming response:', error);
-      this.isProcessing = false;
-      process.stdout.write('\n');
-      this.rl.prompt();
-    });
+      console.error('Error streaming response:', error)
+      this.isProcessing = false
+      process.stdout.write('\n')
+      this.rl.prompt()
+    })
   }
 
   private finalizeResponse(accumulatedContent: string) {
-    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() });
-    this.isProcessing = false;
+    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
+    this.isProcessing = false
     process.stdout.write(`
 
   You can follow up with another request or:
@@ -546,34 +561,34 @@ class ChatManager {
    - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
    - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
    - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
-  `);
-    this.rl.prompt();
+  `)
+    this.rl.prompt()
   }
 
   private handleError(err: unknown) {
-    const error = err as AxiosError;
-    let errorMessage = error.message || 'An error occurred.';
-    const errorNumber = error.response?.status || 'unknown';
+    const error = err as AxiosError
+    let errorMessage = error.message || 'An error occurred.'
+    const errorNumber = error.response?.status || 'unknown'
 
     switch (errorNumber) {
       case 400:
-        errorMessage = "Invalid model or prompt size too large. Try specifying fewer files.";
-        break;
+        errorMessage = "Invalid model or prompt size too large. Try specifying fewer files."
+        break
       case 403:
-        errorMessage = "Inactive subscription or usage limit reached";
-        break;
+        errorMessage = "Inactive subscription or usage limit reached"
+        break
       case 429:
-        errorMessage = "Rate limit error";
-        break;
+        errorMessage = "Rate limit error"
+        break
       case 500:
-        errorMessage = "Internal server error";
-        break;
+        errorMessage = "Internal server error"
+        break
     }
 
-    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString();
-    console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`);
-    this.isProcessing = false;
-    this.rl.prompt();
+    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
+    console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`)
+    this.isProcessing = false
+    this.rl.prompt()
   }
 
   /**
@@ -622,7 +637,7 @@ ${prompt}
 
 ### Note
 
-Whenever possible, break up the changes into pieces and keep any beginning whitespace in tact.`
+Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT/NEW block.`
   }
 
   private handleClose() {
@@ -655,11 +670,11 @@ Whenever possible, break up the changes into pieces and keep any beginning white
         this.rl.write(null, { ctrl: true, name: 'u' })
       }
     } else if (key && key.name === 'tab') {
-      const line = this.rl.line.trim();
-      const hits = specialCommands.filter((command) => command.startsWith(line));
+      const line = this.rl.line.trim()
+      const hits = specialCommands.filter((command) => command.startsWith(line))
       if (hits.length > 0) {
-        this.rl.write(null, { ctrl: true, name: 'u' });
-        this.rl.write(hits[0]);
+        this.rl.write(null, { ctrl: true, name: 'u' })
+        this.rl.write(hits[0])
       }
     }
   }
