@@ -22,7 +22,7 @@ class ShellManager {
   private generateExplainShellPrompt(prompt: string): string {
     return `${prompt}
 
-## Task
+# Task
 
 Please briefly explain how this shell script works.`
   }

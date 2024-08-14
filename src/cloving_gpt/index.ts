@@ -69,7 +69,7 @@ class ClovingGPT {
   private async reviewPrompt(prompt: string, messages: ChatMessage[], endpoint: string): Promise<string | null> {
     if (this.silent) return prompt
 
-    const fullPrompt = messages.map(m => m.role === 'user' ? `## Task\n\n${m.content}` : m.content).join('\n\n')
+    const fullPrompt = messages.map(m => m.role === 'user' ? `# Task\n\n${m.content}` : m.content).join('\n\n')
 
     const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
     const reviewPrompt = await confirm(

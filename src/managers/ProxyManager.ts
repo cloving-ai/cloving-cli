@@ -68,7 +68,7 @@ class ProxyManager {
       const content = messages.map((message: any) => message.content).join('\n\n')
 
       const contextFileContents = Object.keys(this.contextFiles).map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`).join('\n')
-      const prompt = `### Task
+      const prompt = `# Task
 
 ${content}
 
@@ -78,7 +78,7 @@ ${JSON.stringify(getClovingConfig(), null, 2)}
 
 ${contextFileContents}
 
-### Task
+# Task
 
 ${content}`
 

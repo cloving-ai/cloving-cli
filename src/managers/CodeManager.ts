@@ -174,7 +174,7 @@ class CodeManager {
   private generateExplainCodePrompt(prompt: string): string {
     return `${prompt}
 
-## Task
+# Task
 
 Please briefly explain how the code works in this.`
   }

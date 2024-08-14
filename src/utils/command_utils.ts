@@ -151,9 +151,9 @@ end
 
 A file might be referenced by just the file name without the full path, but the code must be provided in the *Context Files* section.
 
-Never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
+Unless you believe you are creating a whole new file, never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
 
-If a needed filename hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command or add path/to/file in the interactive chat.`
+If a required file hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command or add path/to/file in the interactive chat.`
   return prompt
 }
 

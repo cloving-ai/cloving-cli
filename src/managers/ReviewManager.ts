@@ -135,7 +135,7 @@ Format the output of this code review in Markdown format.`
     this.options.prompt = `## Diff Content
 ${gitDiff}
 
-## Task
+# Task
 
 ${this.options.prompt || 'Please provide a code review.'}`
 
