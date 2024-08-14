@@ -18,6 +18,7 @@ const specialCommands = [
   'copy',
   'review',
   'add <file-path>',
+  'find <file-name>',
   'rm <pattern>',
   'ls <pattern>',
   'git <command>',
@@ -78,6 +79,7 @@ class ChatManager {
     console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
     console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
     console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
+    console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context`)
     console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context`)
     console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context`)
     console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context`)
@@ -244,6 +246,8 @@ class ChatManager {
       default:
         if (this.isAddCommand(command)) {
           await this.handleAdd(command)
+        } else if (this.isFindCommand(command)) {
+          await this.handleFind(command)
         } else if (this.isRemoveCommand(command)) {
           await this.handleRemove(command)
         } else if (this.isListCommand(command)) {
@@ -254,6 +258,44 @@ class ChatManager {
           await this.processUserInput(command)
         }
     }
+  }
+
+  private isFindCommand(command: string): boolean {
+    const parts = command.trim().split(/\s+/)
+    return parts.length === 2 && parts[0] === 'find'
+  }
+
+  private async handleFind(command: string) {
+    const fileName = command.slice(5).trim()
+
+    if (fileName) {
+      try {
+        const foundFiles = await this.findFiles(fileName)
+        for (const filePath of foundFiles) {
+          this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
+          console.log(`Added ${colors.bold(colors.green(filePath))} to this chat session's context`)
+        }
+      } catch (error) {
+        console.error(`Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`, error)
+      }
+    } else {
+      console.log('No file name provided.')
+    }
+
+    this.rl.prompt()
+  }
+
+  private async findFiles(fileName: string): Promise<string[]> {
+    const { exec } = require('child_process')
+    return new Promise((resolve, reject) => {
+      exec(`find . -name "${fileName}"`, (error: Error, stdout: string) => {
+        if (error) {
+          return reject(error)
+        }
+        const files = stdout.split('\n').filter((filePath) => filePath.trim() !== '')
+        resolve(files)
+      })
+    })
   }
 
   private displayHelp(): void {
@@ -311,10 +353,10 @@ class ChatManager {
       if (matchedFiles.length > 0) {
         matchedFiles.forEach(filePath => {
           delete this.contextFiles[filePath]
-          console.log(`Removed ${colors.bold(colors.green(filePath))} from context.`)
+          console.log(`Removed ${colors.bold(colors.green(filePath))} from this chat session's context files`)
         })
       } else {
-        console.log(`No files matching pattern "${colors.bold(pattern)}" found in context.`)
+        console.log(`No files matching pattern "${colors.bold(pattern)}" found in this chat session's context files, try running ${colors.yellow('ls')} to see the list of files.`)
       }
     } else {
       console.log('No pattern provided.')
@@ -415,100 +457,123 @@ class ChatManager {
     this.rl.prompt()
   }
 
-  private async processUserInput(input: string) {
+  /**
+   * Processes user input by sending it to the AI model and handling the response.
+   * 
+   * This method manages the interaction with the AI model by:
+   * 1. Checking if a request is already being processed.
+   * 2. Initializing the chat history and generating a prompt.
+   * 3. Streaming the response from the AI model.
+   * 4. Handling the response stream and updating the chat history.
+   * 
+   * @param {string} input - The user's input or request to be processed.
+   * @returns {Promise<void>} - A promise that resolves when the processing is complete.
+   */
+  private async processUserInput(input: string): Promise<void> {
     if (this.isProcessing) {
-      console.log('Please wait for the current request to complete.')
-      return
+      console.log('Please wait for the current request to complete.');
+      return;
     }
 
-    this.isProcessing = true
-    this.chunkManager = new ChunkManager()
+    this.isProcessing = true;
+    this.chunkManager = new ChunkManager();
 
     try {
-      if (this.chatHistory.length === 0) {
-        const systemPrompt = generateCodegenPrompt(this.contextFiles)
-        this.chatHistory.push({ role: 'user', content: systemPrompt })
-        this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
-      }
+      this.initializeChatHistory(input);
+      this.prompt = this.generatePrompt(input);
 
-      this.chatHistory.push({ role: 'user', content: input })
+      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory });
+      let accumulatedContent = '';
 
-      this.prompt = this.generatePrompt(input)
-
-      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
-
-      let accumulatedContent = ''
-
-      this.chunkManager.on('content', (buffer: string) => {
-        let convertedStream = this.gpt.convertStream(buffer)
-
-        while (convertedStream !== null) {
-          const { output, lastChar } = convertedStream
-          process.stdout.write(output)
-          accumulatedContent += output
-          this.chunkManager.clearBuffer(lastChar)
-          buffer = buffer.slice(lastChar)
-          convertedStream = this.gpt.convertStream(buffer)
-        }
-      })
-
-      responseStream.data.on('data', (chunk: Buffer) => {
-        const chunkString = chunk.toString()
-        this.chunkManager.addChunk(chunkString)
-      })
-
-      responseStream.data.on('end', () => {
-        this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
-        this.isProcessing = false
-        process.stdout.write(`
-
-You can follow up with another request or:
- - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
- - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git with a AI-generated message
- - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
- - type ${colors.yellow(colors.bold('"review"'))} to start a code review
- - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the chat context
- - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
- - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
- - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
- - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
-`)
-        this.rl.prompt()
-      })
-
-      responseStream.data.on('error', (error: Error) => {
-        console.error('Error streaming response:', error)
-        this.isProcessing = false
-        process.stdout.write('\n')
-        this.rl.prompt()
-      })
+      this.handleResponseStream(responseStream, accumulatedContent);
     } catch (err) {
-      const error = err as AxiosError
-      let errorMessage = error.message || 'An error occurred.'
-      const errorNumber = error.response?.status || 'unknown'
-      // switch case
-      switch (errorNumber) {
-        case 400:
-          errorMessage = "Invalid model or prompt size too large. Try specifying fewer files."
-          break;
-        case 403:
-          errorMessage = "Inactive subscription or usage limit reached"
-          break;
-        case 429:
-          errorMessage = "Rate limit error"
-          break;
-        case 500:
-          errorMessage = "Internal server error"
-          break;
-      }
-
-      // get token estimate for prompt
-      const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
-
-      console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`)
-      this.isProcessing = false
-      this.rl.prompt()
+      this.handleError(err);
     }
+  }
+
+  private initializeChatHistory(input: string) {
+    if (this.chatHistory.length === 0) {
+      const systemPrompt = generateCodegenPrompt(this.contextFiles);
+      this.chatHistory.push({ role: 'user', content: systemPrompt });
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' });
+    }
+    this.chatHistory.push({ role: 'user', content: input });
+  }
+
+  private handleResponseStream(responseStream: any, accumulatedContent: string) {
+    this.chunkManager.on('content', (buffer: string) => {
+      let convertedStream = this.gpt.convertStream(buffer);
+
+      while (convertedStream !== null) {
+        const { output, lastChar } = convertedStream;
+        process.stdout.write(output);
+        accumulatedContent += output;
+        this.chunkManager.clearBuffer(lastChar);
+        buffer = buffer.slice(lastChar);
+        convertedStream = this.gpt.convertStream(buffer);
+      }
+    });
+
+    responseStream.data.on('data', (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      this.chunkManager.addChunk(chunkString);
+    });
+
+    responseStream.data.on('end', () => {
+      this.finalizeResponse(accumulatedContent);
+    });
+
+    responseStream.data.on('error', (error: Error) => {
+      console.error('Error streaming response:', error);
+      this.isProcessing = false;
+      process.stdout.write('\n');
+      this.rl.prompt();
+    });
+  }
+
+  private finalizeResponse(accumulatedContent: string) {
+    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() });
+    this.isProcessing = false;
+    process.stdout.write(`
+
+  You can follow up with another request or:
+   - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
+   - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git with a AI-generated message
+   - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
+   - type ${colors.yellow(colors.bold('"review"'))} to start a code review
+   - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the chat context
+   - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
+   - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
+   - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
+   - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
+  `);
+    this.rl.prompt();
+  }
+
+  private handleError(err: unknown) {
+    const error = err as AxiosError;
+    let errorMessage = error.message || 'An error occurred.';
+    const errorNumber = error.response?.status || 'unknown';
+
+    switch (errorNumber) {
+      case 400:
+        errorMessage = "Invalid model or prompt size too large. Try specifying fewer files.";
+        break;
+      case 403:
+        errorMessage = "Inactive subscription or usage limit reached";
+        break;
+      case 429:
+        errorMessage = "Rate limit error";
+        break;
+      case 500:
+        errorMessage = "Internal server error";
+        break;
+    }
+
+    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString();
+    console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`);
+    this.isProcessing = false;
+    this.rl.prompt();
   }
 
   /**

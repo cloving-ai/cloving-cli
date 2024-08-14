@@ -226,11 +226,75 @@ const writeFileContent = async (filePath: string, content: string): Promise<void
   await fs.promises.writeFile(filePath, content)
 }
 
+/**
+ * Updates the content of a file by replacing a specified block of current content with new content.
+ * 
+ * This function searches for the `currentContent` within the `currentContent` of the file.
+ * If found, it replaces it with the `newContent` from the `block`, preserving the indentation
+ * level of the original content.
+ * 
+ * @param {string} currentContent - The existing content of the file.
+ * @param {CurrentNewBlock} block - An object containing the current and new content to be replaced.
+ * @returns {string} The updated file content with the specified block replaced.
+ * 
+ * @example
+ * const currentContent = `
+ * function example() {
+ *   console.log('Old content');
+ * }
+ * `;
+ * const block = {
+ *   currentContent: "console.log('Old content');",
+ *   newContent: "console.log('New content');"
+ * };
+ * const updatedContent = updateFileContent(currentContent, block);
+ * // updatedContent will be:
+ * // function example() {
+ * //   console.log('New content');
+ * // }
+ */
 const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
   if (block.currentContent.trim() === '') {
     return block.newContent
   }
-  return currentContent.replace(block.currentContent, block.newContent)
+
+  // Normalize the current content for comparison
+  const normalizedCurrentContent = block.currentContent.trim()
+  const normalizedFileContent = currentContent.replace(/\r\n/g, '\n')
+
+  // Find the index of the normalized current content in the file content
+  const index = normalizedFileContent.indexOf(normalizedCurrentContent)
+  if (index === -1) {
+    return currentContent
+  }
+
+  // Determine the indentation level of the current content in the file
+  const linesBefore = normalizedFileContent.substring(0, index).split('\n')
+  const lastLineBefore = linesBefore[linesBefore.length - 1]
+  const indentationMatch = lastLineBefore.match(/^\s*/)
+  const indentation = indentationMatch ? indentationMatch[0] : ''
+
+  // Calculate missing leading spaces in the current content
+  const currentContentLines = block.currentContent.split('\n')
+  const fileContentLines = normalizedFileContent.substring(index, index + normalizedCurrentContent.length).split('\n')
+  const missingSpaces = currentContentLines.map((line, i) => {
+    const fileLine = fileContentLines[i] || ''
+    const lineIndentationMatch = fileLine.match(/^\s*/)
+    const lineIndentation = lineIndentationMatch ? lineIndentationMatch[0] : ''
+    return Math.max(0, lineIndentation.length - line.length + line.trimStart().length)
+  })
+
+  // Apply the adjusted indentation to the new content
+  const indentedNewContent = block.newContent
+    .split('\n')
+    .map((line, i) => {
+      const additionalSpaces = ' '.repeat(missingSpaces[i] || 0)
+      return line.trim() ? indentation + additionalSpaces + line : line
+    })
+    .join('\n')
+
+  // Replace the current content with the indented new content
+  return currentContent.replace(block.currentContent, indentedNewContent)
 }
 
 const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
