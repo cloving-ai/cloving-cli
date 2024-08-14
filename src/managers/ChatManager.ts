@@ -329,6 +329,7 @@ class ChatManager {
     const reviewManager = new ReviewManager(this.options)
     await reviewManager.review()
     this.options.stream = true
+    this.rl.prompt()
   }
 
   private async handleCommit() {
@@ -336,6 +337,7 @@ class ChatManager {
     const commitManager = new CommitManager(this.options)
     await commitManager.commit()
     this.options.stream = true
+    this.rl.prompt()
   }
 
   private async handleSave() {
