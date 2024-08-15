@@ -3,6 +3,7 @@ import path from 'path'
 import { execSync, spawn } from 'child_process'
 import { isBinaryFile } from 'isbinaryfile'
 import colors from 'colors'
+import { join } from 'path'
 
 import { getClovingConfig } from './config_utils'
 
@@ -11,8 +12,25 @@ export const SPECIAL_FILES = [
   '.csproj', 'packages.config', 'composer.json', 'CMakeLists.txt', 'conanfile.txt', 'conanfile.py',
   'go.mod', 'Cargo.toml', 'Package.swift', 'build.gradle.kts', 'Podfile', 'Cartfile', 'cpanfile',
   'DESCRIPTION', 'mix.exs', 'build.sbt', 'pubspec.yaml', 'stack.yaml', 'cabal.project', 'Project.toml',
-  'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json'
+  'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json', '.eslintrc.js', '.eslintrc.json', '.eslintrc.yaml',
+  '.eslintrc.yml', '.eslintrc', '.prettierrc', '.prettierrc.js', '.prettierrc.json', '.prettierrc.yaml',
+  '.prettierrc.yml', '.prettierrc', '.stylelintrc', '.stylelintrc.json', '.stylelintrc.yaml', '.stylelintrc.yml',
+  '.stylelintrc', 'jest.config.js', 'jest.config.json', 'jest.config.ts', 'jest.config.cjs', 'jest.config.mjs',
+  'webpack.config.js', 'webpack.config.ts', 'webpack.config.cjs', 'webpack.config.mjs', 'webpack.config.common.js',
 ]
+
+export const getPackageVersion = () => {
+  const packagePath = join(__dirname, '..', 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+  return packageJson.version
+}
+
+const renderAsString = (contextFile: Record<string, unknown> | string): string => {
+  if (typeof contextFile === 'string') {
+    return contextFile
+  }
+  return JSON.stringify(contextFile, null, 2)
+}
 
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const instructions = `## AI Code Generation Instructions
@@ -49,14 +67,17 @@ export const generateCodegenPrompt = (contextFilesContent: Record<string, string
 7. **Close the block with three backticks.**
    \`\`\``
   const specialFileContents = collectSpecialFileContents()
-  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${JSON.stringify(specialFileContents[file], null, 2)}\n\`\`\`\n\n`).join('\n')
+  // detect if specialFileContents[file] is a string or an object
+  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${renderAsString(specialFileContents[file])}\n\`\`\`\n\n`).join('\n')
   const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`).join('\n')
 
   const prompt = `${instructions}
 
 ## Description of App
 
+\`\`\`json
 ${JSON.stringify(getClovingConfig(), null, 2)}
+\`\`\`
 
 ## Special Files
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import config from './commands/config'
 import init from './commands/init'
 import proxy from './commands/proxy'
@@ -15,13 +13,7 @@ import commit from './commands/generate/commit'
 import context from './commands/generate/context'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
-
-// Function to get version from package.json
-const getPackageVersion = () => {
-  const packagePath = join(__dirname, 'package.json')
-  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
-  return packageJson.version
-}
+import { getPackageVersion } from './utils/command_utils'
 
 const program = new Command()
 

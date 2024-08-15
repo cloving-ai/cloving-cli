@@ -1,8 +1,6 @@
 import { select, input, confirm } from '@inquirer/prompts'
 import { AxiosError } from 'axios'
 import highlight from 'cli-highlight'
-import fs from 'fs'
-import path from 'path'
 
 import ClovingGPT from '../cloving_gpt'
 
