@@ -1,28 +1,32 @@
-import { promises as fs } from 'fs'
-import { execFileSync } from 'child_process'
-import highlight from 'cli-highlight'
-import { select, confirm } from '@inquirer/prompts'
+import { promises as fs } from 'fs';
+import { execFileSync } from 'child_process';
+import highlight from 'cli-highlight';
+import { select, confirm } from '@inquirer/prompts';
 
-import { getGitDiff } from '../../utils/git_utils'
-import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
-import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks, extractMarkdown } from '../../utils/string_utils'
-import ClovingGPT from '../../cloving_gpt'
-import type { ClovingGPTOptions } from '../../utils/types'
+import { getGitDiff } from '../../utils/git_utils';
+import { getTestingDirectory, getAllFiles } from '../../utils/config_utils';
+import {
+  extractCurrentNewBlocks,
+  applyAndSaveCurrentNewBlocks,
+  extractMarkdown,
+} from '../../utils/string_utils';
+import ClovingGPT from '../../cloving_gpt';
+import type { ClovingGPTOptions } from '../../utils/types';
 
 const extractChangedFiles = (gitDiff: string): string[] => {
-  const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g
-  const files = new Set<string>()
-  let match
+  const fileRegex = /diff --git a\/(.+?) b\/(.+?)\n/g;
+  const files = new Set<string>();
+  let match;
 
   while ((match = fileRegex.exec(gitDiff)) !== null) {
-    files.add(match[1])
+    files.add(match[1]);
   }
 
-  return Array.from(files)
-}
+  return Array.from(files);
+};
 
 const generatePrompt = (files: string[], srcFiles: string, testFiles: string, gitDiff?: string) => {
-  const filesList = files.length > 0 ? files.join('\n') : 'No files provided'
+  const filesList = files.length > 0 ? files.join('\n') : 'No files provided';
 
   return `Enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
 Also, list any test files that might be relevant to these files.
@@ -62,19 +66,19 @@ test/controllers/baz_controller_test.rb
 ### Prompt
 
 Enumerate all the files in the provided list${gitDiff ? ' and git diff' : ''} as well as the file names of anything that these files interact with.
-Also, list any test files that might be relevant to these files.`
-}
+Also, list any test files that might be relevant to these files.`;
+};
 
 const handleUserAction = async (analysis: string, autoSave: boolean = false): Promise<void> => {
-  const blocks = extractCurrentNewBlocks(analysis)
+  const blocks = extractCurrentNewBlocks(analysis);
 
   if (autoSave) {
-    await applyAndSaveCurrentNewBlocks(blocks)
-    console.log('All unit test files have been saved.')
-    return
+    await applyAndSaveCurrentNewBlocks(blocks);
+    console.log('All unit test files have been saved.');
+    return;
   }
 
-  const files = Array.from(new Set(blocks.map(block => block.filePath)))
+  const files = Array.from(new Set(blocks.map((block) => block.filePath)));
 
   const action = await select({
     message: 'What would you like to do?',
@@ -84,95 +88,109 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
       { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
       { name: 'Done', value: 'done' },
     ],
-  })
+  });
 
   switch (action) {
     case 'save':
-      let saveAnother = true
+      let saveAnother = true;
       while (saveAnother) {
         const fileToSave = await select({
           message: 'Which unit test file do you want to save?',
-          choices: files.map(file => ({ name: file, value: file })),
-        })
+          choices: files.map((file) => ({ name: file, value: file })),
+        });
 
-        await applyAndSaveCurrentNewBlocks(blocks.filter(block => block.filePath === fileToSave))
+        await applyAndSaveCurrentNewBlocks(blocks.filter((block) => block.filePath === fileToSave));
 
         saveAnother = await confirm({
           message: 'Do you want to save another file?',
           default: false,
-        })
+        });
       }
-      break
+      break;
     case 'saveAll':
-      await applyAndSaveCurrentNewBlocks(blocks)
-      console.log('All unit test files have been saved.')
-      break
+      await applyAndSaveCurrentNewBlocks(blocks);
+      console.log('All unit test files have been saved.');
+      break;
     case 'copyAll':
       process.nextTick(() => {
         require('copy-paste').copy(analysis, () => {
-          console.log('Entire response copied to clipboard')
-        })
-      })
-      break
+          console.log('Entire response copied to clipboard');
+        });
+      });
+      break;
     case 'done':
-      break
+      break;
   }
-}
+};
 
 const unitTests = async (options: ClovingGPTOptions) => {
-  const { files, save } = options
-  const gpt = new ClovingGPT(options)
+  const { files, save } = options;
+  const gpt = new ClovingGPT(options);
 
-  const allSrcFiles = await getAllFiles(options, true)
-  const testingDirectory = getTestingDirectory()
+  const allSrcFiles = await getAllFiles(options, true);
+  const testingDirectory = getTestingDirectory();
 
   if (allSrcFiles.length === 0 || !testingDirectory) {
-    console.error('Could not find any source files to generate unit tests. Please run: cloving init. Then try again.')
-    process.exit(1)
+    console.error(
+      'Could not find any source files to generate unit tests. Please run: cloving init. Then try again.',
+    );
+    process.exit(1);
   }
 
-  const testFiles = execFileSync('find', [testingDirectory, '-type', 'f']).toString().trim()
-  let contextFiles: string
+  const testFiles = execFileSync('find', [testingDirectory, '-type', 'f']).toString().trim();
+  let contextFiles: string;
 
   if (files) {
-    console.log('Generating unit tests for the provided files...')
-    console.log('Gathering a list of files related to the changes...')
-    const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
-    contextFiles = await gpt.generateText({ prompt })
+    console.log('Generating unit tests for the provided files...');
+    console.log('Gathering a list of files related to the changes...');
+    const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles);
+    contextFiles = await gpt.generateText({ prompt });
   } else {
-    console.log('Generating unit tests for the git diff between this branch and the default branch...')
-    console.log('Gathering a list of files related to the changes...')
-    const gitDiff = await getGitDiff()
-    const changedFiles = extractChangedFiles(gitDiff)
-    const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff)
-    contextFiles = await gpt.generateText({ prompt })
+    console.log(
+      'Generating unit tests for the git diff between this branch and the default branch...',
+    );
+    console.log('Gathering a list of files related to the changes...');
+    const gitDiff = await getGitDiff();
+    const changedFiles = extractChangedFiles(gitDiff);
+    const prompt = generatePrompt(changedFiles, allSrcFiles.join('\n'), testFiles, gitDiff);
+    contextFiles = await gpt.generateText({ prompt });
   }
 
-  contextFiles = extractMarkdown(contextFiles)
+  contextFiles = extractMarkdown(contextFiles);
 
-  console.log(contextFiles)
-  console.log('\nBuilding the tests for these files...')
+  console.log(contextFiles);
+  console.log('\nBuilding the tests for these files...');
 
   // Initialize variables
-  const lines: string[] = []
-  const context: string[] = []
+  const lines: string[] = [];
+  const context: string[] = [];
 
   // Read each line of the context files
   contextFiles.split('\n').forEach((line) => {
     if (line.trim()) {
-      lines.push(line.trim())
+      lines.push(line.trim());
     }
-  })
+  });
 
   for (const codeFile of lines) {
-    if (await fs.stat(codeFile).then(stat => stat.isFile()).catch(() => false)) {
-      const fileContents = await fs.readFile(codeFile, 'utf-8')
-      context.push(`### Contents of **${codeFile}\n\n${fileContents.split('\n').map(line => `    ${line}`).join('\n')}**\n\n`)
+    if (
+      await fs
+        .stat(codeFile)
+        .then((stat) => stat.isFile())
+        .catch(() => false)
+    ) {
+      const fileContents = await fs.readFile(codeFile, 'utf-8');
+      context.push(
+        `### Contents of **${codeFile}\n\n${fileContents
+          .split('\n')
+          .map((line) => `    ${line}`)
+          .join('\n')}**\n\n`,
+      );
     }
   }
 
   // Generate the message for unit test creation
-  let analysis = ''
+  let analysis = '';
 
   if ((files || []).length > 0) {
     const message = `Create unit tests for the List of Files. Always show filenames for the generated code.
@@ -221,10 +239,10 @@ ${context.join('\n\n')}
 
 ## Prompt
 
-Create unit tests for the List of Files. Always show filenames for the generated code.`
+Create unit tests for the List of Files. Always show filenames for the generated code.`;
 
     // Get the model and analysis using ClovingGPT
-    analysis = await gpt.generateText({ prompt: message })
+    analysis = await gpt.generateText({ prompt: message });
   } else {
     const message = `Create unit tests for the Code Diff. Always show filenames for the generated code.
 
@@ -273,20 +291,20 @@ describe('modelUtils', () => {
 
 ## Prompt
 
-Create unit tests for the Code Diff. Always show filenames for the generated code.`
+Create unit tests for the Code Diff. Always show filenames for the generated code.`;
 
     // Get the model and analysis using ClovingGPT
-    analysis = await gpt.generateText({ prompt: message })
+    analysis = await gpt.generateText({ prompt: message });
   }
 
   if (analysis) {
-    console.log(highlight(analysis))
+    console.log(highlight(analysis));
   } else {
-    console.log('No unit tests generated.')
+    console.log('No unit tests generated.');
   }
 
   // Add the new user action handling
-  await handleUserAction(analysis, save)
-}
+  await handleUserAction(analysis, save);
+};
 
-export default unitTests
+export default unitTests;

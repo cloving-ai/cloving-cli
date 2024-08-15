@@ -1,15 +1,15 @@
-export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
+export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini';
 
 export interface BlockIndices {
-  start: number
-  filePathEnd: number
-  divider: number
-  end: number
+  start: number;
+  filePathEnd: number;
+  divider: number;
+  end: number;
 }
 
 export interface OpenAIStreamChunk {
-  output: string
-  lastChar: number
+  output: string;
+  lastChar: number;
 }
 
 export interface CurrentNewBlock {
@@ -19,29 +19,29 @@ export interface CurrentNewBlock {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
+  role: 'user' | 'assistant' | 'system';
+  content: string;
 }
 
 export interface GPTRequest {
-  messages?: ChatMessage[]
-  prompt: string
-  maxTokens?: number
-  temperature?: number
-  stream?: boolean
+  messages?: ChatMessage[];
+  prompt: string;
+  maxTokens?: number;
+  temperature?: number;
+  stream?: boolean;
 }
 
 export interface ClovingGPTOptions {
-  model?: string
-  silent?: boolean
-  files?: string[]
-  prompt?: string
-  save?: boolean
-  interactive?: boolean
-  temperature?: number
-  port?: number
-  stream?: boolean
-  timeout?: number
+  model?: string;
+  silent?: boolean;
+  files?: string[];
+  prompt?: string;
+  save?: boolean;
+  interactive?: boolean;
+  temperature?: number;
+  port?: number;
+  stream?: boolean;
+  timeout?: number;
 }
 
 export interface ClovingModelConfig {
@@ -54,11 +54,11 @@ export interface ClovingModelConfig {
 }
 
 export type ProjectConfig = {
-  name: string
-  task: string
-  files?: string[]
-  plan?: Record<string, any>
-}
+  name: string;
+  task: string;
+  files?: string[];
+  plan?: Record<string, any>;
+};
 
 export type ClovingConfig = {
   models: {
@@ -67,56 +67,56 @@ export type ClovingConfig = {
     };
   };
   globalSilent: boolean;
-}
+};
 
 interface LanguageConfig {
-  name: string
-  version?: string
-  primary?: boolean
-  directory: string
-  extension: string
+  name: string;
+  version?: string;
+  primary?: boolean;
+  directory: string;
+  extension: string;
 }
 
 interface FrameworkConfig {
-  name: string
-  type: string
-  version?: string
-  primary?: boolean
-  directory?: string
-  extension?: string
+  name: string;
+  type: string;
+  version?: string;
+  primary?: boolean;
+  directory?: string;
+  extension?: string;
 }
 
 interface TestingFrameworkConfig {
-  name: string
-  type: string
-  version?: string
-  directory?: string
+  name: string;
+  type: string;
+  version?: string;
+  directory?: string;
 }
 
 interface BuildToolConfig {
-  name: string
-  type: string
-  version?: string
+  name: string;
+  type: string;
+  version?: string;
 }
 
 interface LinterConfig {
-  name: string
-  version?: string
-  type?: string
+  name: string;
+  version?: string;
+  type?: string;
 }
 
 interface DatabaseConfig {
-  name: string
-  primary?: boolean
+  name: string;
+  primary?: boolean;
 }
 
 export interface ClovingfileConfig {
-  languages: LanguageConfig[]
-  frameworks: FrameworkConfig[]
-  testingFrameworks?: TestingFrameworkConfig[]
-  buildTools: BuildToolConfig[]
-  packageManager: string
-  linters: LinterConfig[]
-  databases?: DatabaseConfig[]
-  projectType: string
+  languages: LanguageConfig[];
+  frameworks: FrameworkConfig[];
+  testingFrameworks?: TestingFrameworkConfig[];
+  buildTools: BuildToolConfig[];
+  packageManager: string;
+  linters: LinterConfig[];
+  databases?: DatabaseConfig[];
+  projectType: string;
 }

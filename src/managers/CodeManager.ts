@@ -1,43 +1,53 @@
-import { select, input, confirm } from '@inquirer/prompts'
-import { AxiosError } from 'axios'
-import highlight from 'cli-highlight'
+import { select, input, confirm } from '@inquirer/prompts';
+import { AxiosError } from 'axios';
+import highlight from 'cli-highlight';
 
-import ClovingGPT from '../cloving_gpt'
+import ClovingGPT from '../cloving_gpt';
 
-import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
-import { parseMarkdownInstructions, extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils';
+import {
+  parseMarkdownInstructions,
+  extractCurrentNewBlocks,
+  applyAndSaveCurrentNewBlocks,
+} from '../utils/string_utils';
 
-import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types';
 
 class CodeManager {
-  private gpt: ClovingGPT
-  private contextFiles: Record<string, string> = {}
-  private chatHistory: ChatMessage[] = []
+  private gpt: ClovingGPT;
+  private contextFiles: Record<string, string> = {};
+  private chatHistory: ChatMessage[] = [];
 
-  constructor(
-    private options: ClovingGPTOptions,
-  ) {
-    this.gpt = new ClovingGPT(options)
+  constructor(private options: ClovingGPTOptions) {
+    this.gpt = new ClovingGPT(options);
   }
 
   public async initialize(): Promise<void> {
     try {
       if (this.options.files) {
         for (const file of this.options.files) {
-          this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
+          this.contextFiles = await addFileOrDirectoryToContext(
+            file,
+            this.contextFiles,
+            this.options,
+          );
         }
       } else {
-        let includeMoreFiles = true
+        let includeMoreFiles = true;
 
         while (includeMoreFiles) {
           const contextFile = await input({
             message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
-          })
+          });
 
           if (contextFile) {
-            this.contextFiles = await addFileOrDirectoryToContext(contextFile, this.contextFiles, this.options)
+            this.contextFiles = await addFileOrDirectoryToContext(
+              contextFile,
+              this.contextFiles,
+              this.options,
+            );
           } else {
-            includeMoreFiles = false
+            includeMoreFiles = false;
           }
         }
       }
@@ -45,61 +55,61 @@ class CodeManager {
       if (!this.options.prompt) {
         const userPrompt = await input({
           message: 'What would you like the code to do:',
-        })
-        this.options.prompt = userPrompt
+        });
+        this.options.prompt = userPrompt;
       }
 
-      let response = await this.generateCode(this.options.prompt)
-      this.displayGeneratedCode(response)
+      let response = await this.generateCode(this.options.prompt);
+      this.displayGeneratedCode(response);
 
       if (this.options.save) {
-        const currentNewBlocks = extractCurrentNewBlocks(response)
-        await applyAndSaveCurrentNewBlocks(currentNewBlocks)
+        const currentNewBlocks = extractCurrentNewBlocks(response);
+        await applyAndSaveCurrentNewBlocks(currentNewBlocks);
       } else {
-        await this.handleUserAction(response, this.options.prompt)
+        await this.handleUserAction(response, this.options.prompt);
       }
     } catch (err) {
-      const error = err as AxiosError
-      console.error('Could not generate code', error.message)
+      const error = err as AxiosError;
+      console.error('Could not generate code', error.message);
     }
   }
 
   public async generateCode(userPrompt: string): Promise<string> {
     if (this.chatHistory.length === 0) {
-      const systemPrompt = generateCodegenPrompt(this.contextFiles)
-      this.chatHistory.push({ role: 'user', content: systemPrompt })
-      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
+      const systemPrompt = generateCodegenPrompt(this.contextFiles);
+      this.chatHistory.push({ role: 'user', content: systemPrompt });
+      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' });
     }
-    this.chatHistory.push({ role: 'user', content: userPrompt })
-    return await this.gpt.generateText({ prompt: userPrompt, messages: this.chatHistory })
+    this.chatHistory.push({ role: 'user', content: userPrompt });
+    return await this.gpt.generateText({ prompt: userPrompt, messages: this.chatHistory });
   }
 
   private displayGeneratedCode(rawCodeCommand: string) {
-    parseMarkdownInstructions(rawCodeCommand).map(code => {
+    parseMarkdownInstructions(rawCodeCommand).map((code) => {
       if (code.trim().startsWith('```')) {
-        const lines = code.split('\n')
-        const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
-        console.log(lines[0])
+        const lines = code.split('\n');
+        const language = code.match(/```(\w+)/)?.[1] || 'plaintext';
+        console.log(lines[0]);
         try {
-          console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+          console.log(highlight(lines.slice(1, -1).join('\n'), { language }));
         } catch (error) {
           // don't highlight if it fails
-          console.log(lines.slice(1, -1).join('\n'))
+          console.log(lines.slice(1, -1).join('\n'));
         }
-        console.log(lines.slice(-1)[0])
+        console.log(lines.slice(-1)[0]);
       } else {
-        console.log(highlight(code, { language: 'markdown' }))
+        console.log(highlight(code, { language: 'markdown' }));
       }
-    })
+    });
   }
 
   private async handleUserAction(response: string, prompt: string): Promise<void> {
-    const currentNewBlocks = extractCurrentNewBlocks(response)
-    const files = Array.from(new Set(currentNewBlocks.map(block => block.filePath)))
+    const currentNewBlocks = extractCurrentNewBlocks(response);
+    const files = Array.from(new Set(currentNewBlocks.map((block) => block.filePath)));
 
     if (this.options.save) {
-      await applyAndSaveCurrentNewBlocks(currentNewBlocks)
-      return
+      await applyAndSaveCurrentNewBlocks(currentNewBlocks);
+      return;
     }
 
     const action = await select({
@@ -113,59 +123,69 @@ class CodeManager {
         { name: 'Copy Entire Response to Clipboard', value: 'copyAll' },
         { name: 'Done', value: 'done' },
       ],
-    })
+    });
 
     switch (action) {
       case 'revise':
         const newPrompt = await input({
           message: 'How would you like to modify the output:',
-        })
-        let includeMoreFiles = true
+        });
+        let includeMoreFiles = true;
         while (includeMoreFiles) {
           const contextFile = await input({
-            message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
-          })
+            message:
+              'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+          });
 
           if (contextFile) {
-            this.contextFiles = await addFileOrDirectoryToContext(contextFile, this.contextFiles, this.options)
+            this.contextFiles = await addFileOrDirectoryToContext(
+              contextFile,
+              this.contextFiles,
+              this.options,
+            );
           } else {
-            includeMoreFiles = false
+            includeMoreFiles = false;
           }
         }
-        const newResponse = await this.generateCode(newPrompt)
-        this.displayGeneratedCode(newResponse)
-        await this.handleUserAction(newResponse, newPrompt)
-        break
+        const newResponse = await this.generateCode(newPrompt);
+        this.displayGeneratedCode(newResponse);
+        await this.handleUserAction(newResponse, newPrompt);
+        break;
       case 'explain':
-        const explainPrompt = this.generateExplainCodePrompt(response)
-        this.chatHistory.push({ role: 'user', content: explainPrompt })
-        const explainCodeCommand = await this.gpt.generateText({ prompt: explainPrompt, messages: this.chatHistory })
-        console.log(highlight(explainCodeCommand, { language: 'markdown' }))
-        break
+        const explainPrompt = this.generateExplainCodePrompt(response);
+        this.chatHistory.push({ role: 'user', content: explainPrompt });
+        const explainCodeCommand = await this.gpt.generateText({
+          prompt: explainPrompt,
+          messages: this.chatHistory,
+        });
+        console.log(highlight(explainCodeCommand, { language: 'markdown' }));
+        break;
       case 'save':
-        let saveAnother = true
+        let saveAnother = true;
         while (saveAnother) {
           const fileToSave = await select({
             message: 'Which file do you want to save?',
-            choices: files.map(file => ({ name: file, value: file })),
-          })
+            choices: files.map((file) => ({ name: file, value: file })),
+          });
 
-          await applyAndSaveCurrentNewBlocks(currentNewBlocks.filter(block => block.filePath === fileToSave))
+          await applyAndSaveCurrentNewBlocks(
+            currentNewBlocks.filter((block) => block.filePath === fileToSave),
+          );
 
           const saveMore = await confirm({
             message: 'Do you want to save another file?',
             default: true,
-          })
+          });
 
-          saveAnother = saveMore
+          saveAnother = saveMore;
         }
-        break
+        break;
       case 'saveAll':
-        await applyAndSaveCurrentNewBlocks(currentNewBlocks)
-        console.log('All files have been saved.')
-        break
+        await applyAndSaveCurrentNewBlocks(currentNewBlocks);
+        console.log('All files have been saved.');
+        break;
       case 'done':
-        break
+        break;
     }
   }
 
@@ -174,8 +194,8 @@ class CodeManager {
 
 # Task
 
-Please briefly explain how the code works in this.`
+Please briefly explain how the code works in this.`;
   }
 }
 
-export default CodeManager
+export default CodeManager;
