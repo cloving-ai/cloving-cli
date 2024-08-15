@@ -1,4 +1,4 @@
-import { extractCurrentNewBlocks, extractMarkdown, updateFileContent } from '../../src/utils/string_utils'
+import { extractCurrentNewBlocks, extractMarkdown, updateFileContent, checkBlocksApplicability } from '../../src/utils/string_utils'
 
 describe('stringUtils', () => {
   describe('extractCurrentNewBlocks', () => {

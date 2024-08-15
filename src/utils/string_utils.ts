@@ -33,13 +33,13 @@ export const estimateTokens = async (text: string): Promise<number> => {
  *                   or a partial JSON string.
  * 
  * @example
- * const aiResponse = '```json\n{"key": "value"}\n```\nOther text';
- * const jsonMetadata = extractJsonMetadata(aiResponse);
+ * const aiResponse = '```json\n{"key": "value"}\n```\nOther text'
+ * const jsonMetadata = extractJsonMetadata(aiResponse)
  * // jsonMetadata will be '{"key": "value"}'
  * 
  * @example
- * const plainResponse = 'Some text {"key": "value"} more text';
- * const jsonMetadata = extractJsonMetadata(plainResponse);
+ * const plainResponse = 'Some text {"key": "value"} more text'
+ * const jsonMetadata = extractJsonMetadata(plainResponse)
  * // jsonMetadata will be '{"key": "value"}'
  */
 export const extractJsonMetadata = (response: string): string => {
@@ -180,12 +180,12 @@ export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBl
  * @example
  * const input = `
  * <<<<<<< CURRENT path/to/file.ts
- * const oldCode = 'old';
+ * const oldCode = 'old'
  * =======
- * const newCode = 'new';
+ * const newCode = 'new'
  * >>>>>>> NEW
- * `;
- * const blocks = extractCurrentNewBlocks(input);
+ * `
+ * const blocks = extractCurrentNewBlocks(input)
  * // blocks will contain one CurrentNewBlock object with the parsed information
  */
 
@@ -240,48 +240,50 @@ export const writeFileContent = async (filePath: string, content: string): Promi
  * @example
  * const currentContent = `
  * function example() {
- *   console.log('Old content');
+ *   console.log('Old content')
  * }
- * `;
+ * `
  * const block = {
- *   currentContent: "console.log('Old content');",
- *   newContent: "console.log('New content');"
- * };
- * const updatedContent = updateFileContent(currentContent, block);
+ *   currentContent: "console.log('Old content')",
+ *   newContent: "console.log('New content')"
+ * }
+ * const updatedContent = updateFileContent(currentContent, block)
  * // updatedContent will be:
  * // function example() {
- * //   console.log('New content');
+ * //   console.log('New content')
  * // }
  */
 export const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
-if (block.currentContent.trim() === '') {
-return block.newContent;
-}
+  // 1) if block.currentContent.trim() is empty then return block.newContent
+  if (block.currentContent.trim() === '') {
+    return block.newContent
+  }
 
-const lines = currentContent.split('\n');
-const currentLines = block.currentContent.split('\n');
-const newLines = block.newContent.split('\n');
+  // 2) split currentContent and block.currentContent into new lines and trim() all the lines, then put back the new lines
+  const currentLines = currentContent.split('\n').map(line => line.trim())
+  const blockLines = block.currentContent.split('\n').map(line => line.trim())
 
-const startIndex = lines.findIndex(line => line.includes(currentLines[0].trim()));
-if (startIndex === -1) {
-return currentContent;
-}
+  // 3) see if the trimmed block.currentContent matches a section of code in the trimmed currentContent
+  const blockContent = blockLines.join('\n')
+  const currentContentTrimmed = currentLines.join('\n')
+  // 4) if so, make a variable named matchingLine with the line number of which line the block.currentContent starts on in currentContent
+  const matchingLine = currentContentTrimmed.indexOf(blockContent)
+  if (matchingLine === -1) {
+    return currentContent // If no match is found, return the original content
+  }
+  // 5) compare the first line of block.currentContent with the matchingLine line of currentContent, putting any preceeding spaces that are in currentContent but not in block.currentContent into a variable named preceedingSpaces
+  const firstLineIndex = currentContent.indexOf(blockLines[0])
+  const precedingSpaces = currentContent.substring(firstLineIndex, firstLineIndex + currentLines[0].length).match(/^\s*/)
 
-const currentIndentation = lines[startIndex].match(/^\s*/)?.[0] || '';
-const newIndentation = newLines[0].match(/^\s*/)?.[0] || '';
-
-const indentedNewLines = newLines.map(line => {
-if (newIndentation === currentIndentation) {
-return line; // Preserve original indentation if it matches
-}
-const trimmedLine = line.trim();
-if (trimmedLine === '') return '';
-return currentIndentation + trimmedLine;
-});
-
-lines.splice(startIndex, currentLines.length, ...indentedNewLines);
-
-return lines.join('\n');
+  // 6) add preceedingSpaces to the start of each line in both block.currentContent and block.newContent
+  if (precedingSpaces) {
+    const precedingSpacesValue = precedingSpaces[0]
+    const indentedNewContent = block.newContent.split('\n').map(line => precedingSpacesValue + line).join('\n')
+    // 7) finally, do a simple currentContent.replace(block.currentContent, block.newContent) with the modified (added preceeding spaces to match) variables
+    return currentContent.replace(block.currentContent, indentedNewContent)
+  } else {
+    return currentContent.replace(block.currentContent, block.newContent)
+  }
 }
 
 export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
@@ -324,8 +326,8 @@ export const processBlock = async (block: CurrentNewBlock, index: number): Promi
  * const blocks = [
  *   { filePath: 'path/to/file.ts', currentContent: 'old code', newContent: 'new code' },
  *   { filePath: 'path/to/newfile.ts', currentContent: '', newContent: 'new file content' }
- * ];
- * await applyAndSaveCurrentNewBlocks(blocks);
+ * ]
+ * await applyAndSaveCurrentNewBlocks(blocks)
  */
 export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): Promise<void> => {
   console.log(`\nApplying and saving current/new blocks...\n`)
@@ -337,4 +339,44 @@ export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): P
       console.error(`Error processing ${colors.red(block.filePath)}:`, error)
     }
   }
+}
+
+/**
+ * Checks if all the blocks can be applied without making any changes.
+ * 
+ * This function iterates through an array of CurrentNewBlock objects and checks
+ * if each block can be applied to its respective file. It returns a tuple where
+ * the first element is a boolean indicating if all blocks can be applied, and
+ * the second element is a string summarizing the success or failure of each block.
+ * 
+ * @param {CurrentNewBlock[]} blocks - An array of CurrentNewBlock objects to be checked.
+ * @returns {Promise<[boolean, string]>} A promise that resolves to a tuple containing
+ *                                       a boolean and a summary string.
+ * 
+ * @example
+ * const blocks = [
+ *   { filePath: 'path/to/file.ts', currentContent: 'old code', newContent: 'new code' },
+ *   { filePath: 'path/to/newfile.ts', currentContent: '', newContent: 'new file content' }
+ * ]
+ * const [canApply, summary] = await checkBlocksApplicability(blocks)
+ */
+export const checkBlocksApplicability = async (blocks: CurrentNewBlock[]): Promise<[boolean, string]> => {
+  let allApplicable = true
+  const summary: string[] = []
+
+  for (const [index, block] of blocks.entries()) {
+    const filePath = path.resolve(block.filePath)
+    let fileContent = await readFileContent(filePath)
+
+    if (fileContent === '') {
+      summary.push(`[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.green.bold('created')}`)
+    } else if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
+      allApplicable = false
+      summary.push(`[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`)
+    } else {
+      summary.push(`[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`)
+    }
+  }
+
+  return [allApplicable, summary.join('\n')]
 }

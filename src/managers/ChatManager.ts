@@ -10,7 +10,7 @@ import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
-import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
+import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks, checkBlocksApplicability } from '../utils/string_utils'
 import { getClovingConfig } from '../utils/config_utils'
 import { generateCodegenPrompt, addFileOrDirectoryToContext, getPackageVersion } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
@@ -629,9 +629,22 @@ class ChatManager {
     })
   }
 
-  private finalizeResponse(accumulatedContent: string) {
+  private async finalizeResponse(accumulatedContent: string) {
     this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
     this.isProcessing = false
+
+    if (accumulatedContent) {
+      const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent)
+      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
+      if (!canApply) {
+        this.processUserInput(`Some of the provided code blocks could not be applied,
+please match the existing code with a few more lines of context and make sure it is a character for character exact match.
+
+${summary}`)
+        return
+      }
+    }
+
     process.stdout.write(`
 
 You can follow up with another request or:
