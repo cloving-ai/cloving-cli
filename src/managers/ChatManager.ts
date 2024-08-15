@@ -337,13 +337,7 @@ class ChatManager {
       try {
         this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
         console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`)
-
-        // Update the chat history with the new context
-        const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
-        this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
-
-        // Log the update
-        console.log(colors.yellow(`Updated chat context with new file(s)`))
+        this.refreshContext()
       } catch (error) {
         console.error(`Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`, error)
       }
