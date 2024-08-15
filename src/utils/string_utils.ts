@@ -254,36 +254,34 @@ export const writeFileContent = async (filePath: string, content: string): Promi
  * // }
  */
 export const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
-  if (block.currentContent.trim() === '') {
-    return block.newContent
-  }
+if (block.currentContent.trim() === '') {
+return block.newContent;
+}
 
-  // Normalize the current content for comparison
-  const normalizedCurrentContent = block.currentContent.trim()
-  const normalizedFileContent = currentContent.replace(/\r\n/g, '\n')
+const lines = currentContent.split('\n');
+const currentLines = block.currentContent.split('\n');
+const newLines = block.newContent.split('\n');
 
-  // Find the index of the normalized current content in the file content
-  const index = normalizedFileContent.indexOf(normalizedCurrentContent)
-  if (index === -1) {
-    return currentContent
-  }
+const startIndex = lines.findIndex(line => line.includes(currentLines[0].trim()));
+if (startIndex === -1) {
+return currentContent;
+}
 
-  // Determine the indentation level of the current content in the file
-  const linesBefore = normalizedFileContent.substring(0, index).split('\n')
-  const lastLineBefore = linesBefore[linesBefore.length - 1]
-  const indentationMatch = lastLineBefore.match(/^\s*/)
-  const indentation = indentationMatch ? indentationMatch[0] : ''
+const currentIndentation = lines[startIndex].match(/^\s*/)?.[0] || '';
+const newIndentation = newLines[0].match(/^\s*/)?.[0] || '';
 
-  // Apply the adjusted indentation to the new content
-  const indentedNewContent = block.newContent
-    .split('\n')
-    .map((line, i) => {
-      return i === 0 ? line : indentation + line
-    })
-    .join('\n')
+const indentedNewLines = newLines.map(line => {
+if (newIndentation === currentIndentation) {
+return line; // Preserve original indentation if it matches
+}
+const trimmedLine = line.trim();
+if (trimmedLine === '') return '';
+return currentIndentation + trimmedLine;
+});
 
-  // Replace the current content with the indented new content
-  return currentContent.replace(block.currentContent, indentedNewContent)
+lines.splice(startIndex, currentLines.length, ...indentedNewLines);
+
+return lines.join('\n');
 }
 
 export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {

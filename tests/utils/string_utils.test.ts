@@ -94,17 +94,17 @@ const newContent = 'This is new'
 
     test('should preserve indentation of new content', () => {
       const currentContent = `function example() {
-  console.log('Old content')
-}`
+      console.log('Old content')
+    }`
       const block = {
         filePath: "/tmp/test",
         currentContent: "console.log('Old content')",
-        newContent: "  console.log('New content with indentation')"
+        newContent: "console.log('New content with indentation')"
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`function example() {
-    console.log('New content with indentation')
-}`)
+      console.log('New content with indentation')
+    }`)
     })
   })
 
@@ -151,6 +151,78 @@ const newContent = 'This is new'
       expect(updatedContent).toBe(`function example() {
   console.log('New content')
 }`)
+    })
+
+    test('should do the correct indentation when there is indentation', () => {
+      const currentContent = `  function example() {
+    console.log('Old content')
+  }`
+      const block = {
+        filePath: "/tmp/test",
+        currentContent: "    console.log('Old content')",
+        newContent: "    console.log('New content')"
+      }
+      const updatedContent = updateFileContent(currentContent, block)
+      expect(updatedContent).toBe(`  function example() {
+    console.log('New content')
+  }`)
+    })
+
+    test('should do the correct indentation when there is indentation and the diff doesn\'t', () => {
+      const currentContent = `  function example() {
+    console.log('Old content')
+  }`
+      const block = {
+        filePath: "/tmp/test",
+        currentContent: "console.log('Old content')",
+        newContent: "console.log('New content')"
+      }
+      const updatedContent = updateFileContent(currentContent, block)
+      expect(updatedContent).toBe(`  function example() {
+    console.log('New content')
+  }`)
+    })
+
+    test('should do the correct indentation when replacing large chunks', () => {
+      const currentContent = `  function example() {
+    console.log('Old content')
+  }`
+      const block = {
+        filePath: "/tmp/test",
+        currentContent: `  function example() {
+    console.log('Old content')
+  }`,
+        newContent: `  function example() {
+    console.log('New content')
+  }`
+      }
+      const updatedContent = updateFileContent(currentContent, block)
+      expect(updatedContent).toBe(`  function example() {
+    console.log('New content')
+  }`)
+    })
+
+    test('should do the correct indentation when adding new lines of code', () => {
+      const currentContent = `  function example() {
+    console.log('Old content')
+  }`
+      const block = {
+        filePath: "/tmp/test",
+        currentContent: `  function example() {
+    console.log('Old content')
+  }`,
+        newContent: `  # This is a comment
+  function example() {
+    # here is a new comment
+    console.log('Old content')
+  }`
+      }
+      const updatedContent = updateFileContent(currentContent, block)
+      expect(updatedContent).toBe(`  # This is a comment
+  function example() {
+    # here is a new comment
+    console.log('Old content')
+  }`)
     })
   })
 })
