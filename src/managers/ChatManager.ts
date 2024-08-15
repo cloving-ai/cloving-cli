@@ -1,8 +1,10 @@
 import ncp from 'copy-paste'
 import readline from 'readline'
 import { execSync } from 'child_process'
-import type { AxiosError } from 'axios'
 import colors from 'colors'
+import axios from 'axios'
+import highlight from 'cli-highlight'
+import type { AxiosError } from 'axios'
 
 import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
@@ -10,7 +12,7 @@ import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
 import { getClovingConfig } from '../utils/config_utils'
-import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext, getPackageVersion } from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 const specialCommands = [
@@ -39,12 +41,14 @@ class ChatManager {
   private chunkManager: ChunkManager
   private prompt: string = ''
   private isProcessing: boolean = false
+  private isSilent = false
 
   /**
    * Creates an instance of ChatManager.
    * @param {ClovingGPTOptions} options - Configuration options for the ChatManager.
    */
   constructor(private options: ClovingGPTOptions) {
+    this.isSilent = options.silent || false
     options.stream = true
     options.silent = true
     this.gpt = new ClovingGPT(options)
@@ -64,6 +68,7 @@ class ChatManager {
    * @returns {Promise<void>}
    */
   async initialize(): Promise<void> {
+    await this.checkForLatestVersion()
     await this.loadContextFiles()
     console.log(`\n🍀 🍀 🍀 ${colors.bold('Welcome to Cloving REPL')} 🍀 🍀 🍀\n`)
     this.displayAvailableCommands()
@@ -87,6 +92,28 @@ class ChatManager {
     console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
     console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
     console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
+  }
+
+  /**
+  * Checks for the latest version of the app from GitHub and compares it with the current version.
+  * If a new version is available, it notifies the user.
+  * @private
+  * @returns {Promise<void>}
+  */
+  private async checkForLatestVersion(): Promise<void> {
+    try {
+      const response = await axios.get('https://api.github.com/repos/cloving-ai/cloving-cli/releases/latest')
+      const latestVersion = response.data.tag_name
+      const currentVersion = `v${getPackageVersion()}`
+
+      if (latestVersion !== currentVersion) {
+        console.log(colors.bgWhite.black(`\n 🚀 A new version of Cloving is available: ${latestVersion}    `))
+        console.log(colors.bgWhite.black(`    You are currently using version: ${currentVersion}          `))
+        console.log(colors.bgWhite.black(`    To upgrade, run: ${colors.bgWhite.black.bold('npm install -g cloving@latest')}   `))
+      }
+    } catch (error) {
+      // ignore errors
+    }
   }
 
   /**
@@ -231,7 +258,7 @@ class ChatManager {
    * - 'git <command>': Executes a git command.
    * - Any other input is processed as a user query to the AI.
    */
-  private async handleCommand(command: string) {
+  private async handleCommand(command: string): Promise<void> {
     switch (command) {
       case 'help':
         this.displayHelp()
@@ -351,6 +378,7 @@ class ChatManager {
   private refreshContext() {
     const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
     this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
+    this.chatHistory[1] = { role: 'assistant', content: 'What would you like to do?' }
   }
 
   private isRemoveCommand(command: string): boolean {
@@ -505,9 +533,57 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     try {
-      this.refreshContext() // make sure the context is up-to-date
-      this.initializeChatHistory(input)
+      this.refreshContext()
       this.prompt = this.generatePrompt(input)
+      this.addChatHistory(this.prompt)
+
+      if (!this.isSilent) {
+        const fullPrompt = this.chatHistory.map(m => {
+          const content = m.content.split('\n').map(line => {
+            if (line.startsWith('###')) {
+              return colors.red.bold(line)
+            } else if (line.startsWith('##')) {
+              return colors.yellow.bold(line)
+            }
+            return line
+          }).join('\n')
+          return m.role === 'user' ? `${colors.yellow.bold('## User Prompt')}\n\n${content}` : `${colors.green.bold('## 🍀 Cloving\'s Response 🍀')}\n\n${content}`
+        }).join('\n\n')
+
+        // Review the prompt using the REPL
+        const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
+        console.log(`The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`)
+
+        const reviewPrompt = await new Promise<string>((resolve) => {
+          this.rl.question(colors.green.bold('cloving> '), (answer) => {
+            resolve(answer.trim().toLowerCase())
+          })
+        })
+
+        if (reviewPrompt === 'y' || reviewPrompt === '') {
+          console.log(colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'))
+          const promptParts = fullPrompt.split('\n```');
+          const highlightedPrompt = promptParts.map((part, index) =>
+            index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part
+          ).join('\n```');
+          console.log(highlightedPrompt)
+          console.log(colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'))
+          console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`)
+
+          const confirmPrompt = await new Promise<string>((resolve) => {
+            this.rl.question(colors.green.bold('cloving> '), (answer) => {
+              resolve(answer.trim().toLowerCase())
+            })
+          })
+
+          if (confirmPrompt !== 'y' && confirmPrompt !== '') {
+            console.log('Operation cancelled by user.')
+            this.isProcessing = false
+            this.rl.prompt()
+            return
+          }
+        }
+      }
 
       const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
       let accumulatedContent = ''
@@ -518,12 +594,7 @@ class ChatManager {
     }
   }
 
-  private initializeChatHistory(input: string) {
-    if (this.chatHistory.length === 0) {
-      const systemPrompt = generateCodegenPrompt(this.contextFiles)
-      this.chatHistory.push({ role: 'user', content: systemPrompt })
-      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
-    }
+  private addChatHistory(input: string) {
     this.chatHistory.push({ role: 'user', content: input })
   }
 
@@ -563,16 +634,16 @@ class ChatManager {
     this.isProcessing = false
     process.stdout.write(`
 
-  You can follow up with another request or:
-   - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
-   - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git with a AI-generated message
-   - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
-   - type ${colors.yellow(colors.bold('"review"'))} to start a code review
-   - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the chat context
-   - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
-   - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
-   - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
-   - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
+You can follow up with another request or:
+  - type ${colors.yellow(colors.bold('"save"'))} to save all the changes to files
+  - type ${colors.yellow(colors.bold('"commit"'))} to commit the changes to git with a AI - generated message
+  - type ${colors.yellow(colors.bold('"copy"'))} to copy the last response to clipboard
+  - type ${colors.yellow(colors.bold('"review"'))} to start a code review
+  - type ${colors.yellow(colors.bold('"add <file-path>"'))} to add a file to the chat context
+  - type ${colors.yellow(colors.bold('"rm <pattern>"'))} to remove files from the chat context
+  - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
+  - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
+  - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
   `)
     this.rl.prompt()
   }
@@ -598,7 +669,7 @@ class ChatManager {
     }
 
     const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
-    console.error(`Error processing a ${promptTokens} token prompt:`, errorMessage, `(${errorNumber})\n`)
+    console.error(`Error processing a ${promptTokens} token prompt: `, errorMessage, `(${errorNumber}) \n`)
     this.isProcessing = false
     this.rl.prompt()
   }
@@ -627,29 +698,13 @@ class ChatManager {
    * accurate and relevant responses.
    */
   private generatePrompt(prompt: string): string {
-    const contextFileContents = Object.keys(this.contextFiles)
-      .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
-      .join('\n')
-
-    const allButLast = this.chatHistory.slice(0, -1).map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n\n')
-
     return `### Request
-
-${prompt}
-
-${contextFileContents}
-
-### Full Chat History Context
-
-${allButLast}
-
-### Current Request
 
 ${prompt}
 
 ### Note
 
-Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT/NEW block.`
+Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.`
   }
 
   private handleClose() {
