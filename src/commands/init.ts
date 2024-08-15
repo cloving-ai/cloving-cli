@@ -1,24 +1,24 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { confirm } from '@inquirer/prompts';
-import ClovingGPT from '../cloving_gpt';
-import ignore from 'ignore';
-import { extractJsonMetadata } from '../utils/string_utils';
-import { getConfig } from '../utils/config_utils';
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { confirm } from '@inquirer/prompts'
+import ClovingGPT from '../cloving_gpt'
+import ignore from 'ignore'
+import { extractJsonMetadata } from '../utils/string_utils'
+import { getConfig } from '../utils/config_utils'
 import {
   generateFileList,
   collectSpecialFileContents,
   checkForSpecialFiles,
-} from '../utils/command_utils';
-import type { ClovingGPTOptions, ChatMessage } from '../utils/types';
+} from '../utils/command_utils'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 // Main function for the describe command
 export const init = async (options: ClovingGPTOptions) => {
-  options.silent = getConfig(options).globalSilent || false;
-  const gpt = new ClovingGPT(options);
-  const specialFileContents = collectSpecialFileContents();
-  const specialFileNames = Object.keys(specialFileContents).map((file) => ' - ' + file);
+  options.silent = getConfig(options).globalSilent || false
+  const gpt = new ClovingGPT(options)
+  const specialFileContents = collectSpecialFileContents()
+  const specialFileNames = Object.keys(specialFileContents).map((file) => ' - ' + file)
 
   // Initialize chat history
   const chatHistory: ChatMessage[] = [
@@ -149,7 +149,7 @@ Here is an example response:
   "projectType": "Command-line tool",
 }`,
     },
-  ];
+  ]
 
   if (!options.silent) {
     if (specialFileNames.length > 0) {
@@ -159,87 +159,87 @@ ${specialFileNames.join('\n')}
 
 Cloving will send AI a request to summarize the technologies used in this project.
 
-This will provide better context for future Cloving requests.`);
+This will provide better context for future Cloving requests.`)
     } else {
       console.log(`
 This script will analyze the list of files in the current directory using GPT to summarize the
 technologies used. This will provide better context for future Cloving requests.
-      `);
+      `)
     }
   }
 
-  const config = getConfig(options);
+  const config = getConfig(options)
   if (!config || !config?.models) {
-    console.error('No cloving configuration found. Please run `cloving config`');
-    return;
+    console.error('No cloving configuration found. Please run `cloving config`')
+    return
   }
 
   if (!checkForSpecialFiles()) {
     console.error(
       'No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.',
-    );
-    return;
+    )
+    return
   }
 
-  const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`);
+  const tempFilePath = path.join(os.tmpdir(), `describe_${Date.now()}.tmp`)
 
   try {
-    const gitignorePath = path.join(process.cwd(), '.gitignore');
-    const ig = ignore();
+    const gitignorePath = path.join(process.cwd(), '.gitignore')
+    const ig = ignore()
     if (fs.existsSync(gitignorePath)) {
-      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
-      ig.add(gitignoreContent);
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8')
+      ig.add(gitignoreContent)
     }
 
-    const fileList = await generateFileList();
+    const fileList = await generateFileList()
     const filteredFileList = fileList.filter((file) => {
       try {
-        return !ig.ignores(file);
+        return !ig.ignores(file)
       } catch (error) {
-        return false;
+        return false
       }
-    });
+    })
 
-    const limitedFileList = filteredFileList.slice(0, 100);
+    const limitedFileList = filteredFileList.slice(0, 100)
 
     const projectDetails = {
       files: limitedFileList,
       specialFiles: specialFileContents,
-    };
+    }
 
     const prompt = `Here is a JSON object describing my project:
-${JSON.stringify(projectDetails, null, 2)}`;
+${JSON.stringify(projectDetails, null, 2)}`
 
-    chatHistory.push({ role: 'user', content: prompt });
+    chatHistory.push({ role: 'user', content: prompt })
 
-    const aiChatResponse = await gpt.generateText({ prompt, messages: chatHistory });
+    const aiChatResponse = await gpt.generateText({ prompt, messages: chatHistory })
 
-    chatHistory.push({ role: 'assistant', content: aiChatResponse });
+    chatHistory.push({ role: 'assistant', content: aiChatResponse })
 
-    const cleanAiChatResponse = extractJsonMetadata(aiChatResponse);
+    const cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
 
-    fs.writeFileSync(tempFilePath, cleanAiChatResponse);
+    fs.writeFileSync(tempFilePath, cleanAiChatResponse)
 
     // Save the AI chat response to cloving.json
-    fs.writeFileSync('cloving.json', cleanAiChatResponse);
-    console.log('Project data saved to cloving.json');
+    fs.writeFileSync('cloving.json', cleanAiChatResponse)
+    console.log('Project data saved to cloving.json')
 
     // Prompt the user if they want to review the generated cloving.json
     if (!options.silent) {
       const reviewAnswer = await confirm({
         message: 'Do you want to review the generated data?',
         default: true,
-      });
+      })
       if (reviewAnswer) {
-        console.log(cleanAiChatResponse);
+        console.log(cleanAiChatResponse)
       }
     }
 
     // Clean up
-    fs.unlinkSync(tempFilePath);
+    fs.unlinkSync(tempFilePath)
   } catch (error) {
-    console.error('Error describing the project:', (error as Error).message);
+    console.error('Error describing the project:', (error as Error).message)
   }
-};
+}
 
-export default init;
+export default init

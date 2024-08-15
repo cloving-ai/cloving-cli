@@ -1,33 +1,33 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import config from './commands/config';
-import init from './commands/init';
-import proxy from './commands/proxy';
-import tokens from './commands/tokens';
-import models from './commands/models';
-import chat from './commands/chat';
-import shell from './commands/generate/shell';
-import code from './commands/generate/code';
-import commit from './commands/generate/commit';
-import context from './commands/generate/context';
-import unitTests from './commands/generate/unit_tests';
-import analyze from './commands/generate/review';
-import { getPackageVersion } from './utils/command_utils';
+import { Command } from 'commander'
+import config from './commands/config'
+import init from './commands/init'
+import proxy from './commands/proxy'
+import tokens from './commands/tokens'
+import models from './commands/models'
+import chat from './commands/chat'
+import shell from './commands/generate/shell'
+import code from './commands/generate/code'
+import commit from './commands/generate/commit'
+import context from './commands/generate/context'
+import unitTests from './commands/generate/unit_tests'
+import analyze from './commands/generate/review'
+import { getPackageVersion } from './utils/command_utils'
 
-const program = new Command();
+const program = new Command()
 
 program
   .name('cloving')
   .description(
     'Integrate AI into your development workflow for generating commit messages, code reviews, and unit tests.',
   )
-  .version(getPackageVersion());
+  .version(getPackageVersion())
 
 program
   .command('config')
   .description('Configure cloving with your API key and models to use')
-  .action(config);
+  .action(config)
 
 program
   .command('init')
@@ -37,7 +37,7 @@ program
     '-m, --model <model>',
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
-  .action(init);
+  .action(init)
 
 program
   .command('chat')
@@ -51,7 +51,7 @@ program
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5:sonnet-20240620)',
   )
   .description('Start an interactive chat with cloving')
-  .action(chat);
+  .action(chat)
 
 program
   .command('proxy')
@@ -65,9 +65,9 @@ program
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5:sonnet-20240620)',
   )
   .description('Start a proxy server to use with cloving')
-  .action(proxy);
+  .action(proxy)
 
-program.command('models').alias('m').description('List available models').action(models);
+program.command('models').alias('m').description('List available models').action(models)
 
 program
   .command('tokens')
@@ -77,7 +77,7 @@ program
     'Specify filenames of files with context to use for generating code',
   )
   .description('Estimate the number of tokens in the current working directory or specified files')
-  .action(tokens);
+  .action(tokens)
 
 program
   .command('commit')
@@ -88,13 +88,13 @@ program
     '-m, --model <model>',
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
-  .action(commit);
+  .action(commit)
 
 // Generate commands
 const generate = program
   .command('generate')
   .alias('g')
-  .description('Generate various items like unit-tests and code reviews');
+  .description('Generate various items like unit-tests and code reviews')
 
 generate
   .command('shell')
@@ -107,7 +107,7 @@ generate
   )
   .option('-p, --prompt <prompt>', 'Specify the prompt to use')
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
-  .action(shell);
+  .action(shell)
 
 generate
   .command('code')
@@ -129,7 +129,7 @@ generate
     '-f, --files <filenames...>',
     'Specify filenames of files with context to use for generating code',
   )
-  .action(code);
+  .action(code)
 
 generate
   .command('commit')
@@ -140,13 +140,13 @@ generate
     '-m, --model <model>',
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
-  .action(commit);
+  .action(commit)
 
 generate
   .command('context')
   .description('Create a context string for generating code')
   .option('-f, --files <filenames...>', 'Specify filenames of files with context')
-  .action(context);
+  .action(context)
 
 generate
   .command('unit-tests')
@@ -162,7 +162,7 @@ generate
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
-  .action(unitTests);
+  .action(unitTests)
 
 generate
   .command('review')
@@ -176,6 +176,6 @@ generate
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
-  .action(analyze);
+  .action(analyze)
 
-program.parse(process.argv);
+program.parse(process.argv)

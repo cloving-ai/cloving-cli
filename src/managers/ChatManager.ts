@@ -1,27 +1,27 @@
-import ncp from 'copy-paste';
-import readline from 'readline';
-import { execSync } from 'child_process';
-import colors from 'colors';
-import axios from 'axios';
-import highlight from 'cli-highlight';
-import type { AxiosError } from 'axios';
+import ncp from 'copy-paste'
+import readline from 'readline'
+import { execSync } from 'child_process'
+import colors from 'colors'
+import axios from 'axios'
+import highlight from 'cli-highlight'
+import type { AxiosError } from 'axios'
 
-import CommitManager from './CommitManager';
-import ChunkManager from './ChunkManager';
-import ReviewManager from './ReviewManager';
-import ClovingGPT from '../cloving_gpt';
+import CommitManager from './CommitManager'
+import ChunkManager from './ChunkManager'
+import ReviewManager from './ReviewManager'
+import ClovingGPT from '../cloving_gpt'
 import {
   extractCurrentNewBlocks,
   applyAndSaveCurrentNewBlocks,
   checkBlocksApplicability,
-} from '../utils/string_utils';
-import { getClovingConfig } from '../utils/config_utils';
+} from '../utils/string_utils'
+import { getClovingConfig } from '../utils/config_utils'
 import {
   generateCodegenPrompt,
   addFileOrDirectoryToContext,
   getPackageVersion,
-} from '../utils/command_utils';
-import type { ClovingGPTOptions, ChatMessage } from '../utils/types';
+} from '../utils/command_utils'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 const specialCommands = [
   'save',
@@ -35,39 +35,39 @@ const specialCommands = [
   'git <command>',
   'help',
   'exit',
-];
+]
 
 class ChatManager {
-  private gpt: ClovingGPT;
-  private rl: readline.Interface;
-  private chatHistory: ChatMessage[] = [];
-  private commandHistory: string[] = [];
-  private historyIndex: number = -1;
-  private multilineInput: string = '';
-  private isMultilineMode: boolean = false;
-  private contextFiles: Record<string, string> = {};
-  private chunkManager: ChunkManager;
-  private prompt: string = '';
-  private isProcessing: boolean = false;
-  private isSilent = false;
+  private gpt: ClovingGPT
+  private rl: readline.Interface
+  private chatHistory: ChatMessage[] = []
+  private commandHistory: string[] = []
+  private historyIndex: number = -1
+  private multilineInput: string = ''
+  private isMultilineMode: boolean = false
+  private contextFiles: Record<string, string> = {}
+  private chunkManager: ChunkManager
+  private prompt: string = ''
+  private isProcessing: boolean = false
+  private isSilent = false
 
   /**
    * Creates an instance of ChatManager.
    * @param {ClovingGPTOptions} options - Configuration options for the ChatManager.
    */
   constructor(private options: ClovingGPTOptions) {
-    this.isSilent = options.silent || false;
-    options.stream = true;
-    options.silent = true;
-    this.gpt = new ClovingGPT(options);
+    this.isSilent = options.silent || false
+    options.stream = true
+    options.silent = true
+    this.gpt = new ClovingGPT(options)
 
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
       prompt: colors.green.bold('cloving> '),
       historySize: 1000,
-    });
-    this.chunkManager = new ChunkManager();
+    })
+    this.chunkManager = new ChunkManager()
   }
 
   /**
@@ -76,46 +76,46 @@ class ChatManager {
    * @returns {Promise<void>}
    */
   async initialize(): Promise<void> {
-    await this.checkForLatestVersion();
-    await this.loadContextFiles();
-    console.log(`\n🍀 🍀 🍀 ${colors.bold('Welcome to Cloving REPL')} 🍀 🍀 🍀\n`);
-    this.displayAvailableCommands();
-    console.log('\nWhat would you like to do?');
-    this.rl.prompt();
+    await this.checkForLatestVersion()
+    await this.loadContextFiles()
+    console.log(`\n🍀 🍀 🍀 ${colors.bold('Welcome to Cloving REPL')} 🍀 🍀 🍀\n`)
+    this.displayAvailableCommands()
+    console.log('\nWhat would you like to do?')
+    this.rl.prompt()
 
-    this.setupEventListeners();
+    this.setupEventListeners()
   }
 
   private displayAvailableCommands(): void {
     console.log(
       `Type a freeform request or question to interact with your Cloving AI pair programmer.\n`,
-    );
-    console.log('Available special commands:');
+    )
+    console.log('Available special commands:')
     console.log(
       ` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`,
-    );
+    )
     console.log(
       ` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`,
-    );
+    )
     console.log(
       ` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`,
-    );
-    console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`);
+    )
+    console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
     console.log(
       ` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`,
-    );
+    )
     console.log(
       ` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`,
-    );
+    )
     console.log(
       ` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`,
-    );
+    )
     console.log(
       ` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`,
-    );
-    console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`);
-    console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`);
-    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`);
+    )
+    console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
+    console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
+    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
   }
 
   /**
@@ -128,22 +128,22 @@ class ChatManager {
     try {
       const response = await axios.get(
         'https://api.github.com/repos/cloving-ai/cloving-cli/releases/latest',
-      );
-      const latestVersion = response.data.tag_name;
-      const currentVersion = `v${getPackageVersion()}`;
+      )
+      const latestVersion = response.data.tag_name
+      const currentVersion = `v${getPackageVersion()}`
 
       if (latestVersion !== currentVersion) {
         console.log(
           colors.bgWhite.black(`\n 🚀 A new version of Cloving is available: ${latestVersion}    `),
-        );
+        )
         console.log(
           colors.bgWhite.black(`    You are currently using version: ${currentVersion}          `),
-        );
+        )
         console.log(
           colors.bgWhite.black(
             `    To upgrade, run: ${colors.bgWhite.black.bold('npm install -g cloving@latest')}   `,
           ),
-        );
+        )
       }
     } catch (error) {
       // ignore errors
@@ -155,9 +155,9 @@ class ChatManager {
    * @private
    */
   private setupEventListeners(): void {
-    this.rl.on('line', this.handleLine.bind(this));
-    this.rl.on('close', this.handleClose.bind(this));
-    process.stdin.on('keypress', this.handleKeypress.bind(this));
+    this.rl.on('line', this.handleLine.bind(this))
+    this.rl.on('close', this.handleClose.bind(this))
+    process.stdin.on('keypress', this.handleKeypress.bind(this))
   }
 
   /**
@@ -166,40 +166,38 @@ class ChatManager {
    * @returns {Promise<void>}
    */
   private async loadContextFiles(): Promise<void> {
-    const config = getClovingConfig();
-    const primaryLanguage = config.languages.find((lang) => lang.primary);
-    const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.';
+    const config = getClovingConfig()
+    const primaryLanguage = config.languages.find((lang) => lang.primary)
+    const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
     const testingDirectories =
-      config.testingFrameworks?.map((framework) => framework.directory) || [];
-    const testingDirectory = testingDirectories[0];
+      config.testingFrameworks?.map((framework) => framework.directory) || []
+    const testingDirectory = testingDirectories[0]
 
-    let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean);
+    let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
     if (files.length > 0) {
-      console.log(`\nBuilding chat session context...\n`);
+      console.log(`\nBuilding chat session context...\n`)
     }
     for (const file of files) {
       // Skip if the file is not a string
-      if (!file) continue;
+      if (!file) continue
 
-      const previousCount = Object.keys(this.contextFiles).length;
-      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options);
-      const newCount = Object.keys(this.contextFiles).length;
-      const addedCount = newCount - previousCount;
+      const previousCount = Object.keys(this.contextFiles).length
+      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
+      const newCount = Object.keys(this.contextFiles).length
+      const addedCount = newCount - previousCount
 
-      const totalTokens = this.calculateTotalTokens();
+      const totalTokens = this.calculateTotalTokens()
 
-      console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`));
-      console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`));
-      console.log(
-        colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`),
-      );
+      console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`))
+      console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`))
+      console.log(colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`))
     }
   }
 
   private calculateTotalTokens(): number {
     return Object.values(this.contextFiles).reduce((total, content) => {
-      return total + Math.ceil(content.length / 4);
-    }, 0);
+      return total + Math.ceil(content.length / 4)
+    }, 0)
   }
 
   /**
@@ -210,66 +208,66 @@ class ChatManager {
    */
   private async handleLine(line: string): Promise<void> {
     if (this.isProcessing) {
-      return;
+      return
     }
 
-    const trimmedLine = line.trim();
+    const trimmedLine = line.trim()
 
     if (this.handleMultilineInput(trimmedLine)) {
-      return;
+      return
     }
 
     if (trimmedLine === '') {
-      this.displayPrompt();
-      return;
+      this.displayPrompt()
+      return
     }
 
-    this.updateCommandHistory(trimmedLine);
+    this.updateCommandHistory(trimmedLine)
 
     if (this.handleExitCommand(trimmedLine)) {
-      return;
+      return
     }
 
-    await this.handleCommand(trimmedLine);
+    await this.handleCommand(trimmedLine)
   }
 
   private handleMultilineInput(line: string): boolean {
     if (this.isMultilineMode) {
       if (line === '```') {
-        this.isMultilineMode = false;
-        this.handleCommand(this.multilineInput);
-        this.multilineInput = '';
+        this.isMultilineMode = false
+        this.handleCommand(this.multilineInput)
+        this.multilineInput = ''
       } else {
-        this.multilineInput += line + '\n';
-        this.rl.prompt();
+        this.multilineInput += line + '\n'
+        this.rl.prompt()
       }
-      return true;
+      return true
     } else if (line === '```') {
-      this.isMultilineMode = true;
-      this.multilineInput = '';
-      console.log('Entering multiline mode. Type ``` on a new line to end.\n');
-      this.rl.prompt();
-      return true;
+      this.isMultilineMode = true
+      this.multilineInput = ''
+      console.log('Entering multiline mode. Type ``` on a new line to end.\n')
+      this.rl.prompt()
+      return true
     }
-    return false;
+    return false
   }
 
   private handleExitCommand(command: string): boolean {
     if (command.toLowerCase() === 'exit') {
-      this.rl.close();
-      return true;
+      this.rl.close()
+      return true
     }
-    return false;
+    return false
   }
 
   private updateCommandHistory(command: string) {
     if (this.commandHistory[0] !== command) {
-      this.commandHistory.unshift(command);
+      this.commandHistory.unshift(command)
       if (this.commandHistory.length > 1000) {
-        this.commandHistory.pop();
+        this.commandHistory.pop()
       }
     }
-    this.historyIndex = -1;
+    this.historyIndex = -1
   }
 
   /**
@@ -297,117 +295,117 @@ class ChatManager {
   private async handleCommand(command: string): Promise<void> {
     switch (command) {
       case 'help':
-        this.displayHelp();
-        break;
+        this.displayHelp()
+        break
       case 'copy':
-        await this.handleCopy();
-        break;
+        await this.handleCopy()
+        break
       case 'save':
-        await this.handleSave();
-        break;
+        await this.handleSave()
+        break
       case 'commit':
-        await this.handleCommit();
-        break;
+        await this.handleCommit()
+        break
       case 'ls':
-        this.handleList('ls *');
-        break;
+        this.handleList('ls *')
+        break
       case 'rm':
-        await this.handleRemove('rm *');
-        break;
+        await this.handleRemove('rm *')
+        break
       case 'review':
-        await this.handleReview();
-        break;
+        await this.handleReview()
+        break
       default:
         if (this.isAddCommand(command)) {
-          await this.handleAdd(command);
+          await this.handleAdd(command)
         } else if (this.isFindCommand(command)) {
-          await this.handleFind(command);
+          await this.handleFind(command)
         } else if (this.isRemoveCommand(command)) {
-          await this.handleRemove(command);
+          await this.handleRemove(command)
         } else if (this.isListCommand(command)) {
-          this.handleList(command);
+          this.handleList(command)
         } else if (this.isGitCommand(command)) {
-          this.executeGitCommand(command);
+          this.executeGitCommand(command)
         } else {
-          await this.processUserInput(command);
+          await this.processUserInput(command)
         }
     }
   }
 
   private isFindCommand(command: string): boolean {
-    const parts = command.trim().split(/\s+/);
-    return parts.length === 2 && parts[0] === 'find';
+    const parts = command.trim().split(/\s+/)
+    return parts.length === 2 && parts[0] === 'find'
   }
 
   private async handleFind(command: string) {
-    const fileName = command.slice(5).trim();
+    const fileName = command.slice(5).trim()
 
     if (fileName) {
       try {
-        const foundFiles = await this.findFiles(fileName);
+        const foundFiles = await this.findFiles(fileName)
         if (foundFiles.length === 0) {
-          console.log(`No files found matching ${colors.bold(colors.red(fileName))}.`);
+          console.log(`No files found matching ${colors.bold(colors.red(fileName))}.`)
         } else {
           for (const filePath of foundFiles) {
             this.contextFiles = await addFileOrDirectoryToContext(
               filePath,
               this.contextFiles,
               this.options,
-            );
-            const content = this.contextFiles[filePath];
-            const tokenEstimate = this.estimateTokens(content);
+            )
+            const content = this.contextFiles[filePath]
+            const tokenEstimate = this.estimateTokens(content)
             console.log(
               `\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`,
-            );
+            )
           }
-          const totalTokens = this.calculateTotalTokens();
+          const totalTokens = this.calculateTotalTokens()
           console.log(
             colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`),
-          );
+          )
         }
       } catch (error) {
         console.error(
           `Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`,
           error,
-        );
+        )
       }
     } else {
-      console.log('No file name provided.');
+      console.log('No file name provided.')
     }
 
-    this.rl.prompt();
+    this.rl.prompt()
   }
 
   private async findFiles(fileName: string): Promise<string[]> {
-    const { exec } = require('child_process');
+    const { exec } = require('child_process')
     return new Promise((resolve, reject) => {
       exec(`find . -name "${fileName}"`, (error: Error | null, stdout: string) => {
         if (error) {
-          return reject(error);
+          return reject(error)
         }
         const files = stdout
           .split('\n')
           .filter((filePath) => filePath.trim() !== '')
-          .map((filePath) => (filePath.startsWith('./') ? filePath.slice(2) : filePath));
-        resolve(files);
-      });
-    });
+          .map((filePath) => (filePath.startsWith('./') ? filePath.slice(2) : filePath))
+        resolve(files)
+      })
+    })
   }
 
   private displayHelp(): void {
-    console.log('');
-    this.displayAvailableCommands();
-    console.log('\nFor any other input, I will process it as a request or question.\n');
-    this.rl.prompt();
+    console.log('')
+    this.displayAvailableCommands()
+    console.log('\nFor any other input, I will process it as a request or question.\n')
+    this.rl.prompt()
   }
 
   private isAddCommand(command: string): boolean {
-    const parts = command.trim().split(/\s+/);
-    return parts.length === 2 && parts[0] === 'add';
+    const parts = command.trim().split(/\s+/)
+    return parts.length === 2 && parts[0] === 'add'
   }
 
   private async handleAdd(command: string) {
-    const filePath = command.slice(4).trim();
+    const filePath = command.slice(4).trim()
 
     if (filePath) {
       try {
@@ -415,167 +413,165 @@ class ChatManager {
           filePath,
           this.contextFiles,
           this.options,
-        );
-        console.log(
-          `\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`,
-        );
-        this.refreshContext();
+        )
+        console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`)
+        this.refreshContext()
       } catch (error) {
         console.error(
           `Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`,
           error,
-        );
+        )
       }
     } else {
-      console.log('No file path provided.');
+      console.log('No file path provided.')
     }
 
-    this.rl.prompt();
+    this.rl.prompt()
   }
 
   private refreshContext() {
-    const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles);
-    this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt };
-    this.chatHistory[1] = { role: 'assistant', content: 'What would you like to do?' };
+    const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
+    this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
+    this.chatHistory[1] = { role: 'assistant', content: 'What would you like to do?' }
   }
 
   private isRemoveCommand(command: string): boolean {
-    return command.startsWith('rm ');
+    return command.startsWith('rm ')
   }
 
   // Function to convert glob-like pattern to a regular expression
   private globToRegExp(glob: string): RegExp {
-    const escapedGlob = glob.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&');
-    const regexString = escapedGlob.replace(/\*/g, '.*');
-    return new RegExp(`^${regexString}$`);
+    const escapedGlob = glob.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&')
+    const regexString = escapedGlob.replace(/\*/g, '.*')
+    return new RegExp(`^${regexString}$`)
   }
 
   // Function to filter paths using the pattern
   private filterPaths(paths: string[], pattern: string): string[] {
-    const regex = this.globToRegExp(pattern);
-    return paths.filter((path) => regex.test(path));
+    const regex = this.globToRegExp(pattern)
+    return paths.filter((path) => regex.test(path))
   }
 
   private async handleRemove(command: string) {
-    const pattern = command.slice(3).trim();
+    const pattern = command.slice(3).trim()
 
     if (pattern) {
-      const matchedFiles = this.filterPaths(Object.keys(this.contextFiles), pattern);
+      const matchedFiles = this.filterPaths(Object.keys(this.contextFiles), pattern)
 
       if (matchedFiles.length > 0) {
         matchedFiles.forEach((filePath) => {
-          delete this.contextFiles[filePath];
+          delete this.contextFiles[filePath]
           console.log(
             `Removed ${colors.bold(colors.green(filePath))} from this chat session's context files`,
-          );
-        });
+          )
+        })
       } else {
         console.log(
           `No files matching pattern "${colors.bold(pattern)}" found in this chat session's context files, try running ${colors.yellow('ls')} to see the list of files.`,
-        );
+        )
       }
     } else {
-      console.log('No pattern provided.');
+      console.log('No pattern provided.')
     }
 
-    this.rl.prompt();
+    this.rl.prompt()
   }
 
   private isListCommand(command: string): boolean {
-    return command.startsWith('ls ');
+    return command.startsWith('ls ')
   }
 
   private estimateTokens(text: string): number {
     // A simple estimation: 1 token ≈ 4 characters
-    return Math.ceil(text.length / 4);
+    return Math.ceil(text.length / 4)
   }
 
   private handleList(command: string) {
-    const pattern = command.slice(3).trim();
-    const fileNames = Object.keys(this.contextFiles);
+    const pattern = command.slice(3).trim()
+    const fileNames = Object.keys(this.contextFiles)
 
-    const matchedFiles = pattern ? this.filterPaths(fileNames, pattern) : fileNames;
+    const matchedFiles = pattern ? this.filterPaths(fileNames, pattern) : fileNames
 
     if (matchedFiles.length > 0) {
-      console.log(`\nFiles in the current chat session context:`);
-      let totalTokens = 0;
+      console.log(`\nFiles in the current chat session context:`)
+      let totalTokens = 0
       matchedFiles.forEach((fileName) => {
-        const content = this.contextFiles[fileName];
-        const tokenEstimate = this.estimateTokens(content);
-        totalTokens += tokenEstimate;
+        const content = this.contextFiles[fileName]
+        const tokenEstimate = this.estimateTokens(content)
+        totalTokens += tokenEstimate
         console.log(
           ` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`,
-        );
-      });
-      console.log(`\nTotal files: ${matchedFiles.length}`);
-      console.log(`Total estimated tokens: ${colors.yellow(totalTokens.toLocaleString())}\n`);
+        )
+      })
+      console.log(`\nTotal files: ${matchedFiles.length}`)
+      console.log(`Total estimated tokens: ${colors.yellow(totalTokens.toLocaleString())}\n`)
     } else {
-      console.log('No files currently in context.');
+      console.log('No files currently in context.')
     }
-    this.rl.prompt();
+    this.rl.prompt()
   }
 
   private async handleCopy() {
-    const lastResponse = this.chatHistory.filter((msg) => msg.role === 'assistant').pop();
+    const lastResponse = this.chatHistory.filter((msg) => msg.role === 'assistant').pop()
     if (lastResponse) {
       ncp.copy(lastResponse.content, () => {
-        console.info('Last response copied to clipboard.');
-        this.rl.prompt();
-      });
+        console.info('Last response copied to clipboard.')
+        this.rl.prompt()
+      })
     } else {
-      console.error('No response to copy.');
+      console.error('No response to copy.')
     }
   }
 
   private async handleReview() {
-    this.options.stream = false;
-    const reviewManager = new ReviewManager(this.options);
-    await reviewManager.review();
-    this.options.stream = true;
-    this.rl.prompt();
+    this.options.stream = false
+    const reviewManager = new ReviewManager(this.options)
+    await reviewManager.review()
+    this.options.stream = true
+    this.rl.prompt()
   }
 
   private async handleCommit() {
-    this.options.stream = false;
-    const commitManager = new CommitManager(this.options);
-    await commitManager.commit();
-    this.options.stream = true;
-    this.rl.prompt();
+    this.options.stream = false
+    const commitManager = new CommitManager(this.options)
+    await commitManager.commit()
+    this.options.stream = true
+    this.rl.prompt()
   }
 
   private async handleSave() {
     const lastResponse = this.chatHistory
       .slice()
       .reverse()
-      .find((msg) => msg.role === 'assistant');
+      .find((msg) => msg.role === 'assistant')
 
     if (lastResponse) {
-      const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content);
+      const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content)
       if (Object.keys(currentNewBlocks).length > 0) {
-        await applyAndSaveCurrentNewBlocks(currentNewBlocks);
-        console.info(`\n${colors.bold('save')} has finished\n`);
-        this.rl.prompt();
+        await applyAndSaveCurrentNewBlocks(currentNewBlocks)
+        console.info(`\n${colors.bold('save')} has finished\n`)
+        this.rl.prompt()
       } else {
-        console.info('No changes found to save in the last response.');
-        this.rl.prompt();
+        console.info('No changes found to save in the last response.')
+        this.rl.prompt()
       }
     } else {
-      console.error('No response to save files from.');
-      this.rl.prompt();
+      console.error('No response to save files from.')
+      this.rl.prompt()
     }
   }
 
   private isGitCommand(command: string): boolean {
-    return command.split(' ').length <= 3 && command.startsWith('git ');
+    return command.split(' ').length <= 3 && command.startsWith('git ')
   }
 
   private executeGitCommand(command: string) {
     try {
-      execSync(command, { stdio: 'inherit' });
+      execSync(command, { stdio: 'inherit' })
     } catch (error) {
-      console.error('Error running command:', error);
+      console.error('Error running command:', error)
     }
-    this.rl.prompt();
+    this.rl.prompt()
   }
 
   /**
@@ -592,17 +588,17 @@ class ChatManager {
    */
   private async processUserInput(input: string): Promise<void> {
     if (this.isProcessing) {
-      console.log('Please wait for the current request to complete.');
-      return;
+      console.log('Please wait for the current request to complete.')
+      return
     }
 
-    this.isProcessing = true;
-    this.chunkManager = new ChunkManager();
+    this.isProcessing = true
+    this.chunkManager = new ChunkManager()
 
     try {
-      this.refreshContext();
-      this.prompt = this.generatePrompt(input);
-      this.addChatHistory(this.prompt);
+      this.refreshContext()
+      this.prompt = this.generatePrompt(input)
+      this.addChatHistory(this.prompt)
 
       if (!this.isSilent) {
         const fullPrompt = this.chatHistory
@@ -611,58 +607,58 @@ class ChatManager {
               .split('\n')
               .map((line) => {
                 if (line.startsWith('###')) {
-                  return colors.red.bold(line);
+                  return colors.red.bold(line)
                 } else if (line.startsWith('##')) {
-                  return colors.yellow.bold(line);
+                  return colors.yellow.bold(line)
                 }
-                return line;
+                return line
               })
-              .join('\n');
+              .join('\n')
             return m.role === 'user'
               ? `${colors.yellow.bold('## User Prompt')}\n\n${content}`
-              : `${colors.green.bold("## 🍀 Cloving's Response 🍀")}\n\n${content}`;
+              : `${colors.green.bold("## 🍀 Cloving's Response 🍀")}\n\n${content}`
           })
-          .join('\n\n');
+          .join('\n\n')
 
         // Review the prompt using the REPL
-        const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString();
+        const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
         console.log(
           `The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
-        );
+        )
 
         const reviewPrompt = await new Promise<string>((resolve) => {
           this.rl.question(colors.green.bold('cloving> '), (answer) => {
-            resolve(answer.trim().toLowerCase());
-          });
-        });
+            resolve(answer.trim().toLowerCase())
+          })
+        })
 
         if (reviewPrompt === 'y' || reviewPrompt === '') {
           console.log(
             colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
-          );
-          const promptParts = fullPrompt.split('\n```');
+          )
+          const promptParts = fullPrompt.split('\n```')
           const highlightedPrompt = promptParts
             .map((part, index) =>
               index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part,
             )
-            .join('\n```');
-          console.log(highlightedPrompt);
+            .join('\n```')
+          console.log(highlightedPrompt)
           console.log(
             colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'),
-          );
-          console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`);
+          )
+          console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`)
 
           const confirmPrompt = await new Promise<string>((resolve) => {
             this.rl.question(colors.green.bold('cloving> '), (answer) => {
-              resolve(answer.trim().toLowerCase());
-            });
-          });
+              resolve(answer.trim().toLowerCase())
+            })
+          })
 
           if (confirmPrompt !== 'y' && confirmPrompt !== '') {
-            console.log('Operation cancelled by user.');
-            this.isProcessing = false;
-            this.rl.prompt();
-            return;
+            console.log('Operation cancelled by user.')
+            this.isProcessing = false
+            this.rl.prompt()
+            return
           }
         }
       }
@@ -670,63 +666,63 @@ class ChatManager {
       const responseStream = await this.gpt.streamText({
         prompt: this.prompt,
         messages: this.chatHistory,
-      });
-      let accumulatedContent = '';
+      })
+      let accumulatedContent = ''
 
-      this.handleResponseStream(responseStream, accumulatedContent);
+      this.handleResponseStream(responseStream, accumulatedContent)
     } catch (err) {
-      this.handleError(err);
+      this.handleError(err)
     }
   }
 
   private addChatHistory(input: string) {
-    this.chatHistory.push({ role: 'user', content: input });
+    this.chatHistory.push({ role: 'user', content: input })
   }
 
   private handleResponseStream(responseStream: any, accumulatedContent: string) {
     this.chunkManager.on('content', (buffer: string) => {
-      let convertedStream = this.gpt.convertStream(buffer);
+      let convertedStream = this.gpt.convertStream(buffer)
 
       while (convertedStream !== null) {
-        const { output, lastChar } = convertedStream;
-        process.stdout.write(output);
-        accumulatedContent += output;
-        this.chunkManager.clearBuffer(lastChar);
-        buffer = buffer.slice(lastChar);
-        convertedStream = this.gpt.convertStream(buffer);
+        const { output, lastChar } = convertedStream
+        process.stdout.write(output)
+        accumulatedContent += output
+        this.chunkManager.clearBuffer(lastChar)
+        buffer = buffer.slice(lastChar)
+        convertedStream = this.gpt.convertStream(buffer)
       }
-    });
+    })
 
     responseStream.data.on('data', (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      this.chunkManager.addChunk(chunkString);
-    });
+      const chunkString = chunk.toString()
+      this.chunkManager.addChunk(chunkString)
+    })
 
     responseStream.data.on('end', () => {
-      this.finalizeResponse(accumulatedContent);
-    });
+      this.finalizeResponse(accumulatedContent)
+    })
 
     responseStream.data.on('error', (error: Error) => {
-      console.error('Error streaming response:', error);
-      this.isProcessing = false;
-      process.stdout.write('\n');
-      this.rl.prompt();
-    });
+      console.error('Error streaming response:', error)
+      this.isProcessing = false
+      process.stdout.write('\n')
+      this.rl.prompt()
+    })
   }
 
   private async finalizeResponse(accumulatedContent: string) {
-    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() });
-    this.isProcessing = false;
+    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
+    this.isProcessing = false
 
     if (accumulatedContent) {
-      const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent);
-      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks);
+      const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent)
+      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
         this.processUserInput(`Some of the provided code blocks could not be applied,
 please match the existing code with a few more lines of context and make sure it is a character for character exact match.
 
-${summary}`);
-        return;
+${summary}`)
+        return
       }
     }
 
@@ -742,38 +738,38 @@ You can follow up with another request or:
   - type ${colors.yellow(colors.bold('"ls <pattern>"'))} to list files in the chat context
   - type ${colors.yellow(colors.bold('"git <command>"'))} to run a git command
   - type ${colors.yellow(colors.bold('"exit"'))} to quit this session
-  `);
-    this.rl.prompt();
+  `)
+    this.rl.prompt()
   }
 
   private handleError(err: unknown) {
-    const error = err as AxiosError;
-    let errorMessage = error.message || 'An error occurred.';
-    const errorNumber = error.response?.status || 'unknown';
+    const error = err as AxiosError
+    let errorMessage = error.message || 'An error occurred.'
+    const errorNumber = error.response?.status || 'unknown'
 
     switch (errorNumber) {
       case 400:
-        errorMessage = 'Invalid model or prompt size too large. Try specifying fewer files.';
-        break;
+        errorMessage = 'Invalid model or prompt size too large. Try specifying fewer files.'
+        break
       case 403:
-        errorMessage = 'Inactive subscription or usage limit reached';
-        break;
+        errorMessage = 'Inactive subscription or usage limit reached'
+        break
       case 429:
-        errorMessage = 'Rate limit error';
-        break;
+        errorMessage = 'Rate limit error'
+        break
       case 500:
-        errorMessage = 'Internal server error';
-        break;
+        errorMessage = 'Internal server error'
+        break
     }
 
-    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString();
+    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
     console.error(
       `Error processing a ${promptTokens} token prompt: `,
       errorMessage,
       `(${errorNumber}) \n`,
-    );
-    this.isProcessing = false;
-    this.rl.prompt();
+    )
+    this.isProcessing = false
+    this.rl.prompt()
   }
 
   /**
@@ -806,12 +802,12 @@ ${prompt}
 
 ### Note
 
-Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.`;
+Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.`
   }
 
   private handleClose() {
-    console.log('Goodbye!');
-    process.exit(0);
+    console.log('Goodbye!')
+    process.exit(0)
   }
 
   /**
@@ -820,33 +816,33 @@ Whenever possible, break up the changes into pieces and make sure every change i
    * @private
    */
   private displayPrompt() {
-    this.rl.setPrompt(colors.green.bold('cloving> '));
-    this.rl.prompt();
+    this.rl.setPrompt(colors.green.bold('cloving> '))
+    this.rl.prompt()
   }
 
   private handleKeypress(_: any, key: { name: string }) {
     if (key && (key.name === 'up' || key.name === 'down')) {
       if (key.name === 'up' && this.historyIndex < this.commandHistory.length - 1) {
-        this.historyIndex++;
+        this.historyIndex++
       } else if (key.name === 'down' && this.historyIndex > -1) {
-        this.historyIndex--;
+        this.historyIndex--
       }
 
       if (this.historyIndex >= 0) {
-        this.rl.write(null, { ctrl: true, name: 'u' });
-        this.rl.write(this.commandHistory[this.historyIndex]);
+        this.rl.write(null, { ctrl: true, name: 'u' })
+        this.rl.write(this.commandHistory[this.historyIndex])
       } else if (this.historyIndex === -1) {
-        this.rl.write(null, { ctrl: true, name: 'u' });
+        this.rl.write(null, { ctrl: true, name: 'u' })
       }
     } else if (key && key.name === 'tab') {
-      const line = this.rl.line.trim();
-      const hits = specialCommands.filter((command) => command.startsWith(line));
+      const line = this.rl.line.trim()
+      const hits = specialCommands.filter((command) => command.startsWith(line))
       if (hits.length > 0) {
-        this.rl.write(null, { ctrl: true, name: 'u' });
-        this.rl.write(hits[0]);
+        this.rl.write(null, { ctrl: true, name: 'u' })
+        this.rl.write(hits[0])
       }
     }
   }
 }
 
-export default ChatManager;
+export default ChatManager
