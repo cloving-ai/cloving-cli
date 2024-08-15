@@ -20,22 +20,24 @@ export const config = async (): Promise<void> => {
   let continueConfig = true
 
   while (continueConfig) {
-    const providers = [...new Set(models.map(model => model.split(':')[0]))]
+    const providers = [...new Set(models.map((model) => model.split(':')[0]))]
     const selectedProvider = await select({
       message: 'Select a provider:',
-      choices: providers.map(provider => ({ name: provider, value: provider })),
+      choices: providers.map((provider) => ({ name: provider, value: provider })),
     })
 
-    const providerModels = models.filter(model => model.startsWith(selectedProvider))
-    const modelCategories = [...new Set(providerModels.map(model => model.split(':')[1]))]
+    const providerModels = models.filter((model) => model.startsWith(selectedProvider))
+    const modelCategories = [...new Set(providerModels.map((model) => model.split(':')[1]))]
     const selectedCategory = await select({
       message: 'Select a category:',
-      choices: modelCategories.map(category => ({ name: category, value: category })),
+      choices: modelCategories.map((category) => ({ name: category, value: category })),
     })
 
-    const specificModels = providerModels.filter(model => model.split(':')[1] === selectedCategory)
+    const specificModels = providerModels.filter(
+      (model) => model.split(':')[1] === selectedCategory,
+    )
     const modelIndex = await select({
-      message: 'Select an AI model you\'d like to use:',
+      message: "Select an AI model you'd like to use:",
       choices: specificModels.map((model, index) => ({ name: model, value: index })),
       pageSize: specificModels.length,
     })
@@ -52,12 +54,14 @@ export const config = async (): Promise<void> => {
     }
 
     const primary = await confirm({
-      message: 'Set this model as the primary? Primary models are used by default if your prompt fits within its context window. You can configure backup models for larger prompts.',
+      message:
+        'Set this model as the primary? Primary models are used by default if your prompt fits within its context window. You can configure backup models for larger prompts.',
       default: true,
     })
 
     const priority = await input({
-      message: 'Enter the priority for this model (0-100). Higher priority AI APIs are chosen as long as the prompt fits its context window:',
+      message:
+        'Enter the priority for this model (0-100). Higher priority AI APIs are chosen as long as the prompt fits its context window:',
       default: primary ? '100' : '0',
       validate: (input: string) => {
         const num = parseInt(input, 10)
@@ -78,28 +82,28 @@ export const config = async (): Promise<void> => {
       default: false,
     })
 
-        const temperature = await input({
-          message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
-          default: '0.2',
-          validate: (value: string) => {
-            const num = parseFloat(value)
-            if (isNaN(num) || num < 0 || num > 1) {
-              return 'Please enter a valid number between 0.0 and 1.0.'
-            }
-            return true
-          },
-        })
-
-        const parsedTemperature = parseFloat(temperature)
-
-        const modelConfig: ClovingModelConfig = {
-          apiKey,
-          primary,
-          priority: parseInt(priority, 10),
-          silent: !review,
-          trust,
-          temperature: parsedTemperature,
+    const temperature = await input({
+      message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
+      default: '0.2',
+      validate: (value: string) => {
+        const num = parseFloat(value)
+        if (isNaN(num) || num < 0 || num > 1) {
+          return 'Please enter a valid number between 0.0 and 1.0.'
         }
+        return true
+      },
+    })
+
+    const parsedTemperature = parseFloat(temperature)
+
+    const modelConfig: ClovingModelConfig = {
+      apiKey,
+      primary,
+      priority: parseInt(priority, 10),
+      silent: !review,
+      trust,
+      temperature: parsedTemperature,
+    }
 
     currentConfig.models[provider][model] = modelConfig
 

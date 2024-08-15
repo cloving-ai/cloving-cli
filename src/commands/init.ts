@@ -6,7 +6,11 @@ import ClovingGPT from '../cloving_gpt'
 import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
-import { generateFileList, collectSpecialFileContents, checkForSpecialFiles } from '../utils/command_utils'
+import {
+  generateFileList,
+  collectSpecialFileContents,
+  checkForSpecialFiles,
+} from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 // Main function for the describe command
@@ -14,7 +18,7 @@ export const init = async (options: ClovingGPTOptions) => {
   options.silent = getConfig(options).globalSilent || false
   const gpt = new ClovingGPT(options)
   const specialFileContents = collectSpecialFileContents()
-  const specialFileNames = Object.keys(specialFileContents).map(file => ' - ' + file)
+  const specialFileNames = Object.keys(specialFileContents).map((file) => ' - ' + file)
 
   // Initialize chat history
   const chatHistory: ChatMessage[] = [
@@ -143,15 +147,15 @@ Here is an example response:
     }
   ],
   "projectType": "Command-line tool",
-}`
-    }
+}`,
+    },
   ]
 
   if (!options.silent) {
     if (specialFileNames.length > 0) {
       console.log(`Cloving will analyze the list of files and the contents of the following files:
 
-${specialFileNames.join("\n")}
+${specialFileNames.join('\n')}
 
 Cloving will send AI a request to summarize the technologies used in this project.
 
@@ -171,7 +175,9 @@ technologies used. This will provide better context for future Cloving requests.
   }
 
   if (!checkForSpecialFiles()) {
-    console.error('No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.')
+    console.error(
+      'No dependencies files detected. Please add a dependency file (e.g. package.json, Gemfile, requirements.txt, etc.) to your project and run `cloving init` again.',
+    )
     return
   }
 
@@ -186,7 +192,7 @@ technologies used. This will provide better context for future Cloving requests.
     }
 
     const fileList = await generateFileList()
-    const filteredFileList = fileList.filter(file => {
+    const filteredFileList = fileList.filter((file) => {
       try {
         return !ig.ignores(file)
       } catch (error) {
@@ -198,7 +204,7 @@ technologies used. This will provide better context for future Cloving requests.
 
     const projectDetails = {
       files: limitedFileList,
-      specialFiles: specialFileContents
+      specialFiles: specialFileContents,
     }
 
     const prompt = `Here is a JSON object describing my project:

@@ -8,15 +8,63 @@ import { join } from 'path'
 import { getClovingConfig } from './config_utils'
 
 export const SPECIAL_FILES = [
-  'package.json', 'Gemfile', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'pom.xml', 'build.gradle',
-  '.csproj', 'packages.config', 'composer.json', 'CMakeLists.txt', 'conanfile.txt', 'conanfile.py',
-  'go.mod', 'Cargo.toml', 'Package.swift', 'build.gradle.kts', 'Podfile', 'Cartfile', 'cpanfile',
-  'DESCRIPTION', 'mix.exs', 'build.sbt', 'pubspec.yaml', 'stack.yaml', 'cabal.project', 'Project.toml',
-  'rockspec', 'rebar.config', 'project.clj', 'tsconfig.json', '.eslintrc.js', '.eslintrc.json', '.eslintrc.yaml',
-  '.eslintrc.yml', '.eslintrc', '.prettierrc', '.prettierrc.js', '.prettierrc.json', '.prettierrc.yaml',
-  '.prettierrc.yml', '.prettierrc', '.stylelintrc', '.stylelintrc.json', '.stylelintrc.yaml', '.stylelintrc.yml',
-  '.stylelintrc', 'jest.config.js', 'jest.config.json', 'jest.config.ts', 'jest.config.cjs', 'jest.config.mjs',
-  'webpack.config.js', 'webpack.config.ts', 'webpack.config.cjs', 'webpack.config.mjs', 'webpack.config.common.js',
+  'package.json',
+  'Gemfile',
+  'requirements.txt',
+  'Pipfile',
+  'pyproject.toml',
+  'pom.xml',
+  'build.gradle',
+  '.csproj',
+  'packages.config',
+  'composer.json',
+  'CMakeLists.txt',
+  'conanfile.txt',
+  'conanfile.py',
+  'go.mod',
+  'Cargo.toml',
+  'Package.swift',
+  'build.gradle.kts',
+  'Podfile',
+  'Cartfile',
+  'cpanfile',
+  'DESCRIPTION',
+  'mix.exs',
+  'build.sbt',
+  'pubspec.yaml',
+  'stack.yaml',
+  'cabal.project',
+  'Project.toml',
+  'rockspec',
+  'rebar.config',
+  'project.clj',
+  'tsconfig.json',
+  '.eslintrc.js',
+  '.eslintrc.json',
+  '.eslintrc.yaml',
+  '.eslintrc.yml',
+  '.eslintrc',
+  '.prettierrc',
+  '.prettierrc.js',
+  '.prettierrc.json',
+  '.prettierrc.yaml',
+  '.prettierrc.yml',
+  '.prettierrc',
+  '.stylelintrc',
+  '.stylelintrc.json',
+  '.stylelintrc.yaml',
+  '.stylelintrc.yml',
+  '.stylelintrc',
+  'jest.config.js',
+  'jest.config.json',
+  'jest.config.ts',
+  'jest.config.cjs',
+  'jest.config.mjs',
+  'webpack.config.js',
+  'webpack.config.ts',
+  'webpack.config.cjs',
+  'webpack.config.mjs',
+  'webpack.config.common.js',
 ]
 
 export const getPackageVersion = () => {
@@ -68,8 +116,17 @@ export const generateCodegenPrompt = (contextFilesContent: Record<string, string
    \`\`\``
   const specialFileContents = collectSpecialFileContents()
   // detect if specialFileContents[file] is a string or an object
-  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${renderAsString(specialFileContents[file])}\n\`\`\`\n\n`).join('\n')
-  const contextFileContents = Object.keys(contextFilesContent).map((file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`).join('\n')
+  const specialFiles = Object.keys(specialFileContents)
+    .map(
+      (file) =>
+        `### Contents of **${file}**\n\n\`\`\`\n${renderAsString(specialFileContents[file])}\n\`\`\`\n\n`,
+    )
+    .join('\n')
+  const contextFileContents = Object.keys(contextFilesContent)
+    .map(
+      (file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`,
+    )
+    .join('\n')
 
   const prompt = `${instructions}
 
@@ -178,7 +235,6 @@ If a required file hasn't been provided in the *Context Files* section, stop eve
   return prompt
 }
 
-
 export const generateShellPrompt = (): string => {
   const shell = execSync('echo $SHELL').toString().trim()
   const os = execSync('echo $OSTYPE').toString().trim()
@@ -210,23 +266,25 @@ export const collectSpecialFileContents = (): Record<string, string | Record<str
   return specialFileContents
 }
 
-export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some(file => fs.existsSync(file))
+export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some((file) => fs.existsSync(file))
 
 export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
   const subdirs = await fs.promises.readdir(dir)
-  const files = await Promise.all(subdirs.map(async (subdir) => {
-    const res = path.resolve(dir, subdir)
-    if (subdir === 'node_modules' || subdir === '.git' || subdir === '.DS_Store') {
-      return []
-    }
-    const stat = await fs.promises.stat(res)
-    if (stat.isDirectory()) {
-      return getAllFilesInDirectory(res)
-    } else {
-      const isBinary = await isBinaryFile(res)
-      return isBinary ? [] : res
-    }
-  }))
+  const files = await Promise.all(
+    subdirs.map(async (subdir) => {
+      const res = path.resolve(dir, subdir)
+      if (subdir === 'node_modules' || subdir === '.git' || subdir === '.DS_Store') {
+        return []
+      }
+      const stat = await fs.promises.stat(res)
+      if (stat.isDirectory()) {
+        return getAllFilesInDirectory(res)
+      } else {
+        const isBinary = await isBinaryFile(res)
+        return isBinary ? [] : res
+      }
+    }),
+  )
   return files.flat()
 }
 
@@ -234,10 +292,15 @@ export const generateFileList = async (): Promise<string[]> => {
   try {
     const lsOutput = await runCommand('ls', [])
     const findOutput = await runCommand('find', ['.'])
-    const cleanedFindOutput = findOutput.map(file => file.startsWith('./') ? file.slice(2) : file)
+    const cleanedFindOutput = findOutput.map((file) =>
+      file.startsWith('./') ? file.slice(2) : file,
+    )
     const files = [...lsOutput, ...cleanedFindOutput]
     const uniqueFiles = Array.from(new Set(files))
-    return uniqueFiles.filter(file => file && !file.includes('.git') && !file.includes('node_modules') && !file.includes('tmp'))
+    return uniqueFiles.filter(
+      (file) =>
+        file && !file.includes('.git') && !file.includes('node_modules') && !file.includes('tmp'),
+    )
   } catch (error) {
     console.error('Error generating file list:', (error as Error).message)
     return []
@@ -289,7 +352,7 @@ export const readFileContent = (file: string): string => {
 const addFileToContext = async (
   filePath: string,
   contextFiles: Record<string, string>,
-  baseDir: string
+  baseDir: string,
 ): Promise<void> => {
   const relativePath = path.relative(baseDir, filePath)
   if (await isBinaryFile(filePath)) {
@@ -302,7 +365,7 @@ const addFileToContext = async (
 const addDirectoryToContext = async (
   dirPath: string,
   contextFiles: Record<string, string>,
-  baseDir: string
+  baseDir: string,
 ): Promise<void> => {
   const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
   for (const entry of entries) {
@@ -320,7 +383,7 @@ const addDirectoryToContext = async (
 export const addFileOrDirectoryToContext = async (
   contextFile: string,
   contextFiles: Record<string, string>,
-  options: Record<string, any>
+  options: Record<string, any>,
 ): Promise<Record<string, string>> => {
   const filePath = path.resolve(contextFile)
   const baseDir = process.cwd()
@@ -333,7 +396,9 @@ export const addFileOrDirectoryToContext = async (
       await addFileToContext(filePath, contextFiles, baseDir)
     }
   } catch (error) {
-    console.error(colors.red(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`))
+    console.error(
+      colors.red(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`),
+    )
     process.exit(1)
   }
 

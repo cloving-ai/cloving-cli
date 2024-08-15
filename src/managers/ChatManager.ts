@@ -10,9 +10,17 @@ import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
-import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks, checkBlocksApplicability } from '../utils/string_utils'
+import {
+  extractCurrentNewBlocks,
+  applyAndSaveCurrentNewBlocks,
+  checkBlocksApplicability,
+} from '../utils/string_utils'
 import { getClovingConfig } from '../utils/config_utils'
-import { generateCodegenPrompt, addFileOrDirectoryToContext, getPackageVersion } from '../utils/command_utils'
+import {
+  generateCodegenPrompt,
+  addFileOrDirectoryToContext,
+  getPackageVersion,
+} from '../utils/command_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 const specialCommands = [
@@ -26,7 +34,7 @@ const specialCommands = [
   'ls <pattern>',
   'git <command>',
   'help',
-  'exit'
+  'exit',
 ]
 
 class ChatManager {
@@ -79,37 +87,63 @@ class ChatManager {
   }
 
   private displayAvailableCommands(): void {
-    console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
+    console.log(
+      `Type a freeform request or question to interact with your Cloving AI pair programmer.\n`,
+    )
     console.log('Available special commands:')
-    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
-    console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
-    console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
+    console.log(
+      ` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`,
+    )
+    console.log(
+      ` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`,
+    )
+    console.log(
+      ` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`,
+    )
     console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
-    console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`)
-    console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`)
-    console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`)
-    console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`)
+    console.log(
+      ` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`,
+    )
+    console.log(
+      ` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`,
+    )
+    console.log(
+      ` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`,
+    )
+    console.log(
+      ` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`,
+    )
     console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
     console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
     console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
   }
 
   /**
-  * Checks for the latest version of the app from GitHub and compares it with the current version.
-  * If a new version is available, it notifies the user.
-  * @private
-  * @returns {Promise<void>}
-  */
+   * Checks for the latest version of the app from GitHub and compares it with the current version.
+   * If a new version is available, it notifies the user.
+   * @private
+   * @returns {Promise<void>}
+   */
   private async checkForLatestVersion(): Promise<void> {
     try {
-      const response = await axios.get('https://api.github.com/repos/cloving-ai/cloving-cli/releases/latest')
+      const response = await axios.get(
+        'https://api.github.com/repos/cloving-ai/cloving-cli/releases/latest',
+      )
       const latestVersion = response.data.tag_name
       const currentVersion = `v${getPackageVersion()}`
 
       if (latestVersion !== currentVersion) {
-        console.log(colors.bgWhite.black(`\n 🚀 A new version of Cloving is available: ${latestVersion}    `))
-        console.log(colors.bgWhite.black(`    You are currently using version: ${currentVersion}          `))
-        console.log(colors.bgWhite.black(`    To upgrade, run: ${colors.bgWhite.black.bold('npm install -g cloving@latest')}   `))
+        console.log(
+          colors.bgWhite.black(`\n 🚀 A new version of Cloving is available: ${latestVersion}    `),
+        )
+        console.log(
+          colors.bgWhite.black(`    You are currently using version: ${currentVersion}          `),
+        )
+        console.log(
+          colors.bgWhite.black(
+            `    To upgrade, run: ${colors.bgWhite.black.bold('npm install -g cloving@latest')}   `,
+          ),
+        )
       }
     } catch (error) {
       // ignore errors
@@ -133,9 +167,10 @@ class ChatManager {
    */
   private async loadContextFiles(): Promise<void> {
     const config = getClovingConfig()
-    const primaryLanguage = config.languages.find(lang => lang.primary)
+    const primaryLanguage = config.languages.find((lang) => lang.primary)
     const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
-    const testingDirectories = config.testingFrameworks?.map(framework => framework.directory) || []
+    const testingDirectories =
+      config.testingFrameworks?.map((framework) => framework.directory) || []
     const testingDirectory = testingDirectories[0]
 
     let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
@@ -144,8 +179,7 @@ class ChatManager {
     }
     for (const file of files) {
       // Skip if the file is not a string
-      if (!file)
-        continue
+      if (!file) continue
 
       const previousCount = Object.keys(this.contextFiles).length
       this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
@@ -239,11 +273,11 @@ class ChatManager {
   /**
    * Handles various commands entered by the user.
    * This function acts as a command router, delegating to specific handlers based on the input.
-   * 
+   *
    * @private
    * @param {string} command - The command entered by the user.
    * @returns {Promise<void>}
-   * 
+   *
    * @description
    * Supported commands:
    * - 'copy': Copies the last response to clipboard.
@@ -261,7 +295,7 @@ class ChatManager {
   private async handleCommand(command: string): Promise<void> {
     // Check if the command is a single character and map it to the first matching special command
     if (command.length === 1) {
-      const matchingCommand = specialCommands.find(cmd => cmd.startsWith(command))
+      const matchingCommand = specialCommands.find((cmd) => cmd.startsWith(command))
       if (matchingCommand) {
         command = matchingCommand.split(' ')[0] // Use only the command part without arguments
       }
@@ -281,10 +315,10 @@ class ChatManager {
         await this.handleCommit()
         break
       case 'ls':
-        this.handleList("ls *")
+        this.handleList('ls *')
         break
       case 'rm':
-        await this.handleRemove("rm *")
+        await this.handleRemove('rm *')
         break
       case 'review':
         await this.handleReview()
@@ -321,16 +355,27 @@ class ChatManager {
           console.log(`No files found matching ${colors.bold(colors.red(fileName))}.`)
         } else {
           for (const filePath of foundFiles) {
-            this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
+            this.contextFiles = await addFileOrDirectoryToContext(
+              filePath,
+              this.contextFiles,
+              this.options,
+            )
             const content = this.contextFiles[filePath]
             const tokenEstimate = this.estimateTokens(content)
-            console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
+            console.log(
+              `\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`,
+            )
           }
           const totalTokens = this.calculateTotalTokens()
-          console.log(colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`))
+          console.log(
+            colors.yellow(`\n📊 Total tokens in context now: ${totalTokens.toLocaleString()}\n`),
+          )
         }
       } catch (error) {
-        console.error(`Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`, error)
+        console.error(
+          `Failed to find and add files matching ${colors.bold(colors.red(fileName))}:`,
+          error,
+        )
       }
     } else {
       console.log('No file name provided.')
@@ -346,8 +391,10 @@ class ChatManager {
         if (error) {
           return reject(error)
         }
-        const files = stdout.split('\n').filter((filePath) => filePath.trim() !== '')
-          .map((filePath) => filePath.startsWith('./') ? filePath.slice(2) : filePath)
+        const files = stdout
+          .split('\n')
+          .filter((filePath) => filePath.trim() !== '')
+          .map((filePath) => (filePath.startsWith('./') ? filePath.slice(2) : filePath))
         resolve(files)
       })
     })
@@ -370,11 +417,18 @@ class ChatManager {
 
     if (filePath) {
       try {
-        this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
+        this.contextFiles = await addFileOrDirectoryToContext(
+          filePath,
+          this.contextFiles,
+          this.options,
+        )
         console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`)
         this.refreshContext()
       } catch (error) {
-        console.error(`Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`, error)
+        console.error(
+          `Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`,
+          error,
+        )
       }
     } else {
       console.log('No file path provided.')
@@ -403,7 +457,7 @@ class ChatManager {
   // Function to filter paths using the pattern
   private filterPaths(paths: string[], pattern: string): string[] {
     const regex = this.globToRegExp(pattern)
-    return paths.filter(path => regex.test(path))
+    return paths.filter((path) => regex.test(path))
   }
 
   private async handleRemove(command: string) {
@@ -413,12 +467,16 @@ class ChatManager {
       const matchedFiles = this.filterPaths(Object.keys(this.contextFiles), pattern)
 
       if (matchedFiles.length > 0) {
-        matchedFiles.forEach(filePath => {
+        matchedFiles.forEach((filePath) => {
           delete this.contextFiles[filePath]
-          console.log(`Removed ${colors.bold(colors.green(filePath))} from this chat session's context files`)
+          console.log(
+            `Removed ${colors.bold(colors.green(filePath))} from this chat session's context files`,
+          )
         })
       } else {
-        console.log(`No files matching pattern "${colors.bold(pattern)}" found in this chat session's context files, try running ${colors.yellow('ls')} to see the list of files.`)
+        console.log(
+          `No files matching pattern "${colors.bold(pattern)}" found in this chat session's context files, try running ${colors.yellow('ls')} to see the list of files.`,
+        )
       }
     } else {
       console.log('No pattern provided.')
@@ -445,11 +503,13 @@ class ChatManager {
     if (matchedFiles.length > 0) {
       console.log(`\nFiles in the current chat session context:`)
       let totalTokens = 0
-      matchedFiles.forEach(fileName => {
+      matchedFiles.forEach((fileName) => {
         const content = this.contextFiles[fileName]
         const tokenEstimate = this.estimateTokens(content)
         totalTokens += tokenEstimate
-        console.log(` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`)
+        console.log(
+          ` - ${colors.bold(colors.green(fileName))} (${colors.yellow(`~${tokenEstimate.toLocaleString()} tokens`)})`,
+        )
       })
       console.log(`\nTotal files: ${matchedFiles.length}`)
       console.log(`Total estimated tokens: ${colors.yellow(totalTokens.toLocaleString())}\n`)
@@ -460,7 +520,7 @@ class ChatManager {
   }
 
   private async handleCopy() {
-    const lastResponse = this.chatHistory.filter(msg => msg.role === 'assistant').pop()
+    const lastResponse = this.chatHistory.filter((msg) => msg.role === 'assistant').pop()
     if (lastResponse) {
       ncp.copy(lastResponse.content, () => {
         console.info('Last response copied to clipboard.')
@@ -488,7 +548,10 @@ class ChatManager {
   }
 
   private async handleSave() {
-    const lastResponse = this.chatHistory.slice().reverse().find(msg => msg.role === 'assistant')
+    const lastResponse = this.chatHistory
+      .slice()
+      .reverse()
+      .find((msg) => msg.role === 'assistant')
 
     if (lastResponse) {
       const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content)
@@ -521,13 +584,13 @@ class ChatManager {
 
   /**
    * Processes user input by sending it to the AI model and handling the response.
-   * 
+   *
    * This method manages the interaction with the AI model by:
    * 1. Checking if a request is already being processed.
    * 2. Initializing the chat history and generating a prompt.
    * 3. Streaming the response from the AI model.
    * 4. Handling the response stream and updating the chat history.
-   * 
+   *
    * @param {string} input - The user's input or request to be processed.
    * @returns {Promise<void>} - A promise that resolves when the processing is complete.
    */
@@ -546,21 +609,30 @@ class ChatManager {
       this.addChatHistory(this.prompt)
 
       if (!this.isSilent) {
-        const fullPrompt = this.chatHistory.map(m => {
-          const content = m.content.split('\n').map(line => {
-            if (line.startsWith('###')) {
-              return colors.red.bold(line)
-            } else if (line.startsWith('##')) {
-              return colors.yellow.bold(line)
-            }
-            return line
-          }).join('\n')
-          return m.role === 'user' ? `${colors.yellow.bold('## User Prompt')}\n\n${content}` : `${colors.green.bold('## 🍀 Cloving\'s Response 🍀')}\n\n${content}`
-        }).join('\n\n')
+        const fullPrompt = this.chatHistory
+          .map((m) => {
+            const content = m.content
+              .split('\n')
+              .map((line) => {
+                if (line.startsWith('###')) {
+                  return colors.red.bold(line)
+                } else if (line.startsWith('##')) {
+                  return colors.yellow.bold(line)
+                }
+                return line
+              })
+              .join('\n')
+            return m.role === 'user'
+              ? `${colors.yellow.bold('## User Prompt')}\n\n${content}`
+              : `${colors.green.bold("## 🍀 Cloving's Response 🍀")}\n\n${content}`
+          })
+          .join('\n\n')
 
         // Review the prompt using the REPL
         const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
-        console.log(`The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`)
+        console.log(
+          `The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
+        )
 
         const reviewPrompt = await new Promise<string>((resolve) => {
           this.rl.question(colors.green.bold('cloving> '), (answer) => {
@@ -569,13 +641,19 @@ class ChatManager {
         })
 
         if (reviewPrompt === 'y' || reviewPrompt === '') {
-          console.log(colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'))
-          const promptParts = fullPrompt.split('\n```');
-          const highlightedPrompt = promptParts.map((part, index) =>
-            index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part
-          ).join('\n```');
+          console.log(
+            colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
+          )
+          const promptParts = fullPrompt.split('\n```')
+          const highlightedPrompt = promptParts
+            .map((part, index) =>
+              index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part,
+            )
+            .join('\n```')
           console.log(highlightedPrompt)
-          console.log(colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'))
+          console.log(
+            colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'),
+          )
           console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`)
 
           const confirmPrompt = await new Promise<string>((resolve) => {
@@ -593,7 +671,10 @@ class ChatManager {
         }
       }
 
-      const responseStream = await this.gpt.streamText({ prompt: this.prompt, messages: this.chatHistory })
+      const responseStream = await this.gpt.streamText({
+        prompt: this.prompt,
+        messages: this.chatHistory,
+      })
       let accumulatedContent = ''
 
       this.handleResponseStream(responseStream, accumulatedContent)
@@ -676,46 +757,50 @@ You can follow up with another request or:
 
     switch (errorNumber) {
       case 400:
-        errorMessage = "Invalid model or prompt size too large. Try specifying fewer files."
+        errorMessage = 'Invalid model or prompt size too large. Try specifying fewer files.'
         break
       case 403:
-        errorMessage = "Inactive subscription or usage limit reached"
+        errorMessage = 'Inactive subscription or usage limit reached'
         break
       case 429:
-        errorMessage = "Rate limit error"
+        errorMessage = 'Rate limit error'
         break
       case 500:
-        errorMessage = "Internal server error"
+        errorMessage = 'Internal server error'
         break
     }
 
     const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
     const statusMessage = (error.response?.data as any)?.statusMessage
-    console.error(colors.red(`\nError (${errorNumber}) processing a ${promptTokens} token prompt\n\n${statusMessage}\n`))
+    console.error(
+      colors.red(
+        `\nError (${errorNumber}) processing a ${promptTokens} token prompt\n\n${statusMessage}\n`,
+      ),
+    )
     this.isProcessing = false
     this.rl.prompt()
   }
 
   /**
    * Generates a comprehensive prompt for the AI model.
-   * 
+   *
    * This function constructs a detailed prompt that includes:
    * 1. The user's current request
    * 2. Contents of all context files
    * 3. Full chat history (excluding the current request)
    * 4. The current request repeated at the end
-   * 
+   *
    * @private
    * @param {string} prompt - The user's current request or input.
    * @returns {string} A formatted string containing the complete prompt for the AI.
-   * 
+   *
    * @description
    * The generated prompt follows this structure:
    * 1. "### Request" section with the current prompt
    * 2. Contents of all context files, each prefixed with its file name
    * 3. "### Full Chat History Context" section with all previous messages
    * 4. "### Current Request" section repeating the current prompt
-   * 
+   *
    * This structure provides the AI with comprehensive context for generating
    * accurate and relevant responses.
    */

@@ -5,7 +5,13 @@ import ini from 'ini'
 import { execFileSync } from 'child_process'
 
 import ClovingGPT from '../cloving_gpt'
-import type { ClovingConfig, ClovingGPTOptions, ClovingModelConfig, ClovingfileConfig, ProjectConfig } from '../utils/types'
+import type {
+  ClovingConfig,
+  ClovingGPTOptions,
+  ClovingModelConfig,
+  ClovingfileConfig,
+  ProjectConfig,
+} from '../utils/types'
 
 export const CLOVING_CONFIG_PATH = path.join(os.homedir(), '.clovingconfig')
 export const CLOVINGFILE_PATH = 'cloving.json'
@@ -21,17 +27,18 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
       if (options.silent) {
         config.globalSilent = true
       }
-      
-            // Parse temperature to float if it exists in the config
-            for (const provider in config.models) {
-              for (const model in config.models[provider]) {
-                if (config.models[provider][model].temperature !== undefined) {
-                  const temp = config.models[provider][model].temperature;
-                  config.models[provider][model].temperature = typeof temp === 'string' ? parseFloat(temp) : temp;
-                }
-              }
-            }
-      
+
+      // Parse temperature to float if it exists in the config
+      for (const provider in config.models) {
+        for (const model in config.models[provider]) {
+          if (config.models[provider][model].temperature !== undefined) {
+            const temp = config.models[provider][model].temperature
+            config.models[provider][model].temperature =
+              typeof temp === 'string' ? parseFloat(temp) : temp
+          }
+        }
+      }
+
       return config
     }
   } catch (err) {
@@ -51,10 +58,10 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
             silent: options.silent || false,
             trust: false,
             temperature: options.temperature || 0.2,
-          }
-        }
+          },
+        },
       },
-      globalSilent: options.silent || false
+      globalSilent: options.silent || false,
     }
   } else {
     return { models: {}, globalSilent: options.silent || false }
@@ -80,10 +87,12 @@ export const saveConfig = (config: ClovingConfig): void => {
   console.log(`Configuration saved to ${CLOVING_CONFIG_PATH}`)
 }
 
-export const getPrimaryModel = (partialModel?: string): { provider: string, model: string, config: ClovingModelConfig } | null => {
+export const getPrimaryModel = (
+  partialModel?: string,
+): { provider: string; model: string; config: ClovingModelConfig } | null => {
   try {
     const config = getConfig({})
-    const models: { provider: string, model: string, config: ClovingModelConfig }[] = []
+    const models: { provider: string; model: string; config: ClovingModelConfig }[] = []
 
     for (const provider in config.models) {
       for (const model in config.models[provider]) {
@@ -97,10 +106,11 @@ export const getPrimaryModel = (partialModel?: string): { provider: string, mode
       }
     }
 
-    models.sort((a, b) => parseInt(`${b.config.priority}`, 10) - parseInt(`${a.config.priority}`, 10))
+    models.sort(
+      (a, b) => parseInt(`${b.config.priority}`, 10) - parseInt(`${a.config.priority}`, 10),
+    )
 
     return models.length > 0 ? models[0] : null
-
   } catch (err) {
     console.error('Error reading model from configuration:', err)
     return null
@@ -156,7 +166,10 @@ Please provide instructions on how to set up testing for this project.`
   process.exit(0)
 }
 
-export const getAllFiles = async (options: ClovingGPTOptions, forTesting: boolean): Promise<string[]> => {
+export const getAllFiles = async (
+  options: ClovingGPTOptions,
+  forTesting: boolean,
+): Promise<string[]> => {
   const gpt = new ClovingGPT(options)
 
   // Read the cloving.json file
@@ -172,7 +185,16 @@ export const getAllFiles = async (options: ClovingGPTOptions, forTesting: boolea
   // Collect srcFiles for each language with specified directory and extension
   for (const language of config.languages) {
     if (language.directory && language.extension) {
-      const srcFiles = execFileSync('find', [language.directory, '-type', 'f', '-name', `*${language.extension}`]).toString().trim().split('\n')
+      const srcFiles = execFileSync('find', [
+        language.directory,
+        '-type',
+        'f',
+        '-name',
+        `*${language.extension}`,
+      ])
+        .toString()
+        .trim()
+        .split('\n')
       allSrcFiles = allSrcFiles.concat(srcFiles)
     }
   }

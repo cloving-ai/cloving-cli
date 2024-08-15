@@ -14,7 +14,13 @@ import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 
-import type { OpenAIStreamChunk, GPTRequest, ClovingGPTOptions, ClovingConfig, ChatMessage } from '../utils/types'
+import type {
+  OpenAIStreamChunk,
+  GPTRequest,
+  ClovingGPTOptions,
+  ClovingConfig,
+  ChatMessage,
+} from '../utils/types'
 
 class ClovingGPT {
   public adapter: Adapter
@@ -66,18 +72,22 @@ class ClovingGPT {
     }
   }
 
-  private async reviewPrompt(prompt: string, messages: ChatMessage[], endpoint: string): Promise<string | null> {
+  private async reviewPrompt(
+    prompt: string,
+    messages: ChatMessage[],
+    endpoint: string,
+  ): Promise<string | null> {
     if (this.silent) return prompt
 
-    const fullPrompt = messages.map(m => m.role === 'user' ? `# Task\n\n${m.content}` : m.content).join('\n\n')
+    const fullPrompt = messages
+      .map((m) => (m.role === 'user' ? `# Task\n\n${m.content}` : m.content))
+      .join('\n\n')
 
     const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
-    const reviewPrompt = await confirm(
-      {
-        message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
-        default: true
-      }
-    )
+    const reviewPrompt = await confirm({
+      message: `Do you want to review the ~${tokenCount} token prompt before sending it to ${endpoint}?`,
+      default: true,
+    })
 
     if (reviewPrompt) {
       const tempFile = path.join(os.tmpdir(), `cloving_prompt_${Date.now()}.txt`)
@@ -104,12 +114,10 @@ class ClovingGPT {
             return
           }
 
-          const confirmPrompt = await confirm(
-            {
-              message: `Are you sure you want to continue?`,
-              default: true
-            }
-          )
+          const confirmPrompt = await confirm({
+            message: `Are you sure you want to continue?`,
+            default: true,
+          })
 
           if (!confirmPrompt) {
             resolve(null)
@@ -156,15 +164,19 @@ class ClovingGPT {
           data: payload,
           headers: headers,
           responseType: 'stream',
-          timeout: this.timeout
+          timeout: this.timeout,
         })
       } catch (err) {
         const error = err as AxiosError
         if (error.response && error.response.status === 429) {
           attempt++
-          const tokenCount = payload.messages.reduce((acc: number, message: any) => acc + Math.ceil(message.content.length / 4), 0).toLocaleString()
-          console.warn(`Rate limit error for this ${tokenCount} token prompt. Possibly past the token limit for this AI API. Try including fewer code files. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, delay))
+          const tokenCount = payload.messages
+            .reduce((acc: number, message: any) => acc + Math.ceil(message.content.length / 4), 0)
+            .toLocaleString()
+          console.warn(
+            `Rate limit error for this ${tokenCount} token prompt. Possibly past the token limit for this AI API. Try including fewer code files. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`,
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
           delay *= 2 // Exponential backoff
         } else {
           throw error
@@ -197,7 +209,9 @@ class ClovingGPT {
       if (errorMessage === '') {
         errorMessage = 'connection error'
       }
-      console.error(`Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${JSON.stringify(error.response?.data || "''", null, 2)}\n`)
+      console.error(
+        `Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${JSON.stringify(error.response?.data || "''", null, 2)}\n`,
+      )
       throw error
     }
   }

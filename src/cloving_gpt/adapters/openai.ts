@@ -15,7 +15,7 @@ export class OpenAIAdapter implements Adapter {
   ]
 
   static listSupportedModels(): void {
-    OpenAIAdapter.supportedModels.forEach(model => {
+    OpenAIAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
@@ -30,18 +30,21 @@ export class OpenAIAdapter implements Adapter {
 
   getHeaders(apiKey: string): Record<string, string> {
     return {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     }
   }
 
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model.replace(':', '-'),
-      messages: request.messages && request.messages.length > 0 ? request.messages : [{ role: "user", content: request.prompt }],
+      messages:
+        request.messages && request.messages.length > 0
+          ? request.messages
+          : [{ role: 'user', content: request.prompt }],
       max_tokens: request.maxTokens,
       temperature: request.temperature || 0.2,
-      stream
+      stream,
     }
   }
 
@@ -49,7 +52,7 @@ export class OpenAIAdapter implements Adapter {
     return data.choices[0].message.content
   }
 
-  // data example: 
+  // data example:
   //    {
   //      id: 'chatcmpl-9tL477A98d54qvVQqJT010bm8BLJl',
   //      object: 'chat.completion.chunk',
@@ -87,9 +90,8 @@ export class OpenAIAdapter implements Adapter {
 
         return {
           output,
-          lastChar
+          lastChar,
         }
-
       } catch (error) {
         // Incrementally increase the size of the JSON string to parse
         lastChar += 1

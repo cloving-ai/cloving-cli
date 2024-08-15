@@ -75,7 +75,10 @@ Please briefly explain how this shell script works.`
       case 'explain':
         const explainPrompt = this.generateExplainShellPrompt(generatedShellWithoutShebang)
         this.chatHistory.push({ role: 'user', content: explainPrompt })
-        const explainShellCommand = await this.gpt.generateText({ prompt: explainPrompt, messages: this.chatHistory })
+        const explainShellCommand = await this.gpt.generateText({
+          prompt: explainPrompt,
+          messages: this.chatHistory,
+        })
         console.log(highlight(explainShellCommand, { language: 'markdown' }))
         break
       case 'copy':
@@ -98,7 +101,7 @@ Please briefly explain how this shell script works.`
     try {
       if (!userPrompt) {
         userPrompt = await input({
-          message: 'What would you like to do: '
+          message: 'What would you like to do: ',
         })
       }
 

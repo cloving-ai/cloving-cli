@@ -19,7 +19,7 @@ export class ClaudeAdapter implements Adapter {
   }
 
   static listSupportedModels(): void {
-    ClaudeAdapter.supportedModels.forEach(model => {
+    ClaudeAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
@@ -32,7 +32,7 @@ export class ClaudeAdapter implements Adapter {
     return {
       'x-api-key': apiKey,
       'Content-Type': 'application/json',
-      'anthropic-version': this.anthropicVersion
+      'anthropic-version': this.anthropicVersion,
     }
   }
 
@@ -45,10 +45,13 @@ export class ClaudeAdapter implements Adapter {
     return {
       model: this.model.replace(':', '-'),
       system,
-      messages: request.messages && request.messages.length > 0 ? request.messages : [{ role: "user", content: request.prompt }],
+      messages:
+        request.messages && request.messages.length > 0
+          ? request.messages
+          : [{ role: 'user', content: request.prompt }],
       max_tokens: request.maxTokens || 4096,
       temperature: request.temperature || 0.2,
-      stream
+      stream,
     }
   }
 
@@ -86,9 +89,8 @@ export class ClaudeAdapter implements Adapter {
 
         return {
           output,
-          lastChar
+          lastChar,
         }
-
       } catch (error) {
         // Incrementally increase the size of the JSON string to parse
         lastChar += 1

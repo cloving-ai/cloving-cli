@@ -15,7 +15,7 @@ export class GeminiAdapter implements Adapter {
   }
 
   static async listSupportedModels(): Promise<void> {
-    GeminiAdapter.supportedModels.forEach(model => {
+    GeminiAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
@@ -31,7 +31,7 @@ export class GeminiAdapter implements Adapter {
   getHeaders(apiKey: string): Record<string, string> {
     return {
       'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey
+      'x-goog-api-key': apiKey,
     }
   }
 
@@ -42,23 +42,30 @@ export class GeminiAdapter implements Adapter {
           role: 'user', // or 'model' if generated from the model
           parts: [
             {
-              text: request.prompt
-            }
-          ]
+              text: request.prompt,
+            },
+          ],
         },
       ],
       generationConfig: {
         temperature: request.temperature || 0.2,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024
-      }
+        maxOutputTokens: 1024,
+      },
     }
   }
 
   extractResponse(data: any): string {
     try {
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+      if (
+        data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0]
+      ) {
         return data.candidates[0].content.parts[0].text
       } else {
         console.error('Unexpected response structure:', data)
@@ -89,9 +96,8 @@ export class GeminiAdapter implements Adapter {
 
         return {
           output,
-          lastChar
+          lastChar,
         }
-
       } catch (error) {
         // Incrementally increase the size of the JSON string to parse
         lastChar += 1

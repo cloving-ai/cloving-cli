@@ -28,9 +28,14 @@ class ReviewManager {
       let expandedFiles: string[] = []
       for (const file of this.options.files) {
         const filePath = path.resolve(file)
-        if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+        if (
+          await fs.promises
+            .stat(filePath)
+            .then((stat) => stat.isDirectory())
+            .catch(() => false)
+        ) {
           const dirFiles = await getAllFilesInDirectory(filePath)
-          expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
+          expandedFiles = expandedFiles.concat(dirFiles.map((f) => path.relative(process.cwd(), f)))
         } else {
           expandedFiles.push(path.relative(process.cwd(), filePath))
         }
@@ -39,7 +44,12 @@ class ReviewManager {
 
       for (const file of this.options.files) {
         const filePath = path.resolve(file)
-        if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+        if (
+          await fs.promises
+            .stat(filePath)
+            .then((stat) => stat.isFile())
+            .catch(() => false)
+        ) {
           const content = await fs.promises.readFile(filePath, 'utf-8')
           this.contextFiles[file] = content
         }
@@ -101,7 +111,9 @@ class ReviewManager {
 
 `
       if (this.options.files) {
-        const contextFileContents = Object.keys(this.contextFiles).map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`).join('\n')
+        const contextFileContents = Object.keys(this.contextFiles)
+          .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
+          .join('\n')
         systemPrompt += `### Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
@@ -125,7 +137,10 @@ Format the output of this code review in Markdown format.`
       this.chatHistory.push({ role: 'user', content: systemPrompt })
       this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
     }
-    this.chatHistory.push({ role: 'user', content: this.options.prompt || 'Please provide a code review.' })
+    this.chatHistory.push({
+      role: 'user',
+      content: this.options.prompt || 'Please provide a code review.',
+    })
 
     return this.options.prompt || 'Please provide a code review.'
   }
@@ -144,7 +159,7 @@ ${this.options.prompt || 'Please provide a code review.'}`
   }
 
   private displayAnalysis(analysis: string) {
-    parseMarkdownInstructions(analysis).map(code => {
+    parseMarkdownInstructions(analysis).map((code) => {
       if (code.trim().startsWith('```')) {
         const lines = code.split('\n')
         const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
@@ -164,22 +179,26 @@ ${this.options.prompt || 'Please provide a code review.'}`
 
   private async handleUserAction(analysis: string) {
     const extractSection = (section: string): string => {
-      const regex = new RegExp(`## ${section}[\\s\\S]*?(?=\\n## Potential Bugs and Recommended Fixes|$)`, 'g')
+      const regex = new RegExp(
+        `## ${section}[\\s\\S]*?(?=\\n## Potential Bugs and Recommended Fixes|$)`,
+        'g',
+      )
       const match = analysis.match(regex)
       return match ? match[0].trim() : ''
     }
 
-    const clipboardOption = await select(
-      {
-        message: 'What would you like to copy to the clipboard?',
-        choices: [
-          { name: 'Copy only the Changes Overview', value: 'Changes Overview' },
-          { name: 'Copy only the Potential Bugs and Recommended Fixes', value: 'Potential Bugs and Recommended Fixes' },
-          { name: 'Copy everything', value: 'Everything' },
-          { name: 'Done', value: 'Done' }
-        ]
-      }
-    )
+    const clipboardOption = await select({
+      message: 'What would you like to copy to the clipboard?',
+      choices: [
+        { name: 'Copy only the Changes Overview', value: 'Changes Overview' },
+        {
+          name: 'Copy only the Potential Bugs and Recommended Fixes',
+          value: 'Potential Bugs and Recommended Fixes',
+        },
+        { name: 'Copy everything', value: 'Everything' },
+        { name: 'Done', value: 'Done' },
+      ],
+    })
 
     let contentToCopy = ''
 
@@ -213,7 +232,9 @@ ${this.options.prompt || 'Please provide a code review.'}`
     try {
       await this.loadContextFiles()
 
-      const prompt = this.options.files ? this.generateReviewPrompt() : await this.getGitDiffPrompt()
+      const prompt = this.options.files
+        ? this.generateReviewPrompt()
+        : await this.getGitDiffPrompt()
       const analysis = await this.gpt.generateText({ prompt, messages: this.chatHistory })
 
       this.displayAnalysis(analysis)

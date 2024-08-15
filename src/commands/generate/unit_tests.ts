@@ -5,7 +5,11 @@ import { select, confirm } from '@inquirer/prompts'
 
 import { getGitDiff } from '../../utils/git_utils'
 import { getTestingDirectory, getAllFiles } from '../../utils/config_utils'
-import { extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks, extractMarkdown } from '../../utils/string_utils'
+import {
+  extractCurrentNewBlocks,
+  applyAndSaveCurrentNewBlocks,
+  extractMarkdown,
+} from '../../utils/string_utils'
 import ClovingGPT from '../../cloving_gpt'
 import type { ClovingGPTOptions } from '../../utils/types'
 
@@ -74,7 +78,7 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
     return
   }
 
-  const files = Array.from(new Set(blocks.map(block => block.filePath)))
+  const files = Array.from(new Set(blocks.map((block) => block.filePath)))
 
   const action = await select({
     message: 'What would you like to do?',
@@ -92,10 +96,10 @@ const handleUserAction = async (analysis: string, autoSave: boolean = false): Pr
       while (saveAnother) {
         const fileToSave = await select({
           message: 'Which unit test file do you want to save?',
-          choices: files.map(file => ({ name: file, value: file })),
+          choices: files.map((file) => ({ name: file, value: file })),
         })
 
-        await applyAndSaveCurrentNewBlocks(blocks.filter(block => block.filePath === fileToSave))
+        await applyAndSaveCurrentNewBlocks(blocks.filter((block) => block.filePath === fileToSave))
 
         saveAnother = await confirm({
           message: 'Do you want to save another file?',
@@ -127,7 +131,9 @@ const unitTests = async (options: ClovingGPTOptions) => {
   const testingDirectory = getTestingDirectory()
 
   if (allSrcFiles.length === 0 || !testingDirectory) {
-    console.error('Could not find any source files to generate unit tests. Please run: cloving init. Then try again.')
+    console.error(
+      'Could not find any source files to generate unit tests. Please run: cloving init. Then try again.',
+    )
     process.exit(1)
   }
 
@@ -140,7 +146,9 @@ const unitTests = async (options: ClovingGPTOptions) => {
     const prompt = generatePrompt(files, allSrcFiles.join('\n'), testFiles)
     contextFiles = await gpt.generateText({ prompt })
   } else {
-    console.log('Generating unit tests for the git diff between this branch and the default branch...')
+    console.log(
+      'Generating unit tests for the git diff between this branch and the default branch...',
+    )
     console.log('Gathering a list of files related to the changes...')
     const gitDiff = await getGitDiff()
     const changedFiles = extractChangedFiles(gitDiff)
@@ -165,9 +173,19 @@ const unitTests = async (options: ClovingGPTOptions) => {
   })
 
   for (const codeFile of lines) {
-    if (await fs.stat(codeFile).then(stat => stat.isFile()).catch(() => false)) {
+    if (
+      await fs
+        .stat(codeFile)
+        .then((stat) => stat.isFile())
+        .catch(() => false)
+    ) {
       const fileContents = await fs.readFile(codeFile, 'utf-8')
-      context.push(`### Contents of **${codeFile}\n\n${fileContents.split('\n').map(line => `    ${line}`).join('\n')}**\n\n`)
+      context.push(
+        `### Contents of **${codeFile}\n\n${fileContents
+          .split('\n')
+          .map((line) => `    ${line}`)
+          .join('\n')}**\n\n`,
+      )
     }
   }
 

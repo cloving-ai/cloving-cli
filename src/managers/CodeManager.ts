@@ -5,7 +5,11 @@ import highlight from 'cli-highlight'
 import ClovingGPT from '../cloving_gpt'
 
 import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
-import { parseMarkdownInstructions, extractCurrentNewBlocks, applyAndSaveCurrentNewBlocks } from '../utils/string_utils'
+import {
+  parseMarkdownInstructions,
+  extractCurrentNewBlocks,
+  applyAndSaveCurrentNewBlocks,
+} from '../utils/string_utils'
 
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
@@ -14,9 +18,7 @@ class CodeManager {
   private contextFiles: Record<string, string> = {}
   private chatHistory: ChatMessage[] = []
 
-  constructor(
-    private options: ClovingGPTOptions,
-  ) {
+  constructor(private options: ClovingGPTOptions) {
     this.gpt = new ClovingGPT(options)
   }
 
@@ -24,7 +26,11 @@ class CodeManager {
     try {
       if (this.options.files) {
         for (const file of this.options.files) {
-          this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
+          this.contextFiles = await addFileOrDirectoryToContext(
+            file,
+            this.contextFiles,
+            this.options,
+          )
         }
       } else {
         let includeMoreFiles = true
@@ -35,7 +41,11 @@ class CodeManager {
           })
 
           if (contextFile) {
-            this.contextFiles = await addFileOrDirectoryToContext(contextFile, this.contextFiles, this.options)
+            this.contextFiles = await addFileOrDirectoryToContext(
+              contextFile,
+              this.contextFiles,
+              this.options,
+            )
           } else {
             includeMoreFiles = false
           }
@@ -75,7 +85,7 @@ class CodeManager {
   }
 
   private displayGeneratedCode(rawCodeCommand: string) {
-    parseMarkdownInstructions(rawCodeCommand).map(code => {
+    parseMarkdownInstructions(rawCodeCommand).map((code) => {
       if (code.trim().startsWith('```')) {
         const lines = code.split('\n')
         const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
@@ -95,7 +105,7 @@ class CodeManager {
 
   private async handleUserAction(response: string, prompt: string): Promise<void> {
     const currentNewBlocks = extractCurrentNewBlocks(response)
-    const files = Array.from(new Set(currentNewBlocks.map(block => block.filePath)))
+    const files = Array.from(new Set(currentNewBlocks.map((block) => block.filePath)))
 
     if (this.options.save) {
       await applyAndSaveCurrentNewBlocks(currentNewBlocks)
@@ -123,11 +133,16 @@ class CodeManager {
         let includeMoreFiles = true
         while (includeMoreFiles) {
           const contextFile = await input({
-            message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+            message:
+              'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
           })
 
           if (contextFile) {
-            this.contextFiles = await addFileOrDirectoryToContext(contextFile, this.contextFiles, this.options)
+            this.contextFiles = await addFileOrDirectoryToContext(
+              contextFile,
+              this.contextFiles,
+              this.options,
+            )
           } else {
             includeMoreFiles = false
           }
@@ -139,7 +154,10 @@ class CodeManager {
       case 'explain':
         const explainPrompt = this.generateExplainCodePrompt(response)
         this.chatHistory.push({ role: 'user', content: explainPrompt })
-        const explainCodeCommand = await this.gpt.generateText({ prompt: explainPrompt, messages: this.chatHistory })
+        const explainCodeCommand = await this.gpt.generateText({
+          prompt: explainPrompt,
+          messages: this.chatHistory,
+        })
         console.log(highlight(explainCodeCommand, { language: 'markdown' }))
         break
       case 'save':
@@ -147,10 +165,12 @@ class CodeManager {
         while (saveAnother) {
           const fileToSave = await select({
             message: 'Which file do you want to save?',
-            choices: files.map(file => ({ name: file, value: file })),
+            choices: files.map((file) => ({ name: file, value: file })),
           })
 
-          await applyAndSaveCurrentNewBlocks(currentNewBlocks.filter(block => block.filePath === fileToSave))
+          await applyAndSaveCurrentNewBlocks(
+            currentNewBlocks.filter((block) => block.filePath === fileToSave),
+          )
 
           const saveMore = await confirm({
             message: 'Do you want to save another file?',

@@ -10,8 +10,15 @@ import type { ClovingGPTOptions } from '../../utils/types'
 
 const generateContextPrompt = (files: string[], contextFiles: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
-  const specialFiles = Object.keys(specialFileContents).map((file) => `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`).join('\n')
-  const contextFileContents = Object.keys(contextFiles).map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`).join('\n')
+  const specialFiles = Object.keys(specialFileContents)
+    .map(
+      (file) =>
+        `### Contents of ${file}\n\n${JSON.stringify(specialFileContents[file], null, 2)}\n\n`,
+    )
+    .join('\n')
+  const contextFileContents = Object.keys(contextFiles)
+    .map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`)
+    .join('\n')
 
   return `### Description of App
 
@@ -36,7 +43,12 @@ const context = async (options: ClovingGPTOptions) => {
     if (files) {
       for (const file of files) {
         const filePath = path.resolve(file)
-        if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+        if (
+          await fs.promises
+            .stat(filePath)
+            .then((stat) => stat.isFile())
+            .catch(() => false)
+        ) {
           const content = await fs.promises.readFile(filePath, 'utf-8')
           contextFiles[file] = content
         }
@@ -46,7 +58,8 @@ const context = async (options: ClovingGPTOptions) => {
 
       while (includeMoreFiles) {
         const contextFile = await input({
-          message: 'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
+          message:
+            'Enter the relative path of a file or directory you would like to include as context (or press enter to continue):',
         })
 
         if (contextFile) {
@@ -72,7 +85,6 @@ const context = async (options: ClovingGPTOptions) => {
         console.log('Context prompt copied to clipboard')
       })
     }
-
   } catch (error) {
     console.error('Could not generate context', error)
   }

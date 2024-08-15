@@ -13,9 +13,9 @@ export interface OpenAIStreamChunk {
 }
 
 export interface CurrentNewBlock {
-  filePath: string;
-  currentContent: string;
-  newContent: string;
+  filePath: string
+  currentContent: string
+  newContent: string
 }
 
 export interface ChatMessage {
@@ -45,12 +45,12 @@ export interface ClovingGPTOptions {
 }
 
 export interface ClovingModelConfig {
-  apiKey: string;
-  primary: boolean;
-  priority: number;
-  silent: boolean;
-  trust: boolean;
-  temperature: number;
+  apiKey: string
+  primary: boolean
+  priority: number
+  silent: boolean
+  trust: boolean
+  temperature: number
 }
 
 export type ProjectConfig = {
@@ -63,10 +63,10 @@ export type ProjectConfig = {
 export type ClovingConfig = {
   models: {
     [provider: string]: {
-      [model: string]: ClovingModelConfig;
-    };
-  };
-  globalSilent: boolean;
+      [model: string]: ClovingModelConfig
+    }
+  }
+  globalSilent: boolean
 }
 
 interface LanguageConfig {

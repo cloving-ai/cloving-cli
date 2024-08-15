@@ -42,7 +42,9 @@ class CommitManager {
 
       // Commit the changes using the generated commit message
       try {
-        execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], { stdio: 'inherit' })
+        execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], {
+          stdio: 'inherit',
+        })
       } catch (commitError) {
         // If commit is canceled (non-zero exit), handle it here
         console.log('Commit was canceled or failed.')
@@ -52,7 +54,6 @@ class CommitManager {
       fs.unlink(tempCommitFilePath, (err) => {
         if (err) throw err
       })
-
     } catch (err) {
       const error = err as AxiosError
       console.error('Could not generate commit message:', error.message)

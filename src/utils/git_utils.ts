@@ -4,33 +4,40 @@ import readline from 'readline'
 const askQuestion = (question: string): Promise<string> => {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   })
 
-  return new Promise(resolve => rl.question(question, answer => {
-    rl.close()
-    resolve(answer)
-  }))
+  return new Promise((resolve) =>
+    rl.question(question, (answer) => {
+      rl.close()
+      resolve(answer)
+    }),
+  )
 }
 
 export const getGitDiff = async (): Promise<string> => {
   try {
-    const defaultBranchName = await getDefaultBranchName();
+    const defaultBranchName = await getDefaultBranchName()
 
-    const gitDiff = execSync(`git diff ${defaultBranchName} --`).toString().trim();
+    const gitDiff = execSync(`git diff ${defaultBranchName} --`).toString().trim()
 
     // Indent each line by four spaces
-    const indentedDiff = gitDiff.split('\n').map(line => `    ${line}`).join('\n');
+    const indentedDiff = gitDiff
+      .split('\n')
+      .map((line) => `    ${line}`)
+      .join('\n')
 
-    return indentedDiff;
+    return indentedDiff
   } catch (error) {
-    console.error('Error getting git diff:', (error as Error).message);
-    process.exit(1);
+    console.error('Error getting git diff:', (error as Error).message)
+    process.exit(1)
   }
 }
 
 export const getDefaultBranchName = async (): Promise<string> => {
-  let defaultBranchName = execSync('git symbolic-ref refs/remotes/origin/HEAD | sed \'s@^refs/remotes/origin/@@\'')
+  let defaultBranchName = execSync(
+    "git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'",
+  )
     .toString()
     .trim()
 

@@ -16,7 +16,7 @@ export class OllamaAdapter implements Adapter {
     try {
       const endpoint = 'http://localhost:11434/api/tags'
       const headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       }
 
       const response = await axios.get(endpoint, { headers })
@@ -24,7 +24,7 @@ export class OllamaAdapter implements Adapter {
 
       if (data && Array.isArray(data.models)) {
         OllamaAdapter.supportedModels = data.models.map((model: any) => `ollama:${model.name}`)
-        OllamaAdapter.supportedModels.forEach(model => {
+        OllamaAdapter.supportedModels.forEach((model) => {
           console.log(model)
         })
       } else {
@@ -41,8 +41,8 @@ export class OllamaAdapter implements Adapter {
 
   getHeaders(apiKey: string): Record<string, string> {
     return {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     }
   }
 
@@ -50,7 +50,7 @@ export class OllamaAdapter implements Adapter {
     return {
       model: this.model,
       prompt: request.prompt,
-      stream
+      stream,
     }
   }
 
@@ -68,7 +68,7 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
-  // data example: 
+  // data example:
   // {
   //   model: 'dolphin-llama3:latest',
   //   created_at: '2024-08-06T21:04:34.616355Z',
@@ -95,9 +95,8 @@ export class OllamaAdapter implements Adapter {
 
         return {
           output,
-          lastChar
+          lastChar,
         }
-
       } catch (error) {
         // Incrementally increase the size of the JSON string to parse
         lastChar += 1

@@ -13,9 +13,14 @@ const tokens = async (options: ClovingGPTOptions) => {
   let expandedFiles: string[] = []
   for (const file of files) {
     const filePath = path.resolve(file)
-    if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+    if (
+      await fs.promises
+        .stat(filePath)
+        .then((stat) => stat.isDirectory())
+        .catch(() => false)
+    ) {
       const dirFiles = await getAllFilesInDirectory(filePath)
-      expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
+      expandedFiles = expandedFiles.concat(dirFiles.map((f) => path.relative(process.cwd(), f)))
     } else {
       expandedFiles.push(path.relative(process.cwd(), filePath))
     }
@@ -24,20 +29,26 @@ const tokens = async (options: ClovingGPTOptions) => {
 
   for (const file of files) {
     const filePath = path.resolve(file)
-    if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+    if (
+      await fs.promises
+        .stat(filePath)
+        .then((stat) => stat.isFile())
+        .catch(() => false)
+    ) {
       const content = await fs.promises.readFile(filePath, 'utf-8')
       contextFiles[file] = content
     }
   }
 
-  const contextFileContents = Object.keys(contextFiles).map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`).join('\n')
+  const contextFileContents = Object.keys(contextFiles)
+    .map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`)
+    .join('\n')
   prompt += `
 ### Description of App
 
 ${JSON.stringify(getClovingConfig(), null, 2)}
 
 ${contextFileContents}`
-
 
   const tokens = Math.ceil(prompt.length / 4).toLocaleString()
   console.log(`Estimated tokens: ${tokens}`)

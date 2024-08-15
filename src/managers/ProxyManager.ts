@@ -44,9 +44,14 @@ class ProxyManager {
     let expandedFiles: string[] = []
     for (const file of files) {
       const filePath = path.resolve(file)
-      if (await fs.promises.stat(filePath).then(stat => stat.isDirectory()).catch(() => false)) {
+      if (
+        await fs.promises
+          .stat(filePath)
+          .then((stat) => stat.isDirectory())
+          .catch(() => false)
+      ) {
         const dirFiles = await getAllFilesInDirectory(filePath)
-        expandedFiles = expandedFiles.concat(dirFiles.map(f => path.relative(process.cwd(), f)))
+        expandedFiles = expandedFiles.concat(dirFiles.map((f) => path.relative(process.cwd(), f)))
       } else {
         expandedFiles.push(path.relative(process.cwd(), filePath))
       }
@@ -55,7 +60,12 @@ class ProxyManager {
 
     for (const file of files) {
       const filePath = path.resolve(file)
-      if (await fs.promises.stat(filePath).then(stat => stat.isFile()).catch(() => false)) {
+      if (
+        await fs.promises
+          .stat(filePath)
+          .then((stat) => stat.isFile())
+          .catch(() => false)
+      ) {
         const content = await fs.promises.readFile(filePath, 'utf-8')
         this.contextFiles[file] = content
       }
@@ -67,7 +77,9 @@ class ProxyManager {
       const { messages, stream } = req.body
       const content = messages.map((message: any) => message.content).join('\n\n')
 
-      const contextFileContents = Object.keys(this.contextFiles).map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`).join('\n')
+      const contextFileContents = Object.keys(this.contextFiles)
+        .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
+        .join('\n')
       const prompt = `# Task
 
 ${content}
@@ -104,19 +116,28 @@ ${content}`
 
     let convertedStreams: string[] = []
     // Add initial stream to indicate the start of the response
-    convertedStreams.push('{"id":"chatcmpl-9tLvSuRQaYzQIiKRAwI5a7WqdJspq","object":"chat.completion.chunk","created":1722979349,"model":"cloving","system_fingerprint":"fp_3aa7262c27","choices":[{"index":0,"delta":{"role":"assistant","content":"","refusal":null},"logprobs":null,"finish_reason":null}]}')
+    convertedStreams.push(
+      '{"id":"chatcmpl-9tLvSuRQaYzQIiKRAwI5a7WqdJspq","object":"chat.completion.chunk","created":1722979349,"model":"cloving","system_fingerprint":"fp_3aa7262c27","choices":[{"index":0,"delta":{"role":"assistant","content":"","refusal":null},"logprobs":null,"finish_reason":null}]}',
+    )
 
     this.chunkManager.on('content', (buffer: string) => {
       let convertedStream = this.gpt.convertStream(buffer)
 
       while (convertedStream !== null) {
         const { output, lastChar } = convertedStream
-        const content = JSON.stringify({ id: "chatcmpl-9tLvSuRQaYzQIiKRAwI5a7WqdJspq", object: "chat.completion.chunk", created: 1722979350, model: "cloving", system_fingerprint: "fp_3aa7262c27", choices: [{ index: 0, delta: { content: output }, logprobs: null, finish_reason: null }] })
+        const content = JSON.stringify({
+          id: 'chatcmpl-9tLvSuRQaYzQIiKRAwI5a7WqdJspq',
+          object: 'chat.completion.chunk',
+          created: 1722979350,
+          model: 'cloving',
+          system_fingerprint: 'fp_3aa7262c27',
+          choices: [{ index: 0, delta: { content: output }, logprobs: null, finish_reason: null }],
+        })
 
         convertedStreams.push(content)
 
         if (convertedStreams.length >= 2) {
-          const dataToSend = convertedStreams.map(c => `data: ${c}`).join('\n\n')
+          const dataToSend = convertedStreams.map((c) => `data: ${c}`).join('\n\n')
           res.write(`${dataToSend}\n\n`)
           convertedStreams = []
         }
@@ -134,7 +155,7 @@ ${content}`
 
     responseStream.data.on('end', () => {
       // Send any remaining converted streams
-      const dataToSend = convertedStreams.map(c => `data: ${c}`).join('\n\n')
+      const dataToSend = convertedStreams.map((c) => `data: ${c}`).join('\n\n')
       res.write(`${dataToSend}\n\ndata: [DONE]\n\n`)
       res.end()
     })
