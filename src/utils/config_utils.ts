@@ -21,6 +21,17 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
       if (options.silent) {
         config.globalSilent = true
       }
+      
+            // Parse temperature to float if it exists in the config
+            for (const provider in config.models) {
+              for (const model in config.models[provider]) {
+                if (config.models[provider][model].temperature !== undefined) {
+                  const temp = config.models[provider][model].temperature;
+                  config.models[provider][model].temperature = typeof temp === 'string' ? parseFloat(temp) : temp;
+                }
+              }
+            }
+      
       return config
     }
   } catch (err) {
