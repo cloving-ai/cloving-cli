@@ -73,21 +73,21 @@ class ChatManager {
     this.setupEventListeners()
   }
 
-    private displayAvailableCommands(): void {
-      console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
-      console.log('Available special commands:')
-      console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
-      console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
-      console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
-      console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
-      console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`)
-      console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`)
-      console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`)
-      console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`)
-      console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
-      console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
-      console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
-    }
+  private displayAvailableCommands(): void {
+    console.log(`Type a freeform request or question to interact with your Cloving AI pair programmer.\n`)
+    console.log('Available special commands:')
+    console.log(` - ${colors.yellow(colors.bold('save'))}             Save all the changes from the last response to files`)
+    console.log(` - ${colors.yellow(colors.bold('commit'))}           Commit the changes to git with an AI-generated message that you can edit`)
+    console.log(` - ${colors.yellow(colors.bold('copy'))}             Copy the last response to clipboard`)
+    console.log(` - ${colors.yellow(colors.bold('review'))}           Start a code review`)
+    console.log(` - ${colors.yellow(colors.bold('find <file-name>'))} Find and add files matching the name to the chat context (supports * for glob matching)`)
+    console.log(` - ${colors.yellow(colors.bold('add <file-path>'))}  Add a file to the chat context (supports * for glob matching)`)
+    console.log(` - ${colors.yellow(colors.bold('rm <pattern>'))}     Remove files from the chat context (supports * for glob matching)`)
+    console.log(` - ${colors.yellow(colors.bold('ls <pattern>'))}     List files in the chat context (supports * for glob matching)`)
+    console.log(` - ${colors.yellow(colors.bold('git <command>'))}    Run a git command`)
+    console.log(` - ${colors.yellow(colors.bold('help'))}             Display this help message`)
+    console.log(` - ${colors.yellow(colors.bold('exit'))}             Quit this session`)
+  }
 
   /**
    * Sets up event listeners for the readline interface and process input.
@@ -337,6 +337,13 @@ class ChatManager {
       try {
         this.contextFiles = await addFileOrDirectoryToContext(filePath, this.contextFiles, this.options)
         console.log(`\nAdded ${colors.bold(colors.green(filePath))} to this chat session's context`)
+
+        // Update the chat history with the new context
+        const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
+        this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
+
+        // Log the update
+        console.log(colors.yellow(`Updated chat context with new file(s)`))
       } catch (error) {
         console.error(`Failed to add ${colors.bold(colors.red(filePath))} to this chat session's context:`, error)
       }
@@ -345,6 +352,11 @@ class ChatManager {
     }
 
     this.rl.prompt()
+  }
+
+  private refreshContext() {
+    const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
+    this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
   }
 
   private isRemoveCommand(command: string): boolean {
@@ -499,6 +511,7 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     try {
+      this.refreshContext() // make sure the context is up-to-date
       this.initializeChatHistory(input)
       this.prompt = this.generatePrompt(input)
 
