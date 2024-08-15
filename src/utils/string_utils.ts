@@ -134,7 +134,7 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
-const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
+export const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
   const blockStart = input.indexOf(BLOCK_START, startIndex)
   if (blockStart === -1) return null
 
@@ -154,7 +154,7 @@ const findBlockIndices = (input: string, startIndex: number): BlockIndices | nul
   }
 }
 
-const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
+export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
   const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
   const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
   const newContent = input.slice(indices.divider + BLOCK_DIVIDER.length, indices.end).trim()
@@ -217,11 +217,11 @@ const readFileContent = async (filePath: string): Promise<string> => {
   }
 }
 
-const ensureDirectoryExists = async (filePath: string): Promise<void> => {
+export const ensureDirectoryExists = async (filePath: string): Promise<void> => {
   await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
 }
 
-const writeFileContent = async (filePath: string, content: string): Promise<void> => {
+export const writeFileContent = async (filePath: string, content: string): Promise<void> => {
   await ensureDirectoryExists(filePath)
   await fs.promises.writeFile(filePath, content)
 }
@@ -253,7 +253,7 @@ const writeFileContent = async (filePath: string, content: string): Promise<void
  * //   console.log('New content');
  * // }
  */
-const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
+export const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
   if (block.currentContent.trim() === '') {
     return block.newContent
   }
@@ -274,22 +274,11 @@ const updateFileContent = (currentContent: string, block: CurrentNewBlock): stri
   const indentationMatch = lastLineBefore.match(/^\s*/)
   const indentation = indentationMatch ? indentationMatch[0] : ''
 
-  // Calculate missing leading spaces in the current content
-  const currentContentLines = block.currentContent.split('\n')
-  const fileContentLines = normalizedFileContent.substring(index, index + normalizedCurrentContent.length).split('\n')
-  const missingSpaces = currentContentLines.map((line, i) => {
-    const fileLine = fileContentLines[i] || ''
-    const lineIndentationMatch = fileLine.match(/^\s*/)
-    const lineIndentation = lineIndentationMatch ? lineIndentationMatch[0] : ''
-    return Math.max(0, lineIndentation.length - line.length + line.trimStart().length)
-  })
-
   // Apply the adjusted indentation to the new content
   const indentedNewContent = block.newContent
     .split('\n')
     .map((line, i) => {
-      const additionalSpaces = ' '.repeat(missingSpaces[i] || 0)
-      return line.trim() ? indentation + additionalSpaces + line : line
+      return i === 0 ? line : indentation + line
     })
     .join('\n')
 
@@ -297,7 +286,7 @@ const updateFileContent = (currentContent: string, block: CurrentNewBlock): stri
   return currentContent.replace(block.currentContent, indentedNewContent)
 }
 
-const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
+export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
   const filePath = path.resolve(block.filePath)
   let fileContent = await readFileContent(filePath)
 
