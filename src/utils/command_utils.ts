@@ -396,7 +396,9 @@ export const addFileOrDirectoryToContext = async (
       await addFileToContext(filePath, contextFiles, baseDir)
     }
   } catch (error) {
-    console.error(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`)
+    console.error(
+      colors.red(`${colors.bold('Error')}: File or directory "${contextFile}" does not exist`),
+    )
     process.exit(1)
   }
 

@@ -293,6 +293,14 @@ class ChatManager {
    * - Any other input is processed as a user query to the AI.
    */
   private async handleCommand(command: string): Promise<void> {
+    // Check if the command is a single character and map it to the first matching special command
+    if (command.length === 1) {
+      const matchingCommand = specialCommands.find((cmd) => cmd.startsWith(command))
+      if (matchingCommand) {
+        command = matchingCommand.split(' ')[0] // Use only the command part without arguments
+      }
+    }
+
     switch (command) {
       case 'help':
         this.displayHelp()
@@ -763,10 +771,11 @@ You can follow up with another request or:
     }
 
     const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
+    const statusMessage = (error.response?.data as any)?.statusMessage
     console.error(
-      `Error processing a ${promptTokens} token prompt: `,
-      errorMessage,
-      `(${errorNumber}) \n`,
+      colors.red(
+        `\nError (${errorNumber}) processing a ${promptTokens} token prompt\n\n${statusMessage}\n`,
+      ),
     )
     this.isProcessing = false
     this.rl.prompt()
