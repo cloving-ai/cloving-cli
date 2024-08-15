@@ -78,25 +78,28 @@ export const config = async (): Promise<void> => {
       default: false,
     })
 
-    const temperature = await number({
-      message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
-      default: 0.2,
-      validate: (value: number | undefined) => {
-        if (value && (isNaN(value) || value < 0 || value > 1)) {
-          return 'Please enter a valid number between 0.0 and 1.0.'
-        }
-        return true
-      },
-    }) || 0.2
+        const temperature = await input({
+          message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
+          default: '0.2',
+          validate: (value: string) => {
+            const num = parseFloat(value)
+            if (isNaN(num) || num < 0 || num > 1) {
+              return 'Please enter a valid number between 0.0 and 1.0.'
+            }
+            return true
+          },
+        })
 
-    const modelConfig: ClovingModelConfig = {
-      apiKey,
-      primary,
-      priority: parseInt(priority, 10),
-      silent: !review,
-      trust,
-      temperature,
-    }
+        const parsedTemperature = parseFloat(temperature)
+
+        const modelConfig: ClovingModelConfig = {
+          apiKey,
+          primary,
+          priority: parseInt(priority, 10),
+          silent: !review,
+          trust,
+          temperature: parsedTemperature,
+        }
 
     currentConfig.models[provider][model] = modelConfig
 
