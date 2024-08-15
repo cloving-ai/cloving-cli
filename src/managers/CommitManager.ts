@@ -6,6 +6,7 @@ import { generateCommitMessagePrompt } from '../utils/git_utils'
 import { getConfig } from '../utils/config_utils'
 import ClovingGPT from '../cloving_gpt'
 import type { ClovingGPTOptions } from '../utils/types'
+import type { AxiosError } from 'axios'
 
 class CommitManager {
   private gpt: ClovingGPT
@@ -52,8 +53,9 @@ class CommitManager {
         if (err) throw err
       })
 
-    } catch (error) {
-      console.error('Could not generate commit message:', error)
+    } catch (err) {
+      const error = err as AxiosError
+      console.error('Could not generate commit message:', error.message)
     }
   }
 }
