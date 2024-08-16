@@ -70,7 +70,20 @@ export const extractJsonMetadata = (response: string): string => {
   return jsonString
 }
 
-// Function to extract markdown from the AI response
+/**
+ * Extracts markdown content from a given response string.
+ *
+ * This function attempts to extract markdown content from the input string,
+ * focusing on content within code blocks and removing any surrounding metadata.
+ *
+ * @param {string} response - The input string containing markdown and possibly other content.
+ * @returns {string} The extracted markdown content.
+ *
+ * @example
+ * const response = '```markdown\n# Title\nContent\n```\nOther text';
+ * const markdown = extractMarkdown(response);
+ * console.log(markdown); // Outputs: "# Title\nContent"
+ */
 export const extractMarkdown = (response: string): string => {
   let markdownString = response
 
@@ -98,6 +111,22 @@ export const extractMarkdown = (response: string): string => {
   return markdownString
 }
 
+/**
+ * Parses markdown instructions into separate blocks.
+ *
+ * This function takes a string input containing markdown instructions and
+ * separates it into an array of strings, where each string represents a
+ * distinct block of content (either a code block or a text block).
+ *
+ * @param {string} input - The input string containing markdown instructions.
+ * @returns {string[]} An array of strings, each representing a distinct block of content.
+ *
+ * @example
+ * const input = "# Title\n```js\nconst x = 1;\n```\nSome text";
+ * const blocks = parseMarkdownInstructions(input);
+ * console.log(blocks);
+ * // Outputs: ["# Title", "```js\nconst x = 1;\n```", "Some text"]
+ */
 export const parseMarkdownInstructions = (input: string): string[] => {
   const lines = input.split('\n')
   const result: string[] = []
@@ -134,6 +163,18 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
+/**
+ * Finds the indices of a CURRENT/NEW block within the input string.
+ *
+ * This function searches for the start, divider, and end markers of a CURRENT/NEW block
+ * in the input string, starting from the given index. It returns the indices of these
+ * markers if a complete block is found.
+ *
+ * @param {string} input - The input string to search for block indices.
+ * @param {number} startIndex - The index in the input string to start searching from.
+ * @returns {BlockIndices | null} An object containing the indices of the block components,
+ *                                or null if a complete block is not found.
+ */
 export const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
   const blockStart = input.indexOf(BLOCK_START, startIndex)
   if (blockStart === -1) return null
@@ -154,6 +195,16 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
   }
 }
 
+/**
+ * Extracts the content of a CURRENT/NEW block using the provided indices.
+ *
+ * This function takes the input string and a set of block indices, and extracts
+ * the file path, current content, and new content from the block.
+ *
+ * @param {string} input - The input string containing the CURRENT/NEW block.
+ * @param {BlockIndices} indices - An object containing the indices of the block components.
+ * @returns {CurrentNewBlock} An object containing the extracted file path, current content, and new content.
+ */
 export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
   const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
   const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
