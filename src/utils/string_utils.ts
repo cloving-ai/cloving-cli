@@ -291,6 +291,25 @@ export const updateFileContent = (currentContent: string, block: CurrentNewBlock
   }
 }
 
+const analyzeBlockContent = async (
+  block: CurrentNewBlock,
+  fileContent: string,
+): Promise<{ matchingLines: number[]; currentContentTrimmed: string }> => {
+  const currentLines = fileContent.split('\n').map((line) => line.trim())
+  const blockLines = block.currentContent.split('\n').map((line) => line.trim())
+
+  const blockContent = blockLines.join('\n')
+  const currentContentTrimmed = currentLines.join('\n')
+  const matchingLines = []
+  let matchingLine = -1
+
+  while ((matchingLine = currentContentTrimmed.indexOf(blockContent, matchingLine + 1)) !== -1) {
+    matchingLines.push(matchingLine)
+  }
+
+  return { matchingLines, currentContentTrimmed }
+}
+
 export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
   const filePath = path.resolve(block.filePath)
   let fileContent = await readFileContent(filePath)
@@ -303,19 +322,18 @@ export const processBlock = async (block: CurrentNewBlock, index: number): Promi
     return
   }
 
-  if (block.currentContent.trim() !== '') {
-    const matches = (fileContent.match(new RegExp(block.currentContent.trim(), 'g')) || []).length
-    if (matches === 0) {
-      console.log(
-        `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`,
-      )
-      return
-    } else if (matches > 1) {
-      console.log(
-        `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content matches multiple parts in the file`)}`,
-      )
-      return
-    }
+  const { matchingLines } = await analyzeBlockContent(block, fileContent)
+
+  if (matchingLines.length === 0) {
+    console.log(
+      `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('ERROR: Current content not found to replace in the file')}`,
+    )
+    return
+  } else if (matchingLines.length > 1) {
+    console.log(
+      `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content matches multiple (${matchingLines.length}) parts in the file`)}`,
+    )
+    return
   }
 
   const updatedContent = updateFileContent(fileContent, block)
@@ -394,16 +412,17 @@ export const checkBlocksApplicability = async (
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.green.bold('created')}`,
       )
     } else if (block.currentContent.trim() !== '') {
-      const matches = (fileContent.match(new RegExp(block.currentContent.trim(), 'g')) || []).length
-      if (matches === 0) {
+      const { matchingLines } = await analyzeBlockContent(block, fileContent)
+
+      if (matchingLines.length === 0) {
         allApplicable = false
         summary.push(
           `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`,
         )
-      } else if (matches > 1) {
+      } else if (matchingLines.length > 1) {
         allApplicable = false
         summary.push(
-          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content matches multiple parts')}`,
+          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold(`cannot be applied: Current content matches multiple (${matchingLines.length}) parts in the file`)}`,
         )
       } else {
         summary.push(

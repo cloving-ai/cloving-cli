@@ -5,6 +5,7 @@ import axios, { AxiosResponse, AxiosError } from 'axios'
 import { spawn } from 'child_process'
 import process from 'process'
 import { confirm } from '@inquirer/prompts'
+import colors from 'colors'
 
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
@@ -174,7 +175,7 @@ class ClovingGPT {
             .reduce((acc: number, message: any) => acc + Math.ceil(message.content.length / 4), 0)
             .toLocaleString()
           console.warn(
-            `Rate limit error for this ${tokenCount} token prompt. Possibly past the token limit for this AI API. Try including fewer code files. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`,
+            `${colors.red.bold('ERROR')} Rate limit error for this ${tokenCount} token prompt. Possibly past the token limit for this AI API. Try including fewer code files. Retrying in ${delay / 1000} seconds... (Attempt ${attempt} of ${maxRetries})`,
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
           delay *= 2 // Exponential backoff

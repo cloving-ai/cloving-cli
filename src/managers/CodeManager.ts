@@ -6,6 +6,7 @@ import ClovingGPT from '../cloving_gpt'
 
 import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
 import {
+  checkBlocksApplicability,
   parseMarkdownInstructions,
   extractCurrentNewBlocks,
   applyAndSaveCurrentNewBlocks,
@@ -60,6 +61,21 @@ class CodeManager {
       }
 
       let response = await this.generateCode(this.options.prompt)
+
+      const currentNewBlocks = extractCurrentNewBlocks(response)
+      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
+      if (!canApply) {
+        console.log(
+          'The generated code could not be automatically applied. It will try again asking for more details.',
+        )
+        console.log(`Some of the provided code blocks could not be applied,
+please match the existing code with a few more lines of context and make sure it is a character for character exact match.
+
+${summary}`)
+        response = await this.generateCode(this.options.prompt)
+        this.displayGeneratedCode(response)
+      }
+
       this.displayGeneratedCode(response)
 
       if (this.options.save) {
