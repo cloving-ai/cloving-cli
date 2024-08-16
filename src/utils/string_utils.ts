@@ -291,6 +291,18 @@ export const updateFileContent = (currentContent: string, block: CurrentNewBlock
   }
 }
 
+/**
+ * Analyzes the content of a block against the file content to find matching lines.
+ *
+ * This function compares the trimmed content of a block with the trimmed content of a file
+ * to identify all occurrences of the block content within the file.
+ *
+ * @param {CurrentNewBlock} block - The block containing the content to be searched for.
+ * @param {string} fileContent - The content of the file to be analyzed.
+ * @returns {Promise<{ matchingLines: number[]; currentContentTrimmed: string }>} A promise that resolves to an object containing:
+ *   - matchingLines: An array of line numbers where the block content matches in the file.
+ *   - currentContentTrimmed: The trimmed content of the file.
+ */
 const analyzeBlockContent = async (
   block: CurrentNewBlock,
   fileContent: string,
@@ -310,6 +322,18 @@ const analyzeBlockContent = async (
   return { matchingLines, currentContentTrimmed }
 }
 
+/**
+ * Processes a single block by applying its changes to the corresponding file.
+ *
+ * This function handles the following scenarios:
+ * 1. Creating a new file if it doesn't exist.
+ * 2. Updating an existing file if the block's current content matches exactly once.
+ * 3. Logging errors if the current content is not found or matches multiple times.
+ *
+ * @param {CurrentNewBlock} block - The block containing the changes to be applied.
+ * @param {number} index - The index of the block being processed (used for logging).
+ * @returns {Promise<void>} A promise that resolves when the block has been processed.
+ */
 export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
   const filePath = path.resolve(block.filePath)
   let fileContent = await readFileContent(filePath)
