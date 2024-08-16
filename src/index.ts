@@ -45,6 +45,7 @@ program
     '-f, --files <filenames...>',
     'Specify filenames of files with context to use for generating code',
   )
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .option(
     '-m, --model <model>',

@@ -1,4 +1,9 @@
-import { extractCurrentNewBlocks, extractMarkdown, updateFileContent, checkBlocksApplicability } from '../../src/utils/string_utils'
+import {
+  extractCurrentNewBlocks,
+  extractMarkdown,
+  updateFileContent,
+  checkBlocksApplicability,
+} from '../../src/utils/string_utils'
 
 describe('stringUtils', () => {
   describe('extractCurrentNewBlocks', () => {
@@ -29,13 +34,13 @@ function newFunction() {
         {
           filePath: 'src/file1.ts',
           currentContent: 'const oldVar = 1',
-          newContent: 'const newVar = 2'
+          newContent: 'const newVar = 2',
         },
         {
           filePath: 'src/file2.ts',
-          currentContent: 'function oldFunction() {\n  return \'old\'\n}',
-          newContent: 'function newFunction() {\n  return \'new\'\n}'
-        }
+          currentContent: "function oldFunction() {\n  return 'old'\n}",
+          newContent: "function newFunction() {\n  return 'new'\n}",
+        },
       ])
     })
 
@@ -53,8 +58,8 @@ const newContent = 'This is new'
         {
           filePath: 'src/newfile.ts',
           currentContent: '',
-          newContent: 'const newContent = \'This is new\''
-        }
+          newContent: "const newContent = 'This is new'",
+        },
       ])
     })
 
@@ -73,9 +78,9 @@ const newContent = 'This is new'
         }
         `
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "console.log('Non-existent content')",
-        newContent: "console.log('New content')"
+        newContent: "console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(currentContent)
@@ -84,9 +89,9 @@ const newContent = 'This is new'
     test('should replace entire content if current content is empty', () => {
       const currentContent = ''
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: '',
-        newContent: "console.log('New content')"
+        newContent: "console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe("console.log('New content')")
@@ -97,9 +102,9 @@ const newContent = 'This is new'
       console.log('Old content')
     }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
-        newContent: "console.log('New content with indentation')"
+        newContent: "console.log('New content with indentation')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`function example() {
@@ -110,15 +115,15 @@ const newContent = 'This is new'
 
   describe('extractMarkdown', () => {
     test('should extract markdown content from response', () => {
-      const response = "Here is some text\n```markdown\n# Title\nContent here.\n```\nMore text"
+      const response = 'Here is some text\n```markdown\n# Title\nContent here.\n```\nMore text'
       const result = extractMarkdown(response)
-      expect(result).toBe("# Title\nContent here.")
+      expect(result).toBe('# Title\nContent here.')
     })
 
     test('should return the entire response if no markdown block is found', () => {
-      const response = "No markdown block here."
+      const response = 'No markdown block here.'
       const result = extractMarkdown(response)
-      expect(result).toBe("No markdown block here.")
+      expect(result).toBe('No markdown block here.')
     })
   })
 
@@ -128,9 +133,9 @@ const newContent = 'This is new'
   console.log('Old content')
 }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
-        newContent: "console.log('New content')"
+        newContent: "console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`function example() {
@@ -143,9 +148,9 @@ const newContent = 'This is new'
   console.log('Old content')
 }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "  console.log('Old content')",
-        newContent: "  console.log('New content')"
+        newContent: "  console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`function example() {
@@ -158,9 +163,9 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "    console.log('Old content')",
-        newContent: "    console.log('New content')"
+        newContent: "    console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
@@ -168,14 +173,14 @@ const newContent = 'This is new'
   }`)
     })
 
-    test('should do the correct indentation when there is indentation and the diff doesn\'t', () => {
+    test("should do the correct indentation when there is indentation and the diff doesn't", () => {
       const currentContent = `  function example() {
     console.log('Old content')
   }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
-        newContent: "console.log('New content')"
+        newContent: "console.log('New content')",
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
@@ -188,13 +193,13 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: `  function example() {
     console.log('Old content')
   }`,
         newContent: `  function example() {
     console.log('New content')
-  }`
+  }`,
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
@@ -207,7 +212,7 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
-        filePath: "/tmp/test",
+        filePath: '/tmp/test',
         currentContent: `  function example() {
     console.log('Old content')
   }`,
@@ -215,7 +220,7 @@ const newContent = 'This is new'
   function example() {
     # here is a new comment
     console.log('Old content')
-  }`
+  }`,
       }
       const updatedContent = updateFileContent(currentContent, block)
       expect(updatedContent).toBe(`  # This is a comment

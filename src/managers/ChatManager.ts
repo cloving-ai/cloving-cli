@@ -631,7 +631,7 @@ class ChatManager {
         // Review the prompt using the REPL
         const tokenCount = Math.ceil(fullPrompt.length / 4).toLocaleString()
         console.log(
-          `The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
+          `${colors.yellow.bold('INFORMATION')} The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
         )
 
         const reviewPrompt = await new Promise<string>((resolve) => {
@@ -640,7 +640,7 @@ class ChatManager {
           })
         })
 
-        if (reviewPrompt === 'y' || reviewPrompt === '') {
+        if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
           console.log(
             colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
           )
@@ -662,7 +662,7 @@ class ChatManager {
             })
           })
 
-          if (confirmPrompt !== 'y' && confirmPrompt !== '') {
+          if (!confirmPrompt.startsWith('y') && confirmPrompt !== '') {
             console.log('Operation cancelled by user.')
             this.isProcessing = false
             this.rl.prompt()
@@ -726,11 +726,23 @@ class ChatManager {
       const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
-        this.processUserInput(`Some of the provided code blocks could not be applied,
+        console.log(
+          `\n\n${summary}\n\n${colors.red.bold('WARNING')} Some of the provided code blocks could not be automatically applied, prompt the AI to try again with more detail? ${colors.gray('(Y/n)')}`,
+        )
+
+        const reviewPrompt = await new Promise<string>((resolve) => {
+          this.rl.question(colors.green.bold('cloving> '), (answer) => {
+            resolve(answer.trim().toLowerCase())
+          })
+        })
+
+        if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
+          this.processUserInput(`Some of the provided code blocks could not be applied,
 please match the existing code with a few more lines of context and make sure it is a character for character exact match.
 
 ${summary}`)
-        return
+          return
+        }
       }
     }
 

@@ -70,7 +70,20 @@ export const extractJsonMetadata = (response: string): string => {
   return jsonString
 }
 
-// Function to extract markdown from the AI response
+/**
+ * Extracts markdown content from a given response string.
+ *
+ * This function attempts to extract markdown content from the input string,
+ * focusing on content within code blocks and removing any surrounding metadata.
+ *
+ * @param {string} response - The input string containing markdown and possibly other content.
+ * @returns {string} The extracted markdown content.
+ *
+ * @example
+ * const response = '```markdown\n# Title\nContent\n```\nOther text';
+ * const markdown = extractMarkdown(response);
+ * console.log(markdown); // Outputs: "# Title\nContent"
+ */
 export const extractMarkdown = (response: string): string => {
   let markdownString = response
 
@@ -98,6 +111,22 @@ export const extractMarkdown = (response: string): string => {
   return markdownString
 }
 
+/**
+ * Parses markdown instructions into separate blocks.
+ *
+ * This function takes a string input containing markdown instructions and
+ * separates it into an array of strings, where each string represents a
+ * distinct block of content (either a code block or a text block).
+ *
+ * @param {string} input - The input string containing markdown instructions.
+ * @returns {string[]} An array of strings, each representing a distinct block of content.
+ *
+ * @example
+ * const input = "# Title\n```js\nconst x = 1;\n```\nSome text";
+ * const blocks = parseMarkdownInstructions(input);
+ * console.log(blocks);
+ * // Outputs: ["# Title", "```js\nconst x = 1;\n```", "Some text"]
+ */
 export const parseMarkdownInstructions = (input: string): string[] => {
   const lines = input.split('\n')
   const result: string[] = []
@@ -134,6 +163,18 @@ export const parseMarkdownInstructions = (input: string): string[] => {
   return result
 }
 
+/**
+ * Finds the indices of a CURRENT/NEW block within the input string.
+ *
+ * This function searches for the start, divider, and end markers of a CURRENT/NEW block
+ * in the input string, starting from the given index. It returns the indices of these
+ * markers if a complete block is found.
+ *
+ * @param {string} input - The input string to search for block indices.
+ * @param {number} startIndex - The index in the input string to start searching from.
+ * @returns {BlockIndices | null} An object containing the indices of the block components,
+ *                                or null if a complete block is not found.
+ */
 export const findBlockIndices = (input: string, startIndex: number): BlockIndices | null => {
   const blockStart = input.indexOf(BLOCK_START, startIndex)
   if (blockStart === -1) return null
@@ -154,6 +195,16 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
   }
 }
 
+/**
+ * Extracts the content of a CURRENT/NEW block using the provided indices.
+ *
+ * This function takes the input string and a set of block indices, and extracts
+ * the file path, current content, and new content from the block.
+ *
+ * @param {string} input - The input string containing the CURRENT/NEW block.
+ * @param {BlockIndices} indices - An object containing the indices of the block components.
+ * @returns {CurrentNewBlock} An object containing the extracted file path, current content, and new content.
+ */
 export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
   const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
   const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
@@ -291,6 +342,49 @@ export const updateFileContent = (currentContent: string, block: CurrentNewBlock
   }
 }
 
+/**
+ * Analyzes the content of a block against the file content to find matching lines.
+ *
+ * This function compares the trimmed content of a block with the trimmed content of a file
+ * to identify all occurrences of the block content within the file.
+ *
+ * @param {CurrentNewBlock} block - The block containing the content to be searched for.
+ * @param {string} fileContent - The content of the file to be analyzed.
+ * @returns {Promise<{ matchingLines: number[]; currentContentTrimmed: string }>} A promise that resolves to an object containing:
+ *   - matchingLines: An array of line numbers where the block content matches in the file.
+ *   - currentContentTrimmed: The trimmed content of the file.
+ */
+const analyzeBlockContent = async (
+  block: CurrentNewBlock,
+  fileContent: string,
+): Promise<{ matchingLines: number[]; currentContentTrimmed: string }> => {
+  const currentLines = fileContent.split('\n').map((line) => line.trim())
+  const blockLines = block.currentContent.split('\n').map((line) => line.trim())
+
+  const blockContent = blockLines.join('\n')
+  const currentContentTrimmed = currentLines.join('\n')
+  const matchingLines = []
+  let matchingLine = -1
+
+  while ((matchingLine = currentContentTrimmed.indexOf(blockContent, matchingLine + 1)) !== -1) {
+    matchingLines.push(matchingLine)
+  }
+
+  return { matchingLines, currentContentTrimmed }
+}
+
+/**
+ * Processes a single block by applying its changes to the corresponding file.
+ *
+ * This function handles the following scenarios:
+ * 1. Creating a new file if it doesn't exist.
+ * 2. Updating an existing file if the block's current content matches exactly once.
+ * 3. Logging errors if the current content is not found or matches multiple times.
+ *
+ * @param {CurrentNewBlock} block - The block containing the changes to be applied.
+ * @param {number} index - The index of the block being processed (used for logging).
+ * @returns {Promise<void>} A promise that resolves when the block has been processed.
+ */
 export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
   const filePath = path.resolve(block.filePath)
   let fileContent = await readFileContent(filePath)
@@ -303,9 +397,16 @@ export const processBlock = async (block: CurrentNewBlock, index: number): Promi
     return
   }
 
-  if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
+  const { matchingLines } = await analyzeBlockContent(block, fileContent)
+
+  if (matchingLines.length === 0) {
     console.log(
-      `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`,
+      `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('ERROR: Current content not found to replace in the file')}`,
+    )
+    return
+  } else if (matchingLines.length > 1) {
+    console.log(
+      `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content matches multiple (${matchingLines.length}) parts in the file`)}`,
     )
     return
   }
@@ -385,11 +486,24 @@ export const checkBlocksApplicability = async (
       summary.push(
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.green.bold('created')}`,
       )
-    } else if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
-      allApplicable = false
-      summary.push(
-        `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`,
-      )
+    } else if (block.currentContent.trim() !== '') {
+      const { matchingLines } = await analyzeBlockContent(block, fileContent)
+
+      if (matchingLines.length === 0) {
+        allApplicable = false
+        summary.push(
+          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`,
+        )
+      } else if (matchingLines.length > 1) {
+        allApplicable = false
+        summary.push(
+          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold(`cannot be applied: Current content matches multiple (${matchingLines.length}) parts in the file`)}`,
+        )
+      } else {
+        summary.push(
+          `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,
+        )
+      }
     } else {
       summary.push(
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,
