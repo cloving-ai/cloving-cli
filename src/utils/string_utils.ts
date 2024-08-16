@@ -303,11 +303,19 @@ export const processBlock = async (block: CurrentNewBlock, index: number): Promi
     return
   }
 
-  if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
-    console.log(
-      `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`,
-    )
-    return
+  if (block.currentContent.trim() !== '') {
+    const matches = (fileContent.match(new RegExp(block.currentContent.trim(), 'g')) || []).length
+    if (matches === 0) {
+      console.log(
+        `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content not found to replace in the file`)}`,
+      )
+      return
+    } else if (matches > 1) {
+      console.log(
+        `[${index + 1}] ${colors.green.bold(block.filePath)} ${colors.red.bold(`ERROR: Current content matches multiple parts in the file`)}`,
+      )
+      return
+    }
   }
 
   const updatedContent = updateFileContent(fileContent, block)
@@ -385,11 +393,23 @@ export const checkBlocksApplicability = async (
       summary.push(
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.green.bold('created')}`,
       )
-    } else if (block.currentContent.trim() !== '' && !fileContent.includes(block.currentContent)) {
-      allApplicable = false
-      summary.push(
-        `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`,
-      )
+    } else if (block.currentContent.trim() !== '') {
+      const matches = (fileContent.match(new RegExp(block.currentContent.trim(), 'g')) || []).length
+      if (matches === 0) {
+        allApplicable = false
+        summary.push(
+          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content not found')}`,
+        )
+      } else if (matches > 1) {
+        allApplicable = false
+        summary.push(
+          `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: Current content matches multiple parts')}`,
+        )
+      } else {
+        summary.push(
+          `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,
+        )
+      }
     } else {
       summary.push(
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,

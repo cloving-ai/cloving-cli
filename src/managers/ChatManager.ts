@@ -640,7 +640,7 @@ class ChatManager {
           })
         })
 
-        if (reviewPrompt === 'y' || reviewPrompt === '') {
+        if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
           console.log(
             colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
           )
@@ -662,7 +662,7 @@ class ChatManager {
             })
           })
 
-          if (confirmPrompt !== 'y' && confirmPrompt !== '') {
+          if (!confirmPrompt.startsWith('y') && confirmPrompt !== '') {
             console.log('Operation cancelled by user.')
             this.isProcessing = false
             this.rl.prompt()
