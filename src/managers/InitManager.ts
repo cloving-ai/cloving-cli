@@ -1,10 +1,12 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import colors from 'colors'
+import ignore from 'ignore'
 import { promises as fsPromises } from 'fs'
 import { confirm } from '@inquirer/prompts'
+
 import ClovingGPT from '../cloving_gpt'
-import ignore from 'ignore'
 import { extractJsonMetadata } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
 import {
@@ -13,7 +15,7 @@ import {
   checkForSpecialFiles,
   INIT_INSTRUCTIONS,
 } from '../utils/prompt_utils'
-import type { ClovingGPTOptions, ChatMessage, ClovingfileConfig } from '../utils/types'
+import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 class InitManager {
   private gpt: ClovingGPT
@@ -63,7 +65,12 @@ class InitManager {
         specialFiles: specialFileContents,
       }
 
-      await this.processAIResponse(projectDetails, tempFilePath)
+      const [success, errorMessage] = await this.processAIResponse(projectDetails, tempFilePath)
+
+      if (!success) {
+        console.log(errorMessage)
+        return
+      }
 
       await this.promptUserForReview()
 
@@ -145,35 +152,39 @@ technologies used. This will provide better context for future Cloving requests.
    *
    * @param {any} projectDetails - A JSON object describing the project.
    * @param {string} tempFilePath - The path to the temporary file.
-   * @return {Promise<void>} A promise that resolves when the AI response is processed.
+   * @param {string} errorMessage - An error message if there was an error.
+   * @return {[boolean, string]} A promise that resolves with an array containing a boolean
+   *                             indicating whether the AI response was successfully processed,
+   *                             and a message explaining any errors.
    */
-  private async processAIResponse(projectDetails: any, tempFilePath: string): Promise<void> {
-    const prompt = `Here is a JSON object describing my project:
+  private async processAIResponse(
+    projectDetails: any,
+    tempFilePath: string,
+    errorMessage: string = '',
+  ): Promise<[boolean, string]> {
+    const prompt =
+      errorMessage !== ''
+        ? errorMessage
+        : `Here is a JSON object describing my project:
 ${JSON.stringify(projectDetails, null, 2)}`
-
     this.chatHistory.push({ role: 'user', content: prompt })
-
     const aiChatResponse = await this.gpt.generateText({ prompt, messages: this.chatHistory })
-
     this.chatHistory.push({ role: 'assistant', content: aiChatResponse })
-
     let cleanAiChatResponse = extractJsonMetadata(aiChatResponse)
-
-    const [validSyntax, errorMessage] = this.checkClovingJsonSyntax(cleanAiChatResponse)
+    const [validSyntax, syntaxErrorMessage] = this.checkClovingJsonSyntax(cleanAiChatResponse)
 
     if (!validSyntax) {
-      // retry with the errorMessage in the prompt
-      this.chatHistory.push({ role: 'user', content: errorMessage })
-      const retryResponse = await this.gpt.generateText({ prompt, messages: this.chatHistory })
-      this.chatHistory.push({ role: 'assistant', content: retryResponse })
-      cleanAiChatResponse = extractJsonMetadata(retryResponse)
+      console.log(syntaxErrorMessage)
+      console.log('Retrying...')
+      return this.processAIResponse(projectDetails, tempFilePath, syntaxErrorMessage)
+    } else {
+      await fsPromises.writeFile(tempFilePath, cleanAiChatResponse)
+
+      // Save the AI chat response to cloving.json
+      await fsPromises.writeFile('cloving.json', cleanAiChatResponse)
+      console.log(`Project data saved to ${colors.green.bold('cloving.json')}`)
+      return [true, '']
     }
-
-    await fsPromises.writeFile(tempFilePath, cleanAiChatResponse)
-
-    // Save the AI chat response to cloving.json
-    await fsPromises.writeFile('cloving.json', cleanAiChatResponse)
-    console.log('Project data saved to cloving.json')
   }
 
   /**
@@ -188,7 +199,10 @@ ${JSON.stringify(projectDetails, null, 2)}`
     try {
       JSON.parse(cleanAiChatResponse)
     } catch (error) {
-      return [false, `Error parsing cloving.json: ${(error as Error).message}`]
+      return [
+        false,
+        `${colors.red.bold('ERROR:')} parsing cloving.json: ${colors.red.bold((error as Error).message)}`,
+      ]
     }
 
     const clovingJson = JSON.parse(cleanAiChatResponse)
@@ -202,7 +216,10 @@ ${JSON.stringify(projectDetails, null, 2)}`
     const missingDirectories = directoriesToCheck.filter((directory) => !fs.existsSync(directory))
 
     if (missingDirectories.length > 0) {
-      return [false, `The following directories were not found: ${missingDirectories.join(', ')}`]
+      return [
+        false,
+        `${colors.red.bold('ERROR:')} The following directories were not found: ${colors.red.bold(missingDirectories.join(', '))}`,
+      ]
     }
 
     return [true, '']
