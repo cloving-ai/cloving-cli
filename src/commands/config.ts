@@ -1,5 +1,5 @@
 import { getConfig, saveConfig } from '../utils/config_utils'
-import { fetchModels } from '../utils/command_utils'
+import { fetchModels } from '../utils/prompt_utils'
 import type { ClovingModelConfig } from '../utils/types'
 import { select, input, confirm, number } from '@inquirer/prompts'
 

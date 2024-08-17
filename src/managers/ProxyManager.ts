@@ -6,7 +6,7 @@ import path from 'path'
 import ClovingGPT from '../cloving_gpt'
 import ChunkManager from './ChunkManager'
 import { getClovingConfig } from '../utils/config_utils'
-import { getAllFilesInDirectory } from '../utils/command_utils'
+import { getAllFilesInDirectory } from '../utils/prompt_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 class ProxyManager {

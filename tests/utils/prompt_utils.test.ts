@@ -1,10 +1,10 @@
-import { generateCodegenPrompt, CODEGEN_INSTRUCTIONS } from '../../src/utils/command_utils'
+import { generateCodegenPrompt, CODEGEN_INSTRUCTIONS } from '../../src/utils/prompt_utils'
 
 jest.mock('../../src/utils/config_utils', () => ({
   getClovingConfig: jest.fn().mockReturnValue({}),
 }))
 
-describe('command_utils', () => {
+describe('prompt_utils', () => {
   describe('CODEGEN_INSTRUCTIONS', () => {
     it('should contain the correct instructions', () => {
       expect(CODEGEN_INSTRUCTIONS).toContain('AI Code Generation Instructions')

@@ -211,7 +211,7 @@ class ClovingGPT {
         errorMessage = 'connection error'
       }
       console.error(
-        `Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${JSON.stringify(error.response?.data || "''", null, 2)}\n`,
+        `Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${colors.red.bold(JSON.stringify(error.response?.data || "''", null, 2))}\n`,
       )
       throw error
     }

@@ -2,10 +2,16 @@
   "languages": [
     {
       "name": "TypeScript",
-      "version": "5.5.3",
+      "version": "^5.5.4",
       "primary": true,
       "directory": "src",
       "extension": ".ts"
+    },
+    {
+      "name": "JavaScript",
+      "version": "ES2020",
+      "directory": "src",
+      "extension": ".js"
     }
   ],
   "frameworks": [
@@ -14,33 +20,47 @@
       "type": "Runtime environment",
       "primary": true,
       "directory": "src",
-      "extension": ".js"
+      "extension": ".ts"
+    },
+    {
+      "name": "Express",
+      "type": "Web framework",
+      "version": "^4.19.2",
+      "directory": "src",
+      "extension": ".ts"
     }
   ],
   "testingFrameworks": [
     {
       "name": "Jest",
       "type": "Testing framework",
-      "version": "29.7.0",
+      "version": "^29.7.0",
       "directory": "tests"
     }
   ],
   "buildTools": [
     {
       "name": "TypeScript Compiler (tsc)",
-      "type": "Transpiler"
+      "type": "Transpiler",
+      "version": "^5.5.4"
     },
     {
       "name": "Vite",
       "type": "Build tool",
-      "version": "5.3.3"
+      "version": "^5.4.0"
     }
   ],
   "packageManager": "Yarn",
   "linters": [
     {
       "name": "ESLint",
-      "version": "9.6.0"
+      "version": "^8.57.0",
+      "type": "Linter"
+    },
+    {
+      "name": "Prettier",
+      "version": "^3.2.5",
+      "type": "Code formatter"
     }
   ],
   "projectType": "Command-line tool"

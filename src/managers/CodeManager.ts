@@ -4,7 +4,7 @@ import highlight from 'cli-highlight'
 
 import ClovingGPT from '../cloving_gpt'
 
-import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/command_utils'
+import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/prompt_utils'
 import {
   checkBlocksApplicability,
   parseMarkdownInstructions,

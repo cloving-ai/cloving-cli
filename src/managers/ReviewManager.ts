@@ -7,7 +7,7 @@ import path from 'path'
 import ClovingGPT from '../cloving_gpt'
 import { getGitDiff } from '../utils/git_utils'
 import { parseMarkdownInstructions } from '../utils/string_utils'
-import { getAllFilesInDirectory } from '../utils/command_utils'
+import { getAllFilesInDirectory } from '../utils/prompt_utils'
 import { getConfig, getClovingConfig } from '../utils/config_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
