@@ -1,6 +1,12 @@
-# Cloving - CLI Code Generation with AI
+# Cloving
 
-Cloving CLI is a command line utility which integrates AI into your development workflow. It provides AI-powered code generation, commit message generation, code reviews, unit test generation, and more.
+An AI pair-programmer for the command line.
+
+LLM-powered shell commands, code generation, commit messages, code reviews, unit test generation, and more. Works with most popular LLMs including OpenAI, Claude, Gemini, Ollama, and more.
+
+[![asciicast](https://asciinema.org/a/SCcxw4B2XFQaTD0GeDTk0xbuq.svg)](https://asciinema.org/a/SCcxw4B2XFQaTD0GeDTk0xbuq)
+
+Cloving CLI is a command line utility which integrates AI into your development workflow.
 
 What makes the Cloving CLI different from other AI tools is that it builds sophisticated context-aware prompts to generate code, commit messages, and more.
 

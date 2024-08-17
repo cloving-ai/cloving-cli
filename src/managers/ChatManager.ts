@@ -20,7 +20,7 @@ import {
   generateCodegenPrompt,
   addFileOrDirectoryToContext,
   getPackageVersion,
-} from '../utils/command_utils'
+} from '../utils/prompt_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 const specialCommands = [

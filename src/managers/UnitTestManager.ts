@@ -4,7 +4,7 @@ import highlight from 'cli-highlight'
 import { select, confirm } from '@inquirer/prompts'
 
 import { getGitDiff } from '../utils/git_utils'
-import { CODEGEN_INSTRUCTIONS } from '../utils/command_utils'
+import { CODEGEN_INSTRUCTIONS } from '../utils/prompt_utils'
 import { getTestingDirectory, getAllFiles } from '../utils/config_utils'
 import {
   extractCurrentNewBlocks,

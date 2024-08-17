@@ -4,7 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { input, confirm } from '@inquirer/prompts'
 
-import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/command_utils'
+import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/prompt_utils'
 import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 

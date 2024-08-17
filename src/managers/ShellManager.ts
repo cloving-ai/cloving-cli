@@ -4,7 +4,7 @@ import { execSync } from 'child_process'
 import { select, input } from '@inquirer/prompts'
 
 import ClovingGPT from '../cloving_gpt'
-import { generateShellPrompt } from '../utils/command_utils'
+import { generateShellPrompt } from '../utils/prompt_utils'
 import { extractMarkdown } from '../utils/string_utils'
 import { getConfig } from '../utils/config_utils'
 

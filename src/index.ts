@@ -13,7 +13,7 @@ import commit from './commands/generate/commit'
 import context from './commands/generate/context'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
-import { getPackageVersion } from './utils/command_utils'
+import { getPackageVersion } from './utils/prompt_utils'
 
 const program = new Command()
 

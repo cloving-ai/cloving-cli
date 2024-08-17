@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { getClovingConfig } from '../utils/config_utils'
-import { getAllFilesInDirectory } from '../utils/command_utils'
+import { getAllFilesInDirectory } from '../utils/prompt_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
 const tokens = async (options: ClovingGPTOptions) => {
