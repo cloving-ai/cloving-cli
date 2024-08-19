@@ -73,6 +73,7 @@ interface TestingFrameworkConfig {
   type: string
   version?: string
   directory?: string
+  runCommand?: string
 }
 
 interface BuildToolConfig {
@@ -136,6 +137,7 @@ Here is an example response:
       "type": "Testing framework",
       "version": "29.7.0"
       "directory": "tests"
+      "runCommand": "yarn test"
     },
   ],
   "buildTools": [
