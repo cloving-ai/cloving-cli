@@ -23,6 +23,11 @@ class ReviewManager {
     this.gpt = new ClovingGPT(options)
   }
 
+  /**
+   * Loads the context files specified in the options. If directories are provided,
+   * it expands them to include all files within. The contents of each file are
+   * stored in the `contextFiles` object for later use.
+   */
   private async loadContextFiles() {
     if (this.options.files) {
       let expandedFiles: string[] = []
@@ -57,6 +62,13 @@ class ReviewManager {
     }
   }
 
+  /**
+   * Generates a review prompt based on the current chat history and options.
+   * If no chat history exists, it initializes it with a system prompt and a request
+   * for user input. The prompt includes a structured example response for code review.
+   *
+   * @returns {string} The generated review prompt.
+   */
   private generateReviewPrompt(): string {
     if (this.chatHistory.length === 0) {
       let systemPrompt = `### Example of a well-structured response
