@@ -10,6 +10,7 @@ import path from 'path'
 
 import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
+import BlockManager from './BlockManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import {
@@ -49,6 +50,7 @@ class ChatManager {
   private isMultilineMode: boolean = false
   private contextFiles: Record<string, string> = {}
   private chunkManager: ChunkManager
+  private blockManager: BlockManager
   private prompt: string = ''
   private isProcessing: boolean = false
   private isSilent = false
@@ -70,6 +72,7 @@ class ChatManager {
       historySize: 1000,
     })
     this.chunkManager = new ChunkManager()
+    this.blockManager = new BlockManager()
   }
 
   /**
@@ -710,34 +713,71 @@ class ChatManager {
    * @param accumulatedContent - A string to accumulate the complete response content.
    */
   private handleResponseStream(responseStream: any, accumulatedContent: string) {
-    let codeBuffer = ''
-    let isBufferingCode = false
+    let animationInterval: NodeJS.Timeout
+    this.blockManager = new BlockManager()
+    this.chunkManager = new ChunkManager()
+
+    this.blockManager.on('startGeneratingCode', () => {
+      process.stdout.write('Generating code...  ')
+      let animationIndex = 0
+      const animationChars = ['/', '|', '\\', '-']
+      animationInterval = setInterval(() => {
+        process.stdout.write('\b'.repeat(1))
+        process.stdout.write(animationChars[animationIndex])
+        animationIndex = (animationIndex + 1) % animationChars.length
+      }, 100)
+    })
+
+    this.blockManager.on('endGeneratingCode', () => {
+      clearInterval(animationInterval)
+      process.stdout.write('\b'.repeat(100))
+    })
+
+    this.blockManager.on('content', (content: string) => {
+      process.stdout.write(content)
+      accumulatedContent += content
+    })
+
+    this.blockManager.on(
+      'codeBlock',
+      (codeBlock: {
+        language: string
+        currentStart: string
+        newEnd: string
+        currentCode: string
+        newCode: string
+        raw: string
+      }) => {
+        process.stdout.write(`\`\`\`${codeBlock.language}                                       \n`)
+        process.stdout.write(`${codeBlock.currentStart}\n`)
+        process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
+        process.stdout.write('\n=======\n')
+        process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
+        process.stdout.write('\n>>>>>>> NEW\n')
+        accumulatedContent += codeBlock.raw
+      },
+    )
 
     // Handle content chunks from the ChunkManager
     this.chunkManager.on('content', (buffer: string) => {
       let convertedStream = this.gpt.convertStream(buffer)
-
-      // Process each converted stream until null
       while (convertedStream !== null) {
         const { output, lastChar } = convertedStream
-        const [newIsBufferingCode, newCodeBuffer, newAccumulatedContent] = this.processOutput(
-          output,
-          accumulatedContent,
-          codeBuffer,
-          isBufferingCode,
-        )
-        codeBuffer = newCodeBuffer
-        isBufferingCode = newIsBufferingCode
-        accumulatedContent = newAccumulatedContent
+        // buffer the output to the BlockManager
+        this.blockManager.addContent(output)
+        // clear the buffer from the ChunkManager
         this.chunkManager.clearBuffer(lastChar)
+        // Try to convert the rest of the buffer to a string
         buffer = buffer.slice(lastChar)
         convertedStream = this.gpt.convertStream(buffer)
       }
     })
 
     // Handle incoming data chunks from the response stream
-    responseStream.data.on('data', (chunk: Buffer) => {
+    responseStream.data.on('data', (chunk: Buffer | undefined) => {
       // Convert the chunk to a string and add it to the ChunkManager
+      if (!chunk) return
+      // a chunk is a JSON object with different keys depending on the AI service provider
       const chunkString = chunk.toString()
       this.chunkManager.addChunk(chunkString)
     })
@@ -755,49 +795,6 @@ class ChatManager {
       process.stdout.write('\n')
       this.rl.prompt()
     })
-  }
-
-  private processOutput(
-    output: string,
-    accumulatedContent: string,
-    codeBuffer: string,
-    isBufferingCode: boolean,
-  ): [boolean, string, string] {
-    const codeBlockMarker = '\n```'
-    let currentIndex = 0
-
-    while (currentIndex < output.length) {
-      const markerIndex = output.indexOf(codeBlockMarker, currentIndex)
-
-      if (markerIndex !== -1) {
-        if (isBufferingCode) {
-          // End of code block
-          codeBuffer += output.slice(currentIndex, markerIndex + codeBlockMarker.length)
-          process.stdout.write(highlight(codeBuffer))
-          accumulatedContent += codeBuffer
-          codeBuffer = ''
-          isBufferingCode = false
-          currentIndex = markerIndex + codeBlockMarker.length
-        } else {
-          // Start of code block
-          process.stdout.write(output.slice(currentIndex, markerIndex + codeBlockMarker.length))
-          accumulatedContent += output.slice(currentIndex, markerIndex + codeBlockMarker.length)
-          codeBuffer = ''
-          isBufferingCode = true
-          currentIndex = markerIndex + codeBlockMarker.length
-        }
-      } else {
-        if (isBufferingCode) {
-          codeBuffer += output.slice(currentIndex)
-        } else {
-          process.stdout.write(output.slice(currentIndex))
-          accumulatedContent += output.slice(currentIndex)
-        }
-        break
-      }
-    }
-
-    return [isBufferingCode, codeBuffer, accumulatedContent]
   }
 
   private async finalizeResponse(accumulatedContent: string) {
