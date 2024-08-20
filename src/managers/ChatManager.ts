@@ -5,9 +5,12 @@ import colors from 'colors'
 import axios from 'axios'
 import highlight from 'cli-highlight'
 import type { AxiosError } from 'axios'
+import fs from 'fs'
+import path from 'path'
 
 import CommitManager from './CommitManager'
 import ChunkManager from './ChunkManager'
+import BlockManager from './BlockManager'
 import ReviewManager from './ReviewManager'
 import ClovingGPT from '../cloving_gpt'
 import {
@@ -47,6 +50,7 @@ class ChatManager {
   private isMultilineMode: boolean = false
   private contextFiles: Record<string, string> = {}
   private chunkManager: ChunkManager
+  private blockManager: BlockManager
   private prompt: string = ''
   private isProcessing: boolean = false
   private isSilent = false
@@ -68,6 +72,7 @@ class ChatManager {
       historySize: 1000,
     })
     this.chunkManager = new ChunkManager()
+    this.blockManager = new BlockManager()
   }
 
   /**
@@ -437,10 +442,22 @@ class ChatManager {
     this.rl.prompt()
   }
 
-  private refreshContext() {
+  private async refreshContext() {
+    await this.reloadContextFiles()
     const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
     this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
     this.chatHistory[1] = { role: 'assistant', content: 'What would you like to do?' }
+  }
+
+  private async reloadContextFiles() {
+    for (const filePath in this.contextFiles) {
+      try {
+        const content = await fs.promises.readFile(path.resolve(filePath), 'utf8')
+        this.contextFiles[filePath] = content
+      } catch (error) {
+        console.error(`Error reading file ${filePath}:`, error)
+      }
+    }
   }
 
   private isRemoveCommand(command: string): boolean {
@@ -604,7 +621,7 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     try {
-      this.refreshContext()
+      await this.refreshContext()
       this.prompt = this.generatePrompt(input)
       this.addChatHistory(this.prompt)
 
@@ -687,29 +704,91 @@ class ChatManager {
     this.chatHistory.push({ role: 'user', content: input })
   }
 
+  /**
+   * Handles the streaming response from the AI model.
+   * This method processes the incoming data chunks, converts them to readable output,
+   * and manages the accumulated content.
+   *
+   * @param responseStream - The stream of response data from the AI model.
+   * @param accumulatedContent - A string to accumulate the complete response content.
+   */
   private handleResponseStream(responseStream: any, accumulatedContent: string) {
+    let animationInterval: NodeJS.Timeout
+    this.blockManager = new BlockManager()
+    this.chunkManager = new ChunkManager()
+
+    this.blockManager.on('startGeneratingCode', () => {
+      process.stdout.write('Generating code...  ')
+      let animationIndex = 0
+      const animationChars = ['/', '|', '\\', '-']
+      animationInterval = setInterval(() => {
+        process.stdout.write('\b'.repeat(1))
+        process.stdout.write(animationChars[animationIndex])
+        animationIndex = (animationIndex + 1) % animationChars.length
+      }, 100)
+    })
+
+    this.blockManager.on('endGeneratingCode', () => {
+      clearInterval(animationInterval)
+      process.stdout.write('\b'.repeat(100))
+    })
+
+    this.blockManager.on('content', (content: string) => {
+      process.stdout.write(content)
+      accumulatedContent += content
+    })
+
+    this.blockManager.on(
+      'codeBlock',
+      (codeBlock: {
+        language: string
+        currentStart: string
+        newEnd: string
+        currentCode: string
+        newCode: string
+        raw: string
+      }) => {
+        process.stdout.write(`\`\`\`${codeBlock.language}                                       \n`)
+        process.stdout.write(`${codeBlock.currentStart}\n`)
+        process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
+        process.stdout.write('\n=======\n')
+        process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
+        process.stdout.write('\n>>>>>>> NEW\n')
+        accumulatedContent += codeBlock.raw
+      },
+    )
+
+    // Handle content chunks from the ChunkManager
     this.chunkManager.on('content', (buffer: string) => {
       let convertedStream = this.gpt.convertStream(buffer)
-
       while (convertedStream !== null) {
         const { output, lastChar } = convertedStream
-        process.stdout.write(output)
-        accumulatedContent += output
+        // buffer the output to the BlockManager
+        this.blockManager.addContent(output)
+        // clear the buffer from the ChunkManager
         this.chunkManager.clearBuffer(lastChar)
+        // Try to convert the rest of the buffer to a string
         buffer = buffer.slice(lastChar)
         convertedStream = this.gpt.convertStream(buffer)
       }
     })
 
-    responseStream.data.on('data', (chunk: Buffer) => {
+    // Handle incoming data chunks from the response stream
+    responseStream.data.on('data', (chunk: Buffer | undefined) => {
+      // Convert the chunk to a string and add it to the ChunkManager
+      if (!chunk) return
+      // a chunk is a JSON object with different keys depending on the AI service provider
       const chunkString = chunk.toString()
       this.chunkManager.addChunk(chunkString)
     })
 
+    // Handle the end of the response stream
     responseStream.data.on('end', () => {
+      // Finalize the response when the stream ends
       this.finalizeResponse(accumulatedContent)
     })
 
+    // Handle any errors in the response stream
     responseStream.data.on('error', (error: Error) => {
       console.error('Error streaming response:', error)
       this.isProcessing = false
@@ -727,22 +806,15 @@ class ChatManager {
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
         console.log(
-          `\n\n${summary}\n\n${colors.red.bold('WARNING')} Some of the provided code blocks could not be automatically applied, prompt the AI to try again with more detail? ${colors.gray('(Y/n)')}`,
+          `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied, prompting the AI to try again with more detail.\n`,
         )
 
-        const reviewPrompt = await new Promise<string>((resolve) => {
-          this.rl.question(colors.green.bold('cloving> '), (answer) => {
-            resolve(answer.trim().toLowerCase())
-          })
-        })
-
-        if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
-          this.processUserInput(`Some of the provided code blocks could not be applied,
+        this.processUserInput(`Some of the provided code blocks could not be applied,
 please match the existing code with a few more lines of context and make sure it is a character for character exact match.
 
 ${summary}`)
-          return
-        }
+
+        return
       }
     }
 
@@ -786,7 +858,7 @@ You can follow up with another request or:
     const statusMessage = (error.response?.data as any)?.statusMessage
     console.error(
       colors.red(
-        `\nError (${errorNumber}) processing a ${promptTokens} token prompt\n\n${statusMessage}\n`,
+        `\nError (${errorNumber}) while submitting the prompt to the AI API\n\n${statusMessage}\n`,
       ),
     )
     this.isProcessing = false

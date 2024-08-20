@@ -15,6 +15,15 @@ class ProxyManager {
   private contextFiles: Record<string, string> = {}
   private chunkManager: ChunkManager
 
+  /**
+   * Creates an instance of ProxyManager.
+   * @param {ClovingGPTOptions} options - Configuration options for the ProxyManager.
+   * @description
+   * Initializes the ProxyManager with the given options. It sets up:
+   * - A ClovingGPT instance with silent and stream options enabled
+   * - An Express application with JSON body parsing
+   * - A ChunkManager for handling streaming responses
+   */
   constructor(private options: ClovingGPTOptions) {
     this.options.silent = true
     this.options.stream = true
@@ -142,7 +151,6 @@ ${content}`
           convertedStreams = []
         }
 
-        this.chunkManager.clearBuffer(lastChar)
         buffer = buffer.slice(lastChar)
         convertedStream = this.gpt.convertStream(buffer)
       }

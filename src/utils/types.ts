@@ -91,6 +91,7 @@ interface TestingFrameworkConfig {
   type: string
   version?: string
   directory?: string
+  runCommand?: string
 }
 
 interface BuildToolConfig {
