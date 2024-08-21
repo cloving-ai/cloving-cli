@@ -35,9 +35,9 @@ class BlockManager extends EventEmitter {
         this.emit('content', rest)
       } else {
         // Start of code block
-        this.emit('startGeneratingCode')
         this.emitBuffer(content.slice(0, markerIndex))
         this.codeBuffer = content.slice(markerIndex)
+        this.emit('startGeneratingCode')
         this.isBufferingCode = true
       }
     } else {
