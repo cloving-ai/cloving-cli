@@ -718,7 +718,7 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     this.blockManager.on('startGeneratingCode', () => {
-      process.stdout.write('Generating code...  ')
+      process.stdout.write('\nGenerating code...  ')
       let animationIndex = 0
       const animationChars = ['/', '|', '\\', '-']
       animationInterval = setInterval(() => {
