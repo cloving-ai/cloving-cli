@@ -718,12 +718,12 @@ class ChatManager {
     this.chunkManager = new ChunkManager()
 
     this.blockManager.on('startGeneratingCode', () => {
-      process.stdout.write('\nGenerating code...  ')
+      process.stdout.write(colors.gray.bold('\nGenerating code...  '))
       let animationIndex = 0
       const animationChars = ['/', '|', '\\', '-']
       animationInterval = setInterval(() => {
         process.stdout.write('\b'.repeat(1))
-        process.stdout.write(animationChars[animationIndex])
+        process.stdout.write(colors.gray.bold(animationChars[animationIndex]))
         animationIndex = (animationIndex + 1) % animationChars.length
       }, 100)
     })
@@ -755,7 +755,7 @@ class ChatManager {
         process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
         process.stdout.write(colors.gray.bold('\n=======\n'))
         process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
-        process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```\n'))
+        process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
         accumulatedContent += codeBlock.raw
       },
     )
