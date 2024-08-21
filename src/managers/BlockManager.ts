@@ -63,7 +63,7 @@ class BlockManager extends EventEmitter {
   }
 
   private emitCodeBlock() {
-    if (this.codeBuffer) {
+    if (this.codeBuffer.length > 0) {
       const codeParts = this.parseCodeBuffer()
       if (codeParts) {
         const { language, currentStart, newEnd, currentCode, newCode } = codeParts
@@ -76,6 +76,9 @@ class BlockManager extends EventEmitter {
           raw: this.codeBuffer,
         })
         this.emit('content', this.buffer)
+        this.clearBuffer()
+      } else {
+        this.emit('content', this.codeBuffer)
         this.clearBuffer()
       }
     }
