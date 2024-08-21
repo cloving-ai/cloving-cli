@@ -748,12 +748,14 @@ class ChatManager {
         newCode: string
         raw: string
       }) => {
-        process.stdout.write(`\`\`\`${codeBlock.language}                                       \n`)
-        process.stdout.write(`${codeBlock.currentStart}\n`)
+        process.stdout.write(
+          colors.gray.bold(`\`\`\`${codeBlock.language}                                       \n`),
+        )
+        process.stdout.write(colors.gray.bold(`${codeBlock.currentStart}\n`))
         process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
-        process.stdout.write('\n=======\n')
+        process.stdout.write(colors.gray.bold('\n=======\n'))
         process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
-        process.stdout.write('\n>>>>>>> NEW\n')
+        process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```\n'))
         accumulatedContent += codeBlock.raw
       },
     )
