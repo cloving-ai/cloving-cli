@@ -44,10 +44,16 @@ Please briefly explain how this shell script works.`
   }
 
   private async handleUserAction(response: string, prompt: string): Promise<void> {
+    let { exec } = this.options
     this.chatHistory.push({ role: 'assistant', content: response })
 
     const generatedShell = extractMarkdown(response)
     const generatedShellWithoutShebang = generatedShell.replace(/^#!.*?\s/, '')
+
+    if (exec) {
+      execSync(generatedShellWithoutShebang, { stdio: 'inherit' })
+      return
+    }
 
     const action = await select({
       message: 'What would you like to do?',
