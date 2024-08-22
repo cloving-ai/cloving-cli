@@ -1,7 +1,7 @@
 import {
   extractCurrentNewBlocks,
   extractMarkdown,
-  updateFileContent,
+  searchReplaceString,
   checkBlocksApplicability,
 } from '../../src/utils/string_utils'
 
@@ -82,7 +82,7 @@ const newContent = 'This is new'
         currentContent: "console.log('Non-existent content')",
         newContent: "console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(currentContent)
     })
 
@@ -93,7 +93,7 @@ const newContent = 'This is new'
         currentContent: '',
         newContent: "console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe("console.log('New content')")
     })
 
@@ -106,7 +106,7 @@ const newContent = 'This is new'
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content with indentation')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`function example() {
       console.log('New content with indentation')
     }`)
@@ -127,7 +127,7 @@ const newContent = 'This is new'
     })
   })
 
-  describe('updateFileContent', () => {
+  describe('searchReplaceString', () => {
     test('should replace current content with new content', () => {
       const currentContent = `function example() {
   console.log('Old content')
@@ -137,7 +137,7 @@ const newContent = 'This is new'
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`function example() {
   console.log('New content')
 }`)
@@ -152,7 +152,7 @@ const newContent = 'This is new'
         currentContent: "  console.log('Old content')",
         newContent: "  console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`function example() {
   console.log('New content')
 }`)
@@ -167,7 +167,7 @@ const newContent = 'This is new'
         currentContent: "    console.log('Old content')",
         newContent: "    console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
     console.log('New content')
   }`)
@@ -182,7 +182,7 @@ const newContent = 'This is new'
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content')",
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
     console.log('New content')
   }`)
@@ -201,7 +201,7 @@ const newContent = 'This is new'
     console.log('New content')
   }`,
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`  function example() {
     console.log('New content')
   }`)
@@ -222,12 +222,76 @@ const newContent = 'This is new'
     console.log('Old content')
   }`,
       }
-      const updatedContent = updateFileContent(currentContent, block)
+      const updatedContent = searchReplaceString(currentContent, block)
       expect(updatedContent).toBe(`  # This is a comment
   function example() {
     # here is a new comment
     console.log('Old content')
   }`)
+    })
+  })
+
+  describe('extractCurrentNewBlocks and searchReplaceString integration', () => {
+    test('should extract blocks and replace content correctly', () => {
+      const diffString = `Here is some text\n\`\`\`typescript
+<<<<<<< CURRENT src/managers/ShellManager.ts
+constructor(private options: ClovingGPTOptions) {
+  options.silent = getConfig(options).globalSilent || false
+  this.gpt = new ClovingGPT(options)
+}
+=======
+constructor(private options: ClovingGPTOptions) {
+  options.silent = getConfig(options).globalSilent || false
+  options.exec = options.exec || false
+  this.gpt = new ClovingGPT(options)
+}
+>>>>>>> NEW
+\`\`\`\n\nThat is the current content of the file.`
+
+      const existingContent = `class ShellManager {
+  private gpt: ClovingGPT
+  private chatHistory: ChatMessage[] = []
+
+  constructor(private options: ClovingGPTOptions) {
+    options.silent = getConfig(options).globalSilent || false
+    this.gpt = new ClovingGPT(options)
+  }
+}`
+
+      // Extract blocks
+      const blocks = extractCurrentNewBlocks(diffString)
+
+      // Check if blocks are extracted correctly
+      expect(blocks).toHaveLength(1)
+      expect(blocks[0]).toEqual({
+        filePath: 'src/managers/ShellManager.ts',
+        currentContent: `constructor(private options: ClovingGPTOptions) {
+  options.silent = getConfig(options).globalSilent || false
+  this.gpt = new ClovingGPT(options)
+}`,
+        newContent: `constructor(private options: ClovingGPTOptions) {
+  options.silent = getConfig(options).globalSilent || false
+  options.exec = options.exec || false
+  this.gpt = new ClovingGPT(options)
+}`,
+      })
+
+      // Apply the change using searchReplaceString
+      const updatedContent = searchReplaceString(existingContent, blocks[0])
+
+      // Check if the content is updated correctly
+      const expectedContent = `class ShellManager {
+  private gpt: ClovingGPT
+  private chatHistory: ChatMessage[] = []
+
+  constructor(private options: ClovingGPTOptions) {
+    options.silent = getConfig(options).globalSilent || false
+    options.exec = options.exec || false
+    this.gpt = new ClovingGPT(options)
+  }
+}`
+
+      expect(updatedContent).toBe(expectedContent)
     })
   })
 })

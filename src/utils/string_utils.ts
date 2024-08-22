@@ -298,13 +298,13 @@ export const writeFileContent = async (filePath: string, content: string): Promi
  *   currentContent: "console.log('Old content')",
  *   newContent: "console.log('New content')"
  * }
- * const updatedContent = updateFileContent(currentContent, block)
+ * const updatedContent = searchReplaceString(currentContent, block)
  * // updatedContent will be:
  * // function example() {
  * //   console.log('New content')
  * // }
  */
-export const updateFileContent = (currentContent: string, block: CurrentNewBlock): string => {
+export const searchReplaceString = (currentContent: string, block: CurrentNewBlock): string => {
   // 1) if block.currentContent.trim() is empty then return block.newContent
   if (block.currentContent.trim() === '') {
     return block.newContent
@@ -317,26 +317,34 @@ export const updateFileContent = (currentContent: string, block: CurrentNewBlock
   // 3) see if the trimmed block.currentContent matches a section of code in the trimmed currentContent
   const blockContent = blockLines.join('\n')
   const currentContentTrimmed = currentLines.join('\n')
+
   // 4) if so, make a variable named matchingLine with the line number of which line the block.currentContent starts on in currentContent
   const matchingLine = currentContentTrimmed.indexOf(blockContent)
   if (matchingLine === -1) {
     return currentContent // If no match is found, return the original content
   }
-  // 5) compare the first line of block.currentContent with the matchingLine line of currentContent, putting any preceeding spaces that are in currentContent but not in block.currentContent into a variable named preceedingSpaces
-  const firstLineIndex = currentContent.indexOf(blockLines[0])
-  const precedingSpaces = currentContent
-    .substring(firstLineIndex, firstLineIndex + currentLines[0].length)
-    .match(/^\s*/)
+
+  // 5) compare the first line of block.currentContent with the startLine line of currentContent, putting any preceeding spaces that are in currentContent but not in block.currentContent into a variable named preceedingSpaces
+  const startLine = currentContent.split('\n').findIndex((line) => line.includes(blockLines[0]))
+  if (startLine === -1) {
+    return currentContent // If no match is found, return the original content
+  }
+  const startLineContent = currentContent.split('\n')[startLine]
+  const blockLineContent = block.currentContent.split('\n')[0]
+  const precedingSpaces = startLineContent.replace(blockLineContent, '')
 
   // 6) add preceedingSpaces to the start of each line in both block.currentContent and block.newContent
   if (precedingSpaces) {
-    const precedingSpacesValue = precedingSpaces[0]
+    const indentedCurrentContent = block.currentContent
+      .split('\n')
+      .map((line) => precedingSpaces + line)
+      .join('\n')
     const indentedNewContent = block.newContent
       .split('\n')
-      .map((line) => precedingSpacesValue + line)
+      .map((line) => precedingSpaces + line)
       .join('\n')
     // 7) finally, do a simple currentContent.replace(block.currentContent, block.newContent) with the modified (added preceeding spaces to match) variables
-    return currentContent.replace(block.currentContent, indentedNewContent)
+    return currentContent.replace(indentedCurrentContent, indentedNewContent)
   } else {
     return currentContent.replace(block.currentContent, block.newContent)
   }
@@ -385,7 +393,7 @@ const analyzeBlockContent = async (
  * @param {number} index - The index of the block being processed (used for logging).
  * @returns {Promise<void>} A promise that resolves when the block has been processed.
  */
-export const processBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
+export const applyAndSaveBlock = async (block: CurrentNewBlock, index: number): Promise<void> => {
   const filePath = path.resolve(block.filePath)
   let fileContent = await readFileContent(filePath)
 
@@ -411,7 +419,7 @@ export const processBlock = async (block: CurrentNewBlock, index: number): Promi
     return
   }
 
-  const updatedContent = updateFileContent(fileContent, block)
+  const updatedContent = searchReplaceString(fileContent, block)
   await writeFileContent(filePath, updatedContent)
   console.log(
     `[${index + 1}] ${colors.green.bold(block.filePath)} has been ${colors.yellow.bold('updated')}`,
@@ -446,7 +454,7 @@ export const applyAndSaveCurrentNewBlocks = async (blocks: CurrentNewBlock[]): P
 
   for (const [index, block] of blocks.entries()) {
     try {
-      await processBlock(block, index)
+      await applyAndSaveBlock(block, index)
     } catch (error) {
       console.error(`Error processing ${colors.red(block.filePath)}:`, error)
     }

@@ -37,6 +37,7 @@ export interface ClovingGPTOptions {
   files?: string[]
   prompt?: string
   save?: boolean
+  exec?: boolean
   interactive?: boolean
   temperature?: number
   port?: number

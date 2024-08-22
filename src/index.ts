@@ -101,6 +101,7 @@ generate
   .command('shell')
   .alias('sh')
   .description('Generate a shell command based on a prompt')
+  .option('-e, --exec', 'Automatically execute the generated shell command')
   .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
   .option(
     '-m, --model <model>',
