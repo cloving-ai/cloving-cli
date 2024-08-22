@@ -54,6 +54,8 @@ class ChatManager {
   private prompt: string = ''
   private isProcessing: boolean = false
   private isSilent = false
+  private retryCount: number = 0
+  private maxRetries: number = 3
 
   /**
    * Creates an instance of ChatManager.
@@ -807,16 +809,27 @@ class ChatManager {
       const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
-        console.log(
-          `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied, prompting the AI to try again with more detail.\n`,
-        )
+        if (this.retryCount < this.maxRetries) {
+          console.log(
+            `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied. Retrying (Attempt ${this.retryCount + 1}/${this.maxRetries})...\n`,
+          )
 
-        this.processUserInput(`Some of the provided code blocks could not be applied,
+          this.retryCount++
+          this.processUserInput(`Some of the provided code blocks could not be applied,
 please match the existing code with a few more lines of context and make sure it is a character for character exact match.
+Never use "rest of the existing code" or "rest of the code" in your response, instead break the code block into smaller blocks.
 
 ${summary}`)
 
-        return
+          return
+        } else {
+          console.log(
+            `\n\n${colors.red.bold('ERROR')} Failed to generate a diff that could be cleanly applied after ${this.maxRetries} attempts. Please review the changes manually and try again.\n`,
+          )
+          this.retryCount = 0 // Reset the retry count for future attempts
+        }
+      } else {
+        this.retryCount = 0 // Reset the retry count on successful application
       }
     }
 
