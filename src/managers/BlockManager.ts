@@ -1,4 +1,6 @@
 import { EventEmitter } from 'events'
+import { extractCurrentNewBlocks } from '../utils/string_utils'
+import type { CurrentNewBlock } from '../utils/types'
 
 // Passes through string chunks, looking for code blocks, when it finds one, it starts buffering until it finds the end of the block
 // Then it emits the code block and clears the buffer and continues
@@ -10,8 +12,7 @@ class BlockManager extends EventEmitter {
 
   // add content to the buffer, watching for code blocks along the way
   addContent(content: string) {
-    // when getting ` , just add it to the buffer until we get a char that isn't `
-    if (content.includes('`')) {
+    if (content.includes('`') || content.includes('\n')) {
       this.isWaitingForContent = true
       this.buffer += content
       return
@@ -20,28 +21,27 @@ class BlockManager extends EventEmitter {
       this.buffer = ''
     }
 
-    const codeBlockMarker = '\n```'
+    this.processCodeBlocks(content)
+  }
 
+  private processCodeBlocks(content: string) {
+    const codeBlockMarker = '\n```'
     let markerIndex = content.indexOf(codeBlockMarker)
-    if (content.startsWith('```')) markerIndex = 0
 
     if (markerIndex !== -1) {
       if (this.isBufferingCode) {
-        // End of code block
         this.codeBuffer += content.slice(0, markerIndex + codeBlockMarker.length)
         const rest = content.slice(markerIndex + codeBlockMarker.length)
         this.emit('endGeneratingCode')
         this.emitCodeBlock()
         this.emit('content', rest)
       } else {
-        // Start of code block
         this.emitBuffer(content.slice(0, markerIndex))
         this.codeBuffer = content.slice(markerIndex)
         this.emit('startGeneratingCode')
         this.isBufferingCode = true
       }
     } else {
-      // No code block marker found
       if (this.isBufferingCode) {
         this.codeBuffer += content
       } else {
@@ -64,21 +64,16 @@ class BlockManager extends EventEmitter {
 
   private emitCodeBlock() {
     if (this.codeBuffer.length > 0) {
-      const codeParts = this.parseCodeBuffer()
-      if (codeParts) {
-        const { language, currentStart, newEnd, currentCode, newCode } = codeParts
+      const currentNewBlock = this.parseCodeBuffer()
+      if (currentNewBlock) {
         this.emit('codeBlock', {
-          language,
-          currentStart,
-          newEnd,
-          currentCode,
-          newCode,
+          currentNewBlock,
           raw: this.codeBuffer,
         })
         this.emit('content', this.buffer)
         this.clearBuffer()
       } else {
-        this.emit('content', this.codeBuffer)
+        this.emit('codeBlock', this.codeBuffer)
         this.clearBuffer()
       }
     }
@@ -91,36 +86,13 @@ class BlockManager extends EventEmitter {
    * current start index, divider index, and new end index. It then extracts the current code and new code
    * from the buffer based on these indices.
    *
-   * @return {{ language: string, currentStart: string, newEnd: string, current: string, newCode: string, afterCode: string }}
+   * @return {CurrentNewBlock | null}
    *   An object containing the language, current start, new end, current code, and new code.
    */
-  private parseCodeBuffer(): {
-    language: string
-    currentStart: string
-    newEnd: string
-    currentCode: string
-    newCode: string
-  } | null {
-    const lines = this.codeBuffer.split('\n')
-    const language = lines[0].trim().slice(3) // Remove '```' from the language line
-    const currentStartIndex = lines.findIndex((line) => line.startsWith('<<<<<<< CURRENT'))
-    const dividerIndex = lines.findIndex((line) => line === '=======')
-    const newEndIndex = lines.findIndex((line) => line.startsWith('>>>>>>> NEW'))
+  private parseCodeBuffer(): CurrentNewBlock | null {
+    const results = extractCurrentNewBlocks(this.codeBuffer)
 
-    if (currentStartIndex === -1 || dividerIndex === -1 || newEndIndex === -1) {
-      return null
-    }
-
-    const currentCode = lines.slice(currentStartIndex + 1, dividerIndex).join('\n')
-    const newCode = lines.slice(dividerIndex + 1, newEndIndex).join('\n')
-
-    return {
-      language,
-      currentStart: lines[currentStartIndex],
-      newEnd: lines[newEndIndex],
-      currentCode,
-      newCode,
-    }
+    return results[0]
   }
 
   clearBuffer() {

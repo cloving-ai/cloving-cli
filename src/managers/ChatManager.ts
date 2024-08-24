@@ -24,7 +24,7 @@ import {
   addFileOrDirectoryToContext,
   getPackageVersion,
 } from '../utils/prompt_utils'
-import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
+import type { ClovingGPTOptions, ChatMessage, CurrentNewBlock } from '../utils/types'
 
 const specialCommands = [
   'save',
@@ -742,22 +742,33 @@ class ChatManager {
 
     this.blockManager.on(
       'codeBlock',
-      (codeBlock: {
-        language: string
-        currentStart: string
-        newEnd: string
-        currentCode: string
-        newCode: string
-        raw: string
-      }) => {
-        process.stdout.write(
-          colors.gray.bold(`\`\`\`${codeBlock.language}                                       \n`),
-        )
-        process.stdout.write(colors.gray.bold(`${codeBlock.currentStart}\n`))
-        process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
-        process.stdout.write(colors.gray.bold('\n=======\n'))
-        process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
-        process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+      (codeBlock: { currentNewBlock?: CurrentNewBlock; raw?: string }) => {
+        const { currentNewBlock } = codeBlock
+        if (currentNewBlock?.currentContent && currentNewBlock?.newContent) {
+          // Current/New format
+          process.stdout.write(
+            colors.gray.bold(
+              `\`\`\`${currentNewBlock.language}                                       \n`,
+            ),
+          )
+          process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
+          process.stdout.write(
+            highlight(currentNewBlock.currentContent, { language: currentNewBlock.language }),
+          )
+          process.stdout.write(colors.gray.bold('\n=======\n'))
+          process.stdout.write(
+            highlight(currentNewBlock.newContent, { language: currentNewBlock.language }),
+          )
+          process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+        } else {
+          if (codeBlock.raw) {
+            // Raw format
+            process.stdout.write(`                                       \n`)
+            process.stdout.write(highlight(codeBlock.raw))
+          } else {
+            process.stdout.write(`                                       \n`)
+          }
+        }
         accumulatedContent += codeBlock.raw
       },
     )

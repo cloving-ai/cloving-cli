@@ -2,21 +2,24 @@ import {
   extractCurrentNewBlocks,
   extractMarkdown,
   searchReplaceString,
-  checkBlocksApplicability,
+  extractJsonMetadata,
 } from '../../src/utils/string_utils'
 
 describe('stringUtils', () => {
   describe('extractCurrentNewBlocks', () => {
     test('should extract current and new blocks from input', () => {
       const input = `
+\`\`\`typescript
 <<<<<<< CURRENT src/file1.ts
 const oldVar = 1
 =======
 const newVar = 2
 >>>>>>> NEW
+\`\`\`
 
 Some text in between
 
+\`\`\`typescript
 <<<<<<< CURRENT src/file2.ts
 function oldFunction() {
   return 'old'
@@ -26,17 +29,20 @@ function newFunction() {
   return 'new'
 }
 >>>>>>> NEW
-      `
+\`\`\`
+`
 
       const result = extractCurrentNewBlocks(input)
 
       expect(result).toEqual([
         {
+          language: 'typescript',
           filePath: 'src/file1.ts',
           currentContent: 'const oldVar = 1',
           newContent: 'const newVar = 2',
         },
         {
+          language: 'typescript',
           filePath: 'src/file2.ts',
           currentContent: "function oldFunction() {\n  return 'old'\n}",
           newContent: "function newFunction() {\n  return 'new'\n}",
@@ -46,16 +52,18 @@ function newFunction() {
 
     test('should handle empty current content', () => {
       const input = `
+\`\`\`typescript
 <<<<<<< CURRENT src/newfile.ts
 =======
 const newContent = 'This is new'
 >>>>>>> NEW
-      `
+\`\`\``
 
       const result = extractCurrentNewBlocks(input)
 
       expect(result).toEqual([
         {
+          language: 'typescript',
           filePath: 'src/newfile.ts',
           currentContent: '',
           newContent: "const newContent = 'This is new'",
@@ -78,6 +86,7 @@ const newContent = 'This is new'
         }
         `
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "console.log('Non-existent content')",
         newContent: "console.log('New content')",
@@ -89,6 +98,7 @@ const newContent = 'This is new'
     test('should replace entire content if current content is empty', () => {
       const currentContent = ''
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: '',
         newContent: "console.log('New content')",
@@ -102,6 +112,7 @@ const newContent = 'This is new'
       console.log('Old content')
     }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content with indentation')",
@@ -133,6 +144,7 @@ const newContent = 'This is new'
   console.log('Old content')
 }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content')",
@@ -148,6 +160,7 @@ const newContent = 'This is new'
   console.log('Old content')
 }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "  console.log('Old content')",
         newContent: "  console.log('New content')",
@@ -163,6 +176,7 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "    console.log('Old content')",
         newContent: "    console.log('New content')",
@@ -178,6 +192,7 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: "console.log('Old content')",
         newContent: "console.log('New content')",
@@ -193,6 +208,7 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: `  function example() {
     console.log('Old content')
@@ -212,6 +228,7 @@ const newContent = 'This is new'
     console.log('Old content')
   }`
       const block = {
+        language: 'typescript',
         filePath: '/tmp/test',
         currentContent: `  function example() {
     console.log('Old content')
@@ -264,6 +281,7 @@ constructor(private options: ClovingGPTOptions) {
       // Check if blocks are extracted correctly
       expect(blocks).toHaveLength(1)
       expect(blocks[0]).toEqual({
+        language: 'typescript',
         filePath: 'src/managers/ShellManager.ts',
         currentContent: `constructor(private options: ClovingGPTOptions) {
   options.silent = getConfig(options).globalSilent || false
@@ -292,6 +310,14 @@ constructor(private options: ClovingGPTOptions) {
 }`
 
       expect(updatedContent).toBe(expectedContent)
+    })
+  })
+
+  describe('extractJsonMetadata', () => {
+    test('should return empty string for invalid JSON', () => {
+      const invalidJsonResponse = 'Invalid JSON: {key: value}'
+      const result = extractJsonMetadata(invalidJsonResponse)
+      expect(result).toBe('')
     })
   })
 })

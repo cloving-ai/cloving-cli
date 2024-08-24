@@ -32,7 +32,7 @@ export const CODEGEN_INSTRUCTIONS = `## AI Code Generation Instructions
    \`\`\`typescript
 2. **Next line: seven <, CURRENT, and the file path.**
    <<<<<<< CURRENT path/to/file.ts
-3. **Include the exact existing code to be changed.**
+3. **Include the exact existing code to be changed, this section should never be just spaces or tabs unless it is a new file.**
 4. **Divide with seven =.**
    =======
 5. **Add the new code.**
