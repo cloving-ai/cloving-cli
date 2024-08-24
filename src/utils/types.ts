@@ -2,6 +2,7 @@ export type GPTProvider = 'openai' | 'claude' | 'ollama' | 'gemini'
 
 export interface BlockIndices {
   start: number
+  current: number
   filePathEnd: number
   divider: number
   end: number

@@ -4,9 +4,10 @@ import colors from 'colors'
 
 import type { BlockIndices, CurrentNewBlock } from './types'
 
-const BLOCK_START = '\n<<<<<<< CURRENT'
+const BLOCK_START = '\n```'
+const BLOCK_CURRENT = '\n<<<<<<< CURRENT'
 const BLOCK_DIVIDER = '\n======='
-const BLOCK_END = '\n>>>>>>> NEW'
+const BLOCK_END = '\n>>>>>>> NEW\n```'
 
 // Function to estimate token count
 export const estimateTokens = async (text: string): Promise<number> => {
@@ -179,7 +180,12 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
   const blockStart = input.indexOf(BLOCK_START, startIndex)
   if (blockStart === -1) return null
 
-  const filePathStart = blockStart + BLOCK_START.length
+  const languageStart = blockStart + BLOCK_START.length
+  const languageEnd = input.indexOf('\n', languageStart)
+  if (languageEnd === -1) return null
+
+  const currentStart = input.indexOf(BLOCK_CURRENT, startIndex)
+  const filePathStart = currentStart + BLOCK_CURRENT.length
   const filePathEnd = input.indexOf('\n', filePathStart)
   const dividerIndex = input.indexOf(BLOCK_DIVIDER, filePathEnd)
   if (dividerIndex === -1) return null
@@ -188,7 +194,8 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
   if (blockEnd === -1) return null
 
   return {
-    start: blockStart,
+    start: languageStart,
+    current: currentStart,
     filePathEnd,
     divider: dividerIndex,
     end: blockEnd,
@@ -206,8 +213,8 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
  * @returns {CurrentNewBlock} An object containing the extracted file path, current content, and new content.
  */
 export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
-  const language = input.split('\n')[0].trim()
-  const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
+  const language = input.slice(indices.start, indices.current).trim()
+  const filePath = input.slice(indices.current + BLOCK_CURRENT.length, indices.filePathEnd).trim()
   const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
   const newContent = input.slice(indices.divider + BLOCK_DIVIDER.length, indices.end).trim()
 

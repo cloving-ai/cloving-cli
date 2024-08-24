@@ -9,14 +9,17 @@ describe('stringUtils', () => {
   describe('extractCurrentNewBlocks', () => {
     test('should extract current and new blocks from input', () => {
       const input = `
+\`\`\`typescript
 <<<<<<< CURRENT src/file1.ts
 const oldVar = 1
 =======
 const newVar = 2
 >>>>>>> NEW
+\`\`\`
 
 Some text in between
 
+\`\`\`typescript
 <<<<<<< CURRENT src/file2.ts
 function oldFunction() {
   return 'old'
@@ -26,7 +29,8 @@ function newFunction() {
   return 'new'
 }
 >>>>>>> NEW
-      `
+\`\`\`
+`
 
       const result = extractCurrentNewBlocks(input)
 
@@ -48,11 +52,12 @@ function newFunction() {
 
     test('should handle empty current content', () => {
       const input = `
+\`\`\`typescript
 <<<<<<< CURRENT src/newfile.ts
 =======
 const newContent = 'This is new'
 >>>>>>> NEW
-      `
+\`\`\``
 
       const result = extractCurrentNewBlocks(input)
 
