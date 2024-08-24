@@ -750,14 +750,28 @@ class ChatManager {
         newCode: string
         raw: string
       }) => {
-        process.stdout.write(
-          colors.gray.bold(`\`\`\`${codeBlock.language}                                       \n`),
-        )
-        process.stdout.write(colors.gray.bold(`${codeBlock.currentStart}\n`))
-        process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
-        process.stdout.write(colors.gray.bold('\n=======\n'))
-        process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
-        process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+        if (codeBlock.currentStart && codeBlock.newEnd) {
+          // Current/New format
+          process.stdout.write(
+            colors.gray.bold(
+              `\`\`\`${codeBlock.language}                                       \n`,
+            ),
+          )
+          process.stdout.write(colors.gray.bold(`${codeBlock.currentStart}\n`))
+          process.stdout.write(highlight(codeBlock.currentCode, { language: codeBlock.language }))
+          process.stdout.write(colors.gray.bold('\n=======\n'))
+          process.stdout.write(highlight(codeBlock.newCode, { language: codeBlock.language }))
+          process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+        } else {
+          // Non-Current/New format
+          process.stdout.write(
+            colors.gray.bold(
+              `\`\`\`${codeBlock.language}                                       \n`,
+            ),
+          )
+          process.stdout.write(highlight(codeBlock.raw, { language: codeBlock.language }))
+          process.stdout.write(colors.gray.bold('\n```'))
+        }
         accumulatedContent += codeBlock.raw
       },
     )

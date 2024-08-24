@@ -13,6 +13,7 @@ export interface OpenAIStreamChunk {
 }
 
 export interface CurrentNewBlock {
+  language: string
   filePath: string
   currentContent: string
   newContent: string

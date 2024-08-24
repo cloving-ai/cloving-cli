@@ -102,7 +102,7 @@ class BlockManager extends EventEmitter {
     newCode: string
   } | null {
     const lines = this.codeBuffer.split('\n')
-    const language = lines[0].trim().slice(3) // Remove '```' from the language line
+    const language = lines[1].trim().slice(3) // Remove '```' from the language line
     const currentStartIndex = lines.findIndex((line) => line.startsWith('<<<<<<< CURRENT'))
     const dividerIndex = lines.findIndex((line) => line === '=======')
     const newEndIndex = lines.findIndex((line) => line.startsWith('>>>>>>> NEW'))

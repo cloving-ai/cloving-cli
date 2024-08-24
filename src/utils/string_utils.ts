@@ -206,11 +206,12 @@ export const findBlockIndices = (input: string, startIndex: number): BlockIndice
  * @returns {CurrentNewBlock} An object containing the extracted file path, current content, and new content.
  */
 export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBlock => {
+  const language = input.split('\n')[0].trim()
   const filePath = input.slice(indices.start + BLOCK_START.length, indices.filePathEnd).trim()
   const currentContent = input.slice(indices.filePathEnd + 1, indices.divider).trim()
   const newContent = input.slice(indices.divider + BLOCK_DIVIDER.length, indices.end).trim()
 
-  return { filePath, currentContent, newContent }
+  return { language, filePath, currentContent, newContent }
 }
 
 /**
