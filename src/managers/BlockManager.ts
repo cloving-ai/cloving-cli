@@ -12,8 +12,7 @@ class BlockManager extends EventEmitter {
 
   // add content to the buffer, watching for code blocks along the way
   addContent(content: string) {
-    // when getting ` , just add it to the buffer until we get a char that isn't `
-    if (content.includes('`')) {
+    if (content.includes('`') || content.includes('\n')) {
       this.isWaitingForContent = true
       this.buffer += content
       return
@@ -22,28 +21,27 @@ class BlockManager extends EventEmitter {
       this.buffer = ''
     }
 
-    const codeBlockMarker = '\n```'
+    this.processCodeBlocks(content)
+  }
 
+  private processCodeBlocks(content: string) {
+    const codeBlockMarker = '\n```'
     let markerIndex = content.indexOf(codeBlockMarker)
-    if (content.startsWith('```')) markerIndex = 0
 
     if (markerIndex !== -1) {
       if (this.isBufferingCode) {
-        // End of code block
         this.codeBuffer += content.slice(0, markerIndex + codeBlockMarker.length)
         const rest = content.slice(markerIndex + codeBlockMarker.length)
         this.emit('endGeneratingCode')
         this.emitCodeBlock()
         this.emit('content', rest)
       } else {
-        // Start of code block
         this.emitBuffer(content.slice(0, markerIndex))
         this.codeBuffer = content.slice(markerIndex)
         this.emit('startGeneratingCode')
         this.isBufferingCode = true
       }
     } else {
-      // No code block marker found
       if (this.isBufferingCode) {
         this.codeBuffer += content
       } else {

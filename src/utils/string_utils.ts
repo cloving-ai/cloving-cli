@@ -68,6 +68,13 @@ export const extractJsonMetadata = (response: string): string => {
     jsonString = jsonString.substring(0, jsonEndIndex + 1)
   }
 
+  // sanity check that the extracted string is valid JSON
+  try {
+    JSON.parse(jsonString)
+  } catch (error) {
+    jsonString = ''
+  }
+
   return jsonString
 }
 

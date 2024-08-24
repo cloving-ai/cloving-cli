@@ -2,7 +2,7 @@ import {
   extractCurrentNewBlocks,
   extractMarkdown,
   searchReplaceString,
-  checkBlocksApplicability,
+  extractJsonMetadata,
 } from '../../src/utils/string_utils'
 
 describe('stringUtils', () => {
@@ -310,6 +310,14 @@ constructor(private options: ClovingGPTOptions) {
 }`
 
       expect(updatedContent).toBe(expectedContent)
+    })
+  })
+
+  describe('extractJsonMetadata', () => {
+    test('should return empty string for invalid JSON', () => {
+      const invalidJsonResponse = 'Invalid JSON: {key: value}'
+      const result = extractJsonMetadata(invalidJsonResponse)
+      expect(result).toBe('')
     })
   })
 })
