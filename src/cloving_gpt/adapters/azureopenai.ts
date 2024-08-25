@@ -31,7 +31,7 @@ export class AzureOpenAIAdapter implements Adapter {
 
   getHeaders(apiKey: string): Record<string, string> {
     return {
-      'api-key': apiKey,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     }
   }
