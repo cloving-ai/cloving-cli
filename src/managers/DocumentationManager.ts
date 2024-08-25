@@ -4,7 +4,8 @@ import highlight from 'cli-highlight'
 
 import ClovingGPT from '../cloving_gpt'
 import { getConfig } from '../utils/config_utils'
-import { addFileOrDirectoryToContext, CODEGEN_INSTRUCTIONS } from '../utils/prompt_utils'
+import { addFileOrDirectoryToContext } from '../utils/prompt_utils'
+import { CODEGEN_INSTRUCTIONS } from '../utils/prompts'
 import {
   applyAndSaveCurrentNewBlocks,
   extractCurrentNewBlocks,

@@ -1,4 +1,5 @@
-import { generateCodegenPrompt, CODEGEN_INSTRUCTIONS } from '../../src/utils/prompt_utils'
+import { generateCodegenPrompt } from '../../src/utils/prompt_utils'
+import { CODEGEN_INSTRUCTIONS } from '../../src/utils/prompts'
 
 jest.mock('../../src/utils/config_utils', () => ({
   getClovingConfig: jest.fn().mockReturnValue({}),
