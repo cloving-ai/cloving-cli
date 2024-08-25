@@ -12,16 +12,27 @@ import {
 } from '../utils/string_utils'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
+/**
+ * Manages the generation of documentation for specified files.
+ */
 class DocumentationManager {
   private gpt: ClovingGPT
   private contextFiles: Record<string, string> = {}
   private chatHistory: ChatMessage[] = []
 
+  /**
+   * Creates a new DocumentationManager instance.
+   * @param {ClovingGPTOptions} options - Configuration options for the DocumentationManager.
+   */
   constructor(private options: ClovingGPTOptions) {
     this.options.silent = getConfig(options).globalSilent || false
     this.gpt = new ClovingGPT(options)
   }
 
+  /**
+   * Generates documentation for the specified files.
+   * @returns {Promise<void>}
+   */
   public async generateDocumentation(): Promise<void> {
     try {
       await this.loadContextFiles()
@@ -53,6 +64,10 @@ class DocumentationManager {
     }
   }
 
+  /**
+   * Displays the generated documentation in the console with syntax highlighting.
+   * @param {string} rawDocumentationResponse - The raw documentation response from the GPT model.
+   */
   private displayGeneratedDocumentation(rawDocumentationResponse: string) {
     parseMarkdownInstructions(rawDocumentationResponse).map((code) => {
       if (code.trim().startsWith('```')) {
@@ -72,6 +87,10 @@ class DocumentationManager {
     })
   }
 
+  /**
+   * Loads the context files specified in the options.
+   * @returns {Promise<void>}
+   */
   private async loadContextFiles(): Promise<void> {
     if (this.options.files) {
       for (const file of this.options.files) {
@@ -83,6 +102,10 @@ class DocumentationManager {
     }
   }
 
+  /**
+   * Generates the documentation prompt to be sent to the GPT model.
+   * @returns {string} The generated documentation prompt.
+   */
   private generateDocumentationPrompt(): string {
     const contextFileContents = Object.entries(this.contextFiles)
       .map(([file, content]) => `### File: ${file}\n\n\`\`\`\n${content}\n\`\`\`\n`)
