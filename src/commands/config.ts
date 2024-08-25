@@ -1,7 +1,9 @@
 import { getConfig, saveConfig } from '../utils/config_utils'
 import { fetchModels } from '../utils/prompt_utils'
 import type { ClovingModelConfig } from '../utils/types'
-import { select, input, confirm, number } from '@inquirer/prompts'
+
+// Add this type definition at the top of the file
+import { select, input, confirm } from '@inquirer/prompts'
 
 export const config = async (): Promise<void> => {
   let currentConfig = getConfig({})
@@ -96,13 +98,26 @@ export const config = async (): Promise<void> => {
 
     const parsedTemperature = parseFloat(temperature)
 
-    const modelConfig: ClovingModelConfig = {
+    let modelConfig: ClovingModelConfig = {
       apiKey,
       primary,
       priority: parseInt(priority, 10),
       silent: !review,
       trust,
       temperature: parsedTemperature,
+    }
+
+    if (provider === 'azureopenai') {
+      const endpoint = await input({
+        message: 'Enter the Azure OpenAI endpoint URL:',
+        validate: (value: string) => {
+          if (!value.startsWith('https://')) {
+            return 'Please enter a valid HTTPS URL'
+          }
+          return true
+        },
+      })
+      modelConfig.endpoint = endpoint
     }
 
     currentConfig.models[provider][model] = modelConfig
