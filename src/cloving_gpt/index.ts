@@ -13,6 +13,7 @@ import { OpenAIAdapter } from './adapters/openai'
 import { MistralAdapter } from './adapters/mistral'
 import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
+import { AzureOpenAIAdapter } from './adapters/azureopenai'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 
 import type {
@@ -67,6 +68,12 @@ class ClovingGPT {
         break
       case 'gemini':
         this.adapter = new GeminiAdapter(model)
+        break
+      case 'azureopenai':
+        if (!modelConfig.endpoint) {
+          throw new Error('Azure OpenAI endpoint not configured')
+        }
+        this.adapter = new AzureOpenAIAdapter(model, modelConfig.endpoint)
         break
       default:
         throw new Error(`Unsupported provider: ${provider}`)
@@ -206,14 +213,27 @@ class ClovingGPT {
       return this.adapter.extractResponse(response.data)
     } catch (err) {
       const error = err as AxiosError
-      let errorMessage = error instanceof Error ? error.message : 'connection error'
-      if (errorMessage === '') {
-        errorMessage = 'connection error'
+      let errorMessage = 'An error occurred while communicating with the AI server'
+
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        errorMessage = `Server responded with status ${error.response.status}: ${error.response.statusText}`
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response received from the server'
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        errorMessage = error.message || 'Unknown error occurred'
       }
+
       console.error(
-        `Error communicating with the GPT server (${this.adapter.getEndpoint(this.stream)})\n\n${colors.red.bold(JSON.stringify(error.response?.data || "''", null, 2))}\n`,
+        `${colors.red.bold('ERROR')} ${errorMessage}\n` +
+          `Endpoint: ${this.adapter.getEndpoint(this.stream)}\n` +
+          `Details: ${colors.yellow(JSON.stringify(error.response?.data || {}, null, 2))}\n`,
       )
-      throw error
+
+      throw new Error(errorMessage)
     }
   }
 

@@ -54,6 +54,7 @@ export interface ClovingModelConfig {
   silent: boolean
   trust: boolean
   temperature: number
+  endpoint?: string
 }
 
 export type ProjectConfig = {

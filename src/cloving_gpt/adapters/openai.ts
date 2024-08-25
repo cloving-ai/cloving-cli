@@ -1,9 +1,11 @@
 import { Adapter } from '.'
 import type { GPTRequest, OpenAIStreamChunk } from '../../utils/types'
 
+// OpenAIAdapter class implements the Adapter interface
 export class OpenAIAdapter implements Adapter {
   private model: string
 
+  // List of supported models
   static supportedModels: string[] = [
     'openai:gpt:4o-2024-08-06',
     'openai:gpt:4o',
@@ -14,20 +16,24 @@ export class OpenAIAdapter implements Adapter {
     // Add more supported models here as needed
   ]
 
+  // Method to list supported models
   static listSupportedModels(): void {
     OpenAIAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
 
+  // Constructor to initialize the model
   constructor(model: string) {
     this.model = model
   }
 
+  // Method to get the API endpoint
   getEndpoint(): string {
     return `https://api.openai.com/v1/chat/completions`
   }
 
+  // Method to get the headers for the API request
   getHeaders(apiKey: string): Record<string, string> {
     return {
       Authorization: `Bearer ${apiKey}`,
@@ -35,6 +41,7 @@ export class OpenAIAdapter implements Adapter {
     }
   }
 
+  // Method to get the payload for the API request
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model.replace(':', '-'),
@@ -48,10 +55,12 @@ export class OpenAIAdapter implements Adapter {
     }
   }
 
+  // Method to extract the response from the API response data
   extractResponse(data: any): string {
     return data.choices[0].message.content
   }
 
+  // Method to convert the stream data into OpenAIStreamChunk format
   // data example:
   //    {
   //      id: 'chatcmpl-9tL477A98d54qvVQqJT010bm8BLJl',
@@ -70,7 +79,6 @@ export class OpenAIAdapter implements Adapter {
   //          }
   //      ]
   //    }
-
   convertStream(data: string): OpenAIStreamChunk | null {
     let beginningChar = 0
     let lastChar = 0

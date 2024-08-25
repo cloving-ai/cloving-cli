@@ -3,15 +3,25 @@ import axios from 'axios'
 import { Adapter } from '.'
 import type { OpenAIStreamChunk, GPTRequest } from '../../utils/types'
 
+/**
+ * Adapter for interacting with the Ollama API.
+ */
 export class OllamaAdapter implements Adapter {
   private model: string
 
   static supportedModels: string[] = []
 
+  /**
+   * Constructor to initialize the OllamaAdapter with a specific model.
+   * @param model - The model to be used by the adapter.
+   */
   constructor(model: string) {
     this.model = model
   }
 
+  /**
+   * Fetches and lists supported models from the Ollama API.
+   */
   static async listSupportedModels(): Promise<void> {
     try {
       const endpoint = 'http://localhost:11434/api/tags'
@@ -35,10 +45,19 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
+  /**
+   * Returns the endpoint URL for generating responses.
+   * @returns The endpoint URL as a string.
+   */
   getEndpoint(): string {
     return `http://localhost:11434/api/generate`
   }
 
+  /**
+   * Returns the headers required for making API requests.
+   * @param apiKey - The API key for authorization.
+   * @returns An object containing the headers.
+   */
   getHeaders(apiKey: string): Record<string, string> {
     return {
       Authorization: `Bearer ${apiKey}`,
@@ -46,6 +65,12 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
+  /**
+   * Constructs the payload for the API request.
+   * @param request - The GPT request object containing the prompt.
+   * @param stream - Boolean indicating if the response should be streamed.
+   * @returns An object containing the payload.
+   */
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model,
@@ -54,6 +79,12 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
+  /**
+   * Extracts the response from the API response data.
+   * @param data - The response data from the API.
+   * @returns The extracted response as a string.
+   * @throws Will throw an error if the response structure is invalid.
+   */
   extractResponse(data: any): string {
     try {
       if (data && typeof data === 'object' && 'response' in data) {
@@ -68,14 +99,11 @@ export class OllamaAdapter implements Adapter {
     }
   }
 
-  // data example:
-  // {
-  //   model: 'dolphin-llama3:latest',
-  //   created_at: '2024-08-06T21:04:34.616355Z',
-  //   response: 'The',
-  //   done: false
-  // }
-
+  /**
+   * Converts a stream of data into an OpenAIStreamChunk.
+   * @param data - The string data to be converted.
+   * @returns An OpenAIStreamChunk object or null if conversion fails.
+   */
   convertStream(data: string): OpenAIStreamChunk | null {
     let beginningChar = 0
     let lastChar = 0

@@ -1,10 +1,16 @@
 import { Adapter } from '.'
 import type { GPTRequest, OpenAIStreamChunk } from '../../utils/types'
 
+/**
+ * ClaudeAdapter class implements the Adapter interface for Claude AI models.
+ */
 export class ClaudeAdapter implements Adapter {
   private model: string
   private anthropicVersion: string
 
+  /**
+   * Array of supported Claude model identifiers.
+   */
   static supportedModels: string[] = [
     'claude:claude-3-5:sonnet-20240620',
     'claude:claude-3:opus-20240229',
@@ -13,21 +19,37 @@ export class ClaudeAdapter implements Adapter {
     // Add more supported models here as needed
   ]
 
+  /**
+   * Initializes a new ClaudeAdapter instance.
+   * @param model - The Claude model identifier.
+   */
   constructor(model: string) {
     this.model = model
     this.anthropicVersion = '2023-06-01'
   }
 
+  /**
+   * Logs all supported Claude models to the console.
+   */
   static listSupportedModels(): void {
     ClaudeAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
 
+  /**
+   * Returns the API endpoint for Claude.
+   * @returns The API endpoint URL.
+   */
   getEndpoint(): string {
     return `https://api.anthropic.com/v1/messages`
   }
 
+  /**
+   * Generates headers for API requests.
+   * @param apiKey - The API key for authentication.
+   * @returns An object containing the required headers.
+   */
   getHeaders(apiKey: string): Record<string, string> {
     return {
       'x-api-key': apiKey,
@@ -36,6 +58,12 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 
+  /**
+   * Prepares the payload for API requests.
+   * @param request - The GPTRequest object containing request details.
+   * @param stream - Whether to enable streaming (default: false).
+   * @returns An object containing the prepared payload.
+   */
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     let system = 'You are a computer programmer giving advice on how to write better code.'
     if (request.messages && request.messages.length > 0 && request.messages[0].role === 'system') {
@@ -55,6 +83,12 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 
+  /**
+   * Extracts the response text from the API response data.
+   * @param data - The API response data.
+   * @returns The extracted response text.
+   * @throws Error if the response structure is invalid.
+   */
   extractResponse(data: any): string {
     try {
       if (data && data.content && Array.isArray(data.content) && data.content.length > 0) {
@@ -69,7 +103,11 @@ export class ClaudeAdapter implements Adapter {
     }
   }
 
-  // data example: data: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hello, how are you?' } }
+  /**
+   * Converts streaming data to OpenAIStreamChunk format.
+   * @param data - The streaming data string.
+   * @returns An OpenAIStreamChunk object or null if parsing fails.
+   */
   convertStream(data: string): OpenAIStreamChunk | null {
     let beginningChar = 0
     let lastChar = 0
