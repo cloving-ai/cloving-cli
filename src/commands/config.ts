@@ -5,6 +5,11 @@ import type { ClovingModelConfig } from '../utils/types'
 // Add this type definition at the top of the file
 import { select, input, confirm } from '@inquirer/prompts'
 
+/**
+ * Configures the AI models by prompting the user for various settings.
+ *
+ * @returns {Promise<void>} A promise that resolves when the configuration is complete.
+ */
 export const config = async (): Promise<void> => {
   let currentConfig = getConfig({})
 
@@ -23,6 +28,9 @@ export const config = async (): Promise<void> => {
 
   while (continueConfig) {
     const providers = [...new Set(models.map((model) => model.split(':')[0]))]
+    /**
+     * Prompts the user to select a provider from the available models.
+     */
     const selectedProvider = await select({
       message: 'Select a provider:',
       choices: providers.map((provider) => ({ name: provider, value: provider })),
@@ -30,6 +38,9 @@ export const config = async (): Promise<void> => {
 
     const providerModels = models.filter((model) => model.startsWith(selectedProvider))
     const modelCategories = [...new Set(providerModels.map((model) => model.split(':')[1]))]
+    /**
+     * Prompts the user to select a category from the selected provider's models.
+     */
     const selectedCategory = await select({
       message: 'Select a category:',
       choices: modelCategories.map((category) => ({ name: category, value: category })),
@@ -38,6 +49,9 @@ export const config = async (): Promise<void> => {
     const specificModels = providerModels.filter(
       (model) => model.split(':')[1] === selectedCategory,
     )
+    /**
+     * Prompts the user to select a specific model from the selected category.
+     */
     const modelIndex = await select({
       message: "Select an AI model you'd like to use:",
       choices: specificModels.map((model, index) => ({ name: model, value: index })),
@@ -45,6 +59,9 @@ export const config = async (): Promise<void> => {
     })
 
     const selectedModel = specificModels[modelIndex]
+    /**
+     * Prompts the user to enter the API key for the selected model.
+     */
     const apiKey = await input({
       message: `Enter your API key for ${selectedModel}: `,
     })
@@ -55,12 +72,20 @@ export const config = async (): Promise<void> => {
       currentConfig.models[provider] = {}
     }
 
+    /**
+     * Prompts the user to set the selected model as the primary model.
+     */
     const primary = await confirm({
       message:
         'Set this model as the primary? Primary models are used by default if your prompt fits within its context window. You can configure backup models for larger prompts.',
       default: true,
     })
 
+    /**
+     * Prompts the user to enter the priority for the selected model.
+     *
+     * @returns {string} The priority value as a string.
+     */
     const priority = await input({
       message:
         'Enter the priority for this model (0-100). Higher priority AI APIs are chosen as long as the prompt fits its context window:',
@@ -74,16 +99,27 @@ export const config = async (): Promise<void> => {
       },
     })
 
+    /**
+     * Prompts the user to decide if they want to review all prompts before they are sent to the selected model.
+     */
     const review = await confirm({
       message: `Do you want to review all prompts before they are sent to ${selectedModel}?`,
       default: true,
     })
 
+    /**
+     * Prompts the user to decide if they trust the selected model with sensitive information.
+     */
     const trust = await confirm({
       message: `Do you trust ${selectedModel} with sensitive information?`,
       default: false,
     })
 
+    /**
+     * Prompts the user to enter the temperature setting for the selected model.
+     *
+     * @returns {string} The temperature value as a string.
+     */
     const temperature = await input({
       message: `Enter the temperature for ${selectedModel} (0.0 - 1.0): [0.2]`,
       default: '0.2',
@@ -98,6 +134,9 @@ export const config = async (): Promise<void> => {
 
     const parsedTemperature = parseFloat(temperature)
 
+    /**
+     * Constructs the model configuration object.
+     */
     let modelConfig: ClovingModelConfig = {
       apiKey,
       primary,
@@ -108,6 +147,9 @@ export const config = async (): Promise<void> => {
     }
 
     if (provider === 'azureopenai') {
+      /**
+       * Prompts the user to enter the Azure OpenAI endpoint URL.
+       */
       const endpoint = await input({
         message: 'Enter the Azure OpenAI endpoint URL:',
         validate: (value: string) => {
@@ -133,6 +175,9 @@ export const config = async (): Promise<void> => {
       }
     }
 
+    /**
+     * Prompts the user to decide if they want to configure another model.
+     */
     const anotherModel = await confirm({
       message: 'Do you want to configure another model?',
       default: true,
