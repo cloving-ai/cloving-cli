@@ -1,9 +1,16 @@
 import { Adapter } from '.'
 import type { OpenAIStreamChunk, GPTRequest } from '../../utils/types'
 
+/**
+ * MistralAdapter class
+ * Implements the Adapter interface for Mistral AI models.
+ */
 export class MistralAdapter implements Adapter {
   private model: string
 
+  /**
+   * List of supported Mistral AI models
+   */
   static supportedModels: string[] = [
     'mistral:mistral:embed',
     'mistral:mistral:tiny-latest',
@@ -16,20 +23,34 @@ export class MistralAdapter implements Adapter {
     'mistral:codestral:latest',
   ]
 
+  /**
+   * Prints all supported models to the console
+   */
   static listSupportedModels(): void {
     MistralAdapter.supportedModels.forEach((model) => {
       console.log(model)
     })
   }
 
+  /**
+   * Constructor
+   * @param model - The Mistral AI model to use
+   */
   constructor(model: string) {
     this.model = model
   }
 
+  /**
+   * @returns The Mistral AI API endpoint
+   */
   getEndpoint(): string {
     return 'https://api.mistral.ai/v1/chat/completions'
   }
 
+  /**
+   * @param apiKey - The API key for authentication
+   * @returns Headers for the API request
+   */
   getHeaders(apiKey: string): Record<string, string> {
     return {
       Authorization: `Bearer ${apiKey}`,
@@ -37,6 +58,12 @@ export class MistralAdapter implements Adapter {
     }
   }
 
+  /**
+   * Prepares the payload for the API request
+   * @param request - The GPT request object
+   * @param stream - Whether to use streaming mode
+   * @returns The formatted payload
+   */
   getPayload(request: GPTRequest, stream: boolean = false): Record<string, any> {
     return {
       model: this.model.replace(':', '-'),
@@ -50,6 +77,11 @@ export class MistralAdapter implements Adapter {
     }
   }
 
+  /**
+   * Extracts the response content from the API data
+   * @param data - The API response data
+   * @returns The extracted response content
+   */
   extractResponse(data: any): string {
     return data.choices[0].message.content
   }
@@ -73,6 +105,11 @@ export class MistralAdapter implements Adapter {
   //      ]
   //    }
 
+  /**
+   * Converts streaming data to OpenAIStreamChunk format
+   * @param data - The streaming data string
+   * @returns Parsed OpenAIStreamChunk or null if parsing fails
+   */
   convertStream(data: string): OpenAIStreamChunk | null {
     let beginningChar = 0
     let lastChar = 0
