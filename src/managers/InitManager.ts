@@ -13,8 +13,8 @@ import {
   generateFileList,
   collectSpecialFileContents,
   checkForSpecialFiles,
-  INIT_INSTRUCTIONS,
 } from '../utils/prompt_utils'
+import { INIT_INSTRUCTIONS } from '../utils/prompts'
 import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
 
 class InitManager {
