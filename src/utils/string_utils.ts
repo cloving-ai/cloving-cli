@@ -235,22 +235,25 @@ export const extractBlock = (input: string, indices: BlockIndices): CurrentNewBl
  * Each block contains information about file paths, current content, and new content.
  *
  * The blocks are defined by specific delimiters:
+ * - Setup: '```lang'
  * - Start: '<<<<<<< CURRENT'
  * - Divider: '======='
  * - End: '>>>>>>> NEW'
+ * - Finish: '```'
  *
  * @param {string} [input] - The input string containing CURRENT/NEW blocks.
  * @returns {CurrentNewBlock[]} An array of CurrentNewBlock objects, each representing a parsed block.
  *                              If the input is undefined or empty, an empty array is returned.
  *
  * @example
- * const input = `
+ * const input = "
+ * ```typescript
  * <<<<<<< CURRENT path/to/file.ts
  * const oldCode = 'old'
  * =======
  * const newCode = 'new'
  * >>>>>>> NEW
- * `
+ * ```"
  * const blocks = extractCurrentNewBlocks(input)
  * // blocks will contain one CurrentNewBlock object with the parsed information
  */
@@ -323,6 +326,11 @@ export const searchReplaceString = (currentContent: string, block: CurrentNewBlo
   // 1) if block.currentContent.trim() is empty then return block.newContent
   if (block.currentContent.trim() === '') {
     return block.newContent
+  }
+
+  // check if you can replace the entire block without changing indentation
+  if (currentContent.includes(block.currentContent)) {
+    return currentContent.replace(block.currentContent, block.newContent)
   }
 
   // 2) split currentContent and block.currentContent into new lines and trim() all the lines, then put back the new lines

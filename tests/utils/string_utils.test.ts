@@ -249,6 +249,48 @@ const newContent = 'This is new'
   })
 
   describe('extractCurrentNewBlocks and searchReplaceString integration', () => {
+    test('should extract blocks and replace content correctly funky indentation', () => {
+      const diffString = `Here is some code:\n\n\`\`\`javascript
+<<<<<<< CURRENT src/api/auth.js
+const token = response.data.token;
+  localStorage.setItem('token', token);
+=======
+const new_token = response.data.token;
+  localStorage.setItem('new_token', new_token);
+>>>>>>> NEW
+\`\`\``
+
+      const existingContent = `function authenticate(response) {
+  const token = response.data.token;
+  localStorage.setItem('token', token);
+}`
+
+      // Extract blocks
+      const blocks = extractCurrentNewBlocks(diffString)
+
+      // Check if blocks are extracted correctly
+      expect(blocks).toHaveLength(1)
+      expect(blocks[0]).toEqual({
+        language: 'javascript',
+        filePath: 'src/api/auth.js',
+        currentContent: `const token = response.data.token;
+  localStorage.setItem('token', token);`,
+        newContent: `const new_token = response.data.token;
+  localStorage.setItem('new_token', new_token);`,
+      })
+
+      // Apply the change using searchReplaceString
+      const updatedContent = searchReplaceString(existingContent, blocks[0])
+
+      // Check if the content is updated correctly
+      const expectedContent = `function authenticate(response) {
+  const new_token = response.data.token;
+  localStorage.setItem('new_token', new_token);
+}`
+
+      expect(updatedContent).toBe(expectedContent)
+    })
+
     test('should extract blocks and replace content correctly', () => {
       const diffString = `Here is some text\n\`\`\`typescript
 <<<<<<< CURRENT src/managers/ShellManager.ts
