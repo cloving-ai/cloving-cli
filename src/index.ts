@@ -13,6 +13,7 @@ import commit from './commands/generate/commit'
 import context from './commands/generate/context'
 import unitTests from './commands/generate/unit_tests'
 import analyze from './commands/generate/review'
+import documentation from './commands/generate/documentation'
 import { getPackageVersion } from './utils/prompt_utils'
 
 const program = new Command()
@@ -179,5 +180,18 @@ generate
   )
   .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
   .action(analyze)
+
+generate
+  .command('documentation')
+  .alias('d')
+  .description('Generate documentation for the project')
+  .option('-s, --silent', 'Run the command without asking for confirmation of submitting prompts')
+  .option('-f, --files <filenames...>', 'Specify filenames for files you want to document')
+  .option(
+    '-m, --model <model>',
+    'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
+  )
+  .option('-t, --temperature <temperature>', 'Temperature for the model (default 0.2)')
+  .action(documentation)
 
 program.parse(process.argv)
