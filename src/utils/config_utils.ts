@@ -1,3 +1,8 @@
+/**
+ * @file Configuration utilities for Cloving
+ * @module config_utils
+ */
+
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
@@ -13,12 +18,21 @@ import type {
   ProjectConfig,
 } from '../utils/types'
 
+/** Path to the global Cloving configuration file */
 export const CLOVING_CONFIG_PATH = path.join(os.homedir(), '.clovingconfig')
+/** Name of the local Cloving configuration file */
 export const CLOVINGFILE_PATH = 'cloving.json'
+/** Path to the Cloving projects directory */
 export const CLOVINGPROJECT_PATH = '.clovingprojects'
 
+/** Cached Cloving configuration */
 let clovingConfig: ClovingfileConfig
 
+/**
+ * Retrieves the Cloving configuration
+ * @param {ClovingGPTOptions} options - Options for ClovingGPT
+ * @returns {ClovingConfig} The Cloving configuration
+ */
 export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
   try {
     if (fs.existsSync(CLOVING_CONFIG_PATH)) {
@@ -45,6 +59,7 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
     console.error('Error reading configuration:', err)
   }
 
+  // Fallback to environment variables if config file doesn't exist
   if (process.env.CLOVING_MODEL) {
     const [provider, ...modelParts] = process.env.CLOVING_MODEL.split(':')
     const model = modelParts.join(':')
@@ -68,6 +83,11 @@ export const getConfig = (options: ClovingGPTOptions): ClovingConfig => {
   }
 }
 
+/**
+ * Retrieves the local Cloving configuration
+ * @returns {ClovingfileConfig} The local Cloving configuration
+ * @throws {Error} If the cloving.json file is not found
+ */
 export const getClovingConfig = (): ClovingfileConfig => {
   if (clovingConfig) {
     return clovingConfig
@@ -81,12 +101,21 @@ export const getClovingConfig = (): ClovingfileConfig => {
   }
 }
 
+/**
+ * Saves the Cloving configuration to the config file
+ * @param {ClovingConfig} config - The configuration to save
+ */
 export const saveConfig = (config: ClovingConfig): void => {
   const iniString = ini.stringify(config)
   fs.writeFileSync(CLOVING_CONFIG_PATH, iniString)
   console.log(`Configuration saved to ${CLOVING_CONFIG_PATH}`)
 }
 
+/**
+ * Retrieves the primary model configuration
+ * @param {string} [partialModel] - Partial model name to filter by
+ * @returns {Object | null} The primary model configuration or null if not found
+ */
 export const getPrimaryModel = (
   partialModel?: string,
 ): { provider: string; model: string; config: ClovingModelConfig } | null => {
@@ -117,6 +146,12 @@ export const getPrimaryModel = (
   }
 }
 
+/**
+ * Retrieves the configuration for a specific project
+ * @param {string} name - The name of the project
+ * @returns {ProjectConfig} The project configuration
+ * @throws {Error} If the project configuration file is not found
+ */
 export const getProjectConfig = (name: string): ProjectConfig => {
   const projectConfigPath = path.join(CLOVINGPROJECT_PATH, name, 'config.ini')
   if (fs.existsSync(projectConfigPath)) {
@@ -127,6 +162,11 @@ export const getProjectConfig = (name: string): ProjectConfig => {
   }
 }
 
+/**
+ * Saves the configuration for a specific project
+ * @param {string} name - The name of the project
+ * @param {ProjectConfig} config - The project configuration to save
+ */
 export const saveProjectConfig = (name: string, config: ProjectConfig): void => {
   const projectConfigPath = path.join(CLOVINGPROJECT_PATH, name, 'config.ini')
   const projectConfigDir = path.dirname(projectConfigPath)
@@ -141,6 +181,10 @@ export const saveProjectConfig = (name: string, config: ProjectConfig): void => 
   console.log(`Configuration saved to ${projectConfigPath}`)
 }
 
+/**
+ * Removes the configuration file for a specific project
+ * @param {string} name - The name of the project
+ */
 export const removeProjectConfig = (name: string): void => {
   const projectConfigPath = path.join(CLOVINGPROJECT_PATH, name, 'config.ini')
   if (fs.existsSync(projectConfigPath)) {
