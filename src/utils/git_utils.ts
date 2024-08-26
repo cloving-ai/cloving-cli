@@ -1,6 +1,16 @@
+/**
+ * @module git_utils
+ * @description Provides utility functions for Git operations and commit message generation.
+ */
+
 import { execSync } from 'child_process'
 import readline from 'readline'
 
+/**
+ * Prompts the user with a question and returns their answer.
+ * @param {string} question - The question to ask the user.
+ * @returns {Promise<string>} A promise that resolves with the user's answer.
+ */
 const askQuestion = (question: string): Promise<string> => {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -15,6 +25,11 @@ const askQuestion = (question: string): Promise<string> => {
   )
 }
 
+/**
+ * Retrieves the Git diff between the current branch and the default branch.
+ * @returns {Promise<string>} A promise that resolves with the indented Git diff.
+ * @throws {Error} If there's an error getting the Git diff.
+ */
 export const getGitDiff = async (): Promise<string> => {
   try {
     const defaultBranchName = await getDefaultBranchName()
@@ -34,6 +49,11 @@ export const getGitDiff = async (): Promise<string> => {
   }
 }
 
+/**
+ * Determines the default branch name for the Git repository.
+ * @returns {Promise<string>} A promise that resolves with the default branch name.
+ * @throws {Error} If the default branch cannot be determined.
+ */
 export const getDefaultBranchName = async (): Promise<string> => {
   let defaultBranchName = execSync(
     "git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'",
@@ -61,6 +81,11 @@ export const getDefaultBranchName = async (): Promise<string> => {
   return defaultBranchName
 }
 
+/**
+ * Retrieves the name of the current Git branch.
+ * @returns {string} The name of the current Git branch.
+ * @throws {Error} If there's an error getting the current branch name.
+ */
 export const getCurrentBranchName = (): string => {
   try {
     return execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
@@ -70,6 +95,11 @@ export const getCurrentBranchName = (): string => {
   }
 }
 
+/**
+ * Generates a prompt for creating a commit message based on a Git diff.
+ * @param {string} diff - The Git diff to base the commit message on.
+ * @returns {string} A prompt string for generating a commit message.
+ */
 export const generateCommitMessagePrompt = (diff: string): string => {
   return `Generate a concise and meaningful commit message based on a diff.
 

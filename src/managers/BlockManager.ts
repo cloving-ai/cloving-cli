@@ -21,7 +21,19 @@ class BlockManager extends EventEmitter {
       this.buffer = ''
     }
 
-    this.processCodeBlocks(content)
+    // if content has multiple \n``` in the string, then we need to split it up
+
+    if (content.includes('\n```')) {
+      while (content.includes('\n```')) {
+        const index = content.indexOf('\n```')
+        this.processCodeBlocks(content.slice(0, index + 4))
+        content = content.slice(index + 4)
+      }
+    }
+
+    if (content !== '') {
+      this.processCodeBlocks(content)
+    }
   }
 
   private processCodeBlocks(content: string) {

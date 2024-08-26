@@ -1,3 +1,8 @@
+/**
+ * @module prompt_utils
+ * @description Provides utility functions for generating prompts, handling files, and running commands.
+ */
+
 import fs from 'fs'
 import path from 'path'
 import { execSync, spawn } from 'child_process'
@@ -14,12 +19,21 @@ import {
   CODEGEN_EXAMPLES,
 } from './prompts'
 
+/**
+ * Retrieves the package version from package.json.
+ * @returns {string} The version of the package.
+ */
 export const getPackageVersion = () => {
   const packagePath = join(__dirname, '..', 'package.json')
   const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
   return packageJson.version
 }
 
+/**
+ * Renders a context file as a string.
+ * @param {Record<string, unknown> | string} contextFile - The context file to render.
+ * @returns {string} The rendered string representation of the context file.
+ */
 const renderAsString = (contextFile: Record<string, unknown> | string): string => {
   if (typeof contextFile === 'string') {
     return contextFile
@@ -27,6 +41,11 @@ const renderAsString = (contextFile: Record<string, unknown> | string): string =
   return JSON.stringify(contextFile, null, 2)
 }
 
+/**
+ * Generates a prompt for code generation based on context files and special files.
+ * @param {Record<string, string>} contextFilesContent - The content of context files.
+ * @returns {string} The generated prompt for code generation.
+ */
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
   // detect if specialFileContents[file] is a string or an object
@@ -68,6 +87,11 @@ ${CODEGEN_EXAMPLES}`
   return prompt
 }
 
+/**
+ * Generates a prompt for documentation generation based on context files and special files.
+ * @param {Record<string, string>} contextFilesContent - The content of context files.
+ * @returns {string} The generated prompt for documentation generation.
+ */
 export const generateDocsPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
   const specialFiles = Object.keys(specialFileContents)
@@ -111,12 +135,20 @@ ${DOCS_INSTRUCTIONS}`
   return prompt
 }
 
+/**
+ * Generates a prompt for shell commands based on the current shell and OS.
+ * @returns {string} The generated prompt for shell commands.
+ */
 export const generateShellPrompt = (): string => {
   const shell = execSync('echo $SHELL').toString().trim()
   const os = execSync('echo $OSTYPE').toString().trim()
   return `${SHELL_INSTRUCTIONS}\n\n## Context\n\nShell: ${shell}\n\nOS: ${os}`
 }
 
+/**
+ * Collects the contents of special files.
+ * @returns {Record<string, string | Record<string, unknown>>} An object containing the contents of special files.
+ */
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {
   const specialFileContents: Record<string, string | Record<string, unknown>> = {}
   for (const file of SPECIAL_FILES) {
@@ -132,8 +164,17 @@ export const collectSpecialFileContents = (): Record<string, string | Record<str
   return specialFileContents
 }
 
+/**
+ * Checks if any special files exist in the current directory.
+ * @returns {boolean} True if any special files exist, false otherwise.
+ */
 export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some((file) => fs.existsSync(file))
 
+/**
+ * Recursively gets all non-binary files in a directory.
+ * @param {string} dir - The directory to search.
+ * @returns {Promise<string[]>} A promise that resolves with an array of file paths.
+ */
 export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
   const subdirs = await fs.promises.readdir(dir)
   const files = await Promise.all(
@@ -154,6 +195,10 @@ export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => 
   return files.flat()
 }
 
+/**
+ * Generates a list of files in the current directory and its subdirectories.
+ * @returns {Promise<string[]>} A promise that resolves with an array of file paths.
+ */
 export const generateFileList = async (): Promise<string[]> => {
   try {
     const lsOutput = await runCommand('ls', [])
@@ -173,6 +218,12 @@ export const generateFileList = async (): Promise<string[]> => {
   }
 }
 
+/**
+ * Runs a shell command and returns its output.
+ * @param {string} command - The command to run.
+ * @param {string[]} args - The arguments for the command.
+ * @returns {Promise<string[]>} A promise that resolves with an array of output lines.
+ */
 export const runCommand = (command: string, args: string[]): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const process = spawn(command, args)
@@ -196,6 +247,10 @@ export const runCommand = (command: string, args: string[]): Promise<string[]> =
   })
 }
 
+/**
+ * Fetches available models using the 'cloving models' command.
+ * @returns {Promise<string[]>} A promise that resolves with an array of available models.
+ */
 export const fetchModels = async (): Promise<string[]> => {
   try {
     const modelsOutput = await runCommand('cloving', ['models'])
@@ -206,6 +261,11 @@ export const fetchModels = async (): Promise<string[]> => {
   }
 }
 
+/**
+ * Reads the content of a file.
+ * @param {string} file - The path to the file.
+ * @returns {string} The content of the file.
+ */
 export const readFileContent = (file: string): string => {
   try {
     return fs.readFileSync(file, 'utf-8')
@@ -246,6 +306,13 @@ const addDirectoryToContext = async (
   }
 }
 
+/**
+ * Adds a file or directory to the context.
+ * @param {string} contextFile - The path to the file or directory to add.
+ * @param {Record<string, string>} contextFiles - The current context files.
+ * @param {Record<string, any>} options - Additional options.
+ * @returns {Promise<Record<string, string>>} A promise that resolves with the updated context files.
+ */
 export const addFileOrDirectoryToContext = async (
   contextFile: string,
   contextFiles: Record<string, string>,
