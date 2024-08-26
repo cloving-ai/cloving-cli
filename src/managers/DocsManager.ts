@@ -3,9 +3,13 @@ import colors from 'colors'
 
 import ClovingGPT from '../cloving_gpt'
 import { getConfig } from '../utils/config_utils'
-import { CODEGEN_INSTRUCTIONS } from '../utils/prompts'
-import { applyAndSaveCurrentNewBlocks, extractCurrentNewBlocks } from '../utils/string_utils'
-import { DOCS_INSTRUCTIONS } from '../utils/prompts'
+import { CODEGEN_COULDNT_APPLY } from '../utils/prompts'
+import { generateDocsPrompt } from '../utils/prompt_utils'
+import {
+  applyAndSaveCurrentNewBlocks,
+  extractCurrentNewBlocks,
+  checkBlocksApplicability,
+} from '../utils/string_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 import StreamManager from './StreamManager'
 
@@ -28,12 +32,14 @@ class DocsManager extends StreamManager {
    * Generates documentation for the specified files.
    * @returns {Promise<void>}
    */
-  public async generateDocumentation(): Promise<void> {
+  public async generateDocumentation(extraPrompt?: string): Promise<void> {
     try {
       this.isProcessing = true
-      await this.checkForLatestVersion()
+      if (this.retryCount === 0) {
+        await this.checkForLatestVersion()
+      }
       await this.loadContextFiles()
-      this.addUserPrompt(this.generatePrompt())
+      this.addUserPrompt(`${generateDocsPrompt(this.contextFiles)}\n\n${extraPrompt || ''}`)
 
       const responseStream = await this.gpt.streamText({
         prompt: this.prompt,
@@ -47,18 +53,6 @@ class DocsManager extends StreamManager {
   }
 
   /**
-   * Generates the documentation prompt to be sent to the GPT model.
-   * @returns {string} The generated documentation prompt.
-   */
-  private generatePrompt(): string {
-    const contextFileContents = Object.entries(this.contextFiles)
-      .map(([file, content]) => `### File: ${file}\n\n\`\`\`\n${content}\n\`\`\`\n`)
-      .join('\n\n')
-
-    return `${DOCS_INSTRUCTIONS}\n\n${CODEGEN_INSTRUCTIONS}\n\n${contextFileContents}\n\n${DOCS_INSTRUCTIONS}`
-  }
-
-  /**
    * Finalizes the response processing.
    * This method should be overridden to provide specific finalization behavior.
    * @protected
@@ -69,7 +63,8 @@ class DocsManager extends StreamManager {
 
     if (this.responseString !== '') {
       const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
-      if (currentNewBlocks.length > 0) {
+      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
+      if (canApply && currentNewBlocks.length > 0) {
         const shouldSave = await confirm({
           message: '\n\nDo you want to save the generated documentation?',
           default: true,
@@ -78,6 +73,22 @@ class DocsManager extends StreamManager {
         if (shouldSave) {
           await applyAndSaveCurrentNewBlocks(currentNewBlocks)
           console.log(colors.green('\nDocumentation has been saved to the respective files.'))
+        }
+      } else {
+        if (this.retryCount < this.maxRetries) {
+          console.log(
+            `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied. Retrying (Attempt ${this.retryCount + 1}/${this.maxRetries})...\n`,
+          )
+
+          this.retryCount++
+          this.generateDocumentation(`\n\n${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
+
+          return
+        } else {
+          console.log(
+            `\n\n${colors.red.bold('ERROR')} Failed to generate a diff that could be cleanly applied after ${this.maxRetries} attempts. Please review the changes manually and try again.\n`,
+          )
+          this.retryCount = 0 // Reset the retry count for future attempts
         }
       }
     }

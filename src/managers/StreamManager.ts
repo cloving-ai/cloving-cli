@@ -156,7 +156,8 @@ class StreamManager extends EventEmitter {
     } else {
       process.stdout.write(`                                       \n`)
     }
-    this.responseString += raw
+
+    this.responseString += raw || currentNewBlock
   }
 
   /**

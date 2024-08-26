@@ -19,7 +19,8 @@
 
 ## *CURRENT/NEW* Block Format
 
-1. **Start a block with three backticks and the language name.**
+1. **Start a block with a one line description of change**
+1. **Then provide three backticks and the language name.**
    ```typescript
 2. **Next line: seven <, CURRENT, and the file path.**
    <<<<<<< CURRENT path/to/file.ts

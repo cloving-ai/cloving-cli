@@ -1,11 +1,8 @@
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import axios, { AxiosResponse, AxiosError } from 'axios'
-import { spawn } from 'child_process'
+import highlight from 'cli-highlight'
 import process from 'process'
-import { confirm } from '@inquirer/prompts'
 import colors from 'colors'
+import { confirm } from '@inquirer/prompts'
+import axios, { AxiosResponse, AxiosError } from 'axios'
 
 import { Adapter } from './adapters/'
 import { ClaudeAdapter } from './adapters/claude'
@@ -14,6 +11,7 @@ import { MistralAdapter } from './adapters/mistral'
 import { OllamaAdapter } from './adapters/ollama'
 import { GeminiAdapter } from './adapters/gemini'
 import { AzureOpenAIAdapter } from './adapters/azureopenai'
+import { parseMarkdownInstructions } from '../utils/string_utils'
 import { getConfig, getPrimaryModel } from '../utils/config_utils'
 
 import type {
@@ -98,49 +96,35 @@ class ClovingGPT {
     })
 
     if (reviewPrompt) {
-      const tempFile = path.join(os.tmpdir(), `cloving_prompt_${Date.now()}.txt`)
-      fs.writeFileSync(tempFile, fullPrompt)
-
-      const editor = 'less'
-      const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' })
-
-      return new Promise<string | null>((resolve, reject) => {
-        editProcess.on('close', async (code) => {
-          if (code !== 0) {
-            console.error(`${editor} exited with code ${code}`)
-            fs.unlinkSync(tempFile)
-            reject(new Error(`Editor exited with non-zero code`))
-            return
+      parseMarkdownInstructions(fullPrompt).map((code) => {
+        if (code.trim().startsWith('```')) {
+          const lines = code.split('\n')
+          const language = code.match(/```(\w+)/)?.[1] || 'default'
+          console.log(lines[0])
+          try {
+            if (language === 'default') {
+              console.log(highlight(lines.slice(1, -1).join('\n')))
+            } else {
+              console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
+            }
+          } catch (error) {
+            // don't highlight if it fails
+            console.log(lines.slice(1, -1).join('\n'))
           }
-
-          const editedPrompt = fs.readFileSync(tempFile, 'utf-8').trim()
-          fs.unlinkSync(tempFile)
-
-          if (editedPrompt === '') {
-            console.log('Prompt is empty.')
-            resolve(null)
-            return
-          }
-
-          const confirmPrompt = await confirm({
-            message: `Are you sure you want to continue?`,
-            default: true,
-          })
-
-          if (!confirmPrompt) {
-            resolve(null)
-            return
-          }
-
-          resolve(editedPrompt)
-        })
-
-        editProcess.on('error', (err) => {
-          console.error('Error launching editor:', err)
-          fs.unlinkSync(tempFile)
-          reject(err)
-        })
+          console.log(lines.slice(-1)[0])
+        } else {
+          console.log(highlight(code, { language: 'markdown' }))
+        }
       })
+
+      const confirmPrompt = await confirm({
+        message: `Are you sure you want to continue?`,
+        default: true,
+      })
+
+      if (!confirmPrompt) {
+        process.exit(1)
+      }
     }
 
     return prompt

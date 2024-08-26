@@ -65,17 +65,12 @@ class BlockManager extends EventEmitter {
   private emitCodeBlock() {
     if (this.codeBuffer.length > 0) {
       const currentNewBlock = this.parseCodeBuffer()
-      if (currentNewBlock) {
-        this.emit('codeBlock', {
-          currentNewBlock,
-          raw: this.codeBuffer,
-        })
-        this.emit('content', this.buffer)
-        this.clearBuffer()
-      } else {
-        this.emit('codeBlock', this.codeBuffer)
-        this.clearBuffer()
-      }
+      this.emit('codeBlock', {
+        currentNewBlock,
+        raw: this.codeBuffer,
+      })
+      this.emit('content', this.buffer)
+      this.clearBuffer()
     }
   }
 

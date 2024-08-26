@@ -7,6 +7,7 @@ import { join } from 'path'
 
 import { getClovingConfig } from './config_utils'
 import {
+  DOCS_INSTRUCTIONS,
   CODEGEN_INSTRUCTIONS,
   SPECIAL_FILES,
   SHELL_INSTRUCTIONS,
@@ -64,6 +65,49 @@ ${Object.keys(contextFilesContent).join('\n')}
 ${CODEGEN_INSTRUCTIONS}
 
 ${CODEGEN_EXAMPLES}`
+  return prompt
+}
+
+export const generateDocsPrompt = (contextFilesContent: Record<string, string>): string => {
+  const specialFileContents = collectSpecialFileContents()
+  const specialFiles = Object.keys(specialFileContents)
+    .map(
+      (file) =>
+        `### Contents of **${file}**\n\n\`\`\`\n${renderAsString(specialFileContents[file])}\n\`\`\`\n\n`,
+    )
+    .join('\n')
+  const contextFileContents = Object.keys(contextFilesContent)
+    .map(
+      (file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`,
+    )
+    .join('\n')
+
+  const prompt = `${DOCS_INSTRUCTIONS}
+
+${CODEGEN_INSTRUCTIONS}
+
+${CODEGEN_EXAMPLES}
+
+## Description of App
+
+\`\`\`json
+${JSON.stringify(getClovingConfig(), null, 2)}
+\`\`\`
+
+## Special Files
+
+${specialFiles.length > 0 ? specialFiles : 'No special files provided.'}
+
+## Context Files
+
+${contextFileContents.length > 0 ? contextFileContents : 'No context files provided.'}
+
+## Directory structure
+
+${Object.keys(contextFilesContent).join('\n')}
+
+${DOCS_INSTRUCTIONS}`
+
   return prompt
 }
 
