@@ -1,30 +1,21 @@
 import ncp from 'copy-paste'
+import colors from 'colors'
+import highlight from 'cli-highlight'
 import readline from 'readline'
 import { execSync } from 'child_process'
-import colors from 'colors'
-import axios from 'axios'
-import highlight from 'cli-highlight'
 import type { AxiosError } from 'axios'
-import fs from 'fs'
-import path from 'path'
 
 import CommitManager from './CommitManager'
-import ChunkManager from './ChunkManager'
-import BlockManager from './BlockManager'
 import ReviewManager from './ReviewManager'
-import ClovingGPT from '../cloving_gpt'
 import {
   extractCurrentNewBlocks,
   applyAndSaveCurrentNewBlocks,
   checkBlocksApplicability,
 } from '../utils/string_utils'
-import { getClovingConfig } from '../utils/config_utils'
-import {
-  generateCodegenPrompt,
-  addFileOrDirectoryToContext,
-  getPackageVersion,
-} from '../utils/prompt_utils'
-import type { ClovingGPTOptions, ChatMessage, CurrentNewBlock } from '../utils/types'
+import { addFileOrDirectoryToContext } from '../utils/prompt_utils'
+import { CODEGEN_COULDNT_APPLY } from '../utils/prompts'
+import type { ClovingGPTOptions } from '../utils/types'
+import StreamManager from './StreamManager'
 
 const specialCommands = [
   'save',
@@ -40,41 +31,29 @@ const specialCommands = [
   'exit',
 ]
 
-class ChatManager {
-  private gpt: ClovingGPT
-  private rl: readline.Interface
-  private chatHistory: ChatMessage[] = []
+class ChatManager extends StreamManager {
   private commandHistory: string[] = []
   private historyIndex: number = -1
   private multilineInput: string = ''
   private isMultilineMode: boolean = false
-  private contextFiles: Record<string, string> = {}
-  private chunkManager: ChunkManager
-  private blockManager: BlockManager
-  private prompt: string = ''
-  private isProcessing: boolean = false
   private isSilent = false
-  private retryCount: number = 0
-  private maxRetries: number = 3
+  private rl: readline.Interface
 
   /**
    * Creates an instance of ChatManager.
    * @param {ClovingGPTOptions} options - Configuration options for the ChatManager.
    */
-  constructor(private options: ClovingGPTOptions) {
+  constructor(options: ClovingGPTOptions) {
+    super(options)
     this.isSilent = options.silent || false
     options.stream = true
     options.silent = true
-    this.gpt = new ClovingGPT(options)
-
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
       prompt: colors.green.bold('cloving> '),
       historySize: 1000,
     })
-    this.chunkManager = new ChunkManager()
-    this.blockManager = new BlockManager()
   }
 
   /**
@@ -88,9 +67,7 @@ class ChatManager {
     console.log(`\n🍀 🍀 🍀 ${colors.bold('Welcome to Cloving REPL')} 🍀 🍀 🍀\n`)
     this.displayAvailableCommands()
     console.log('\nWhat would you like to do?')
-    this.rl.prompt()
-
-    this.setupEventListeners()
+    this.setupReadline()
   }
 
   private displayAvailableCommands(): void {
@@ -126,85 +103,14 @@ class ChatManager {
   }
 
   /**
-   * Checks for the latest version of the app from GitHub and compares it with the current version.
-   * If a new version is available, it notifies the user.
-   * @private
-   * @returns {Promise<void>}
-   */
-  private async checkForLatestVersion(): Promise<void> {
-    try {
-      const response = await axios.get(
-        'https://api.github.com/repos/cloving-ai/cloving-cli/releases/latest',
-      )
-      const latestVersion = response.data.tag_name
-      const currentVersion = `v${getPackageVersion()}`
-
-      if (latestVersion !== currentVersion) {
-        console.log(
-          colors.bgWhite.black(`\n 🚀 A new version of Cloving is available: ${latestVersion}    `),
-        )
-        console.log(
-          colors.bgWhite.black(`    You are currently using version: ${currentVersion}          `),
-        )
-        console.log(
-          colors.bgWhite.black(
-            `    To upgrade, run: ${colors.bgWhite.black.bold('npm install -g cloving@latest')}   `,
-          ),
-        )
-      }
-    } catch (error) {
-      // ignore errors
-    }
-  }
-
-  /**
-   * Sets up event listeners for the readline interface and process input.
+   * Sets up readline and event listeners for the readline interface and process input.
    * @private
    */
-  private setupEventListeners(): void {
+  private setupReadline(): void {
+    this.rl.prompt()
     this.rl.on('line', this.handleLine.bind(this))
     this.rl.on('close', this.handleClose.bind(this))
     process.stdin.on('keypress', this.handleKeypress.bind(this))
-  }
-
-  /**
-   * Loads context files specified in the options or defaults to the primary language's directory.
-   * @private
-   * @returns {Promise<void>}
-   */
-  private async loadContextFiles(): Promise<void> {
-    const config = getClovingConfig()
-    const primaryLanguage = config.languages.find((lang) => lang.primary)
-    const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
-    const testingDirectories =
-      config.testingFrameworks?.map((framework) => framework.directory) || []
-    const testingDirectory = testingDirectories[0]
-
-    let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
-    if (files.length > 0) {
-      console.log(`\nBuilding chat session context...\n`)
-    }
-    for (const file of files) {
-      // Skip if the file is not a string
-      if (!file) continue
-
-      const previousCount = Object.keys(this.contextFiles).length
-      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
-      const newCount = Object.keys(this.contextFiles).length
-      const addedCount = newCount - previousCount
-
-      const totalTokens = this.calculateTotalTokens()
-
-      console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`))
-      console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`))
-      console.log(colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`))
-    }
-  }
-
-  private calculateTotalTokens(): number {
-    return Object.values(this.contextFiles).reduce((total, content) => {
-      return total + Math.ceil(content.length / 4)
-    }, 0)
   }
 
   /**
@@ -444,24 +350,6 @@ class ChatManager {
     this.rl.prompt()
   }
 
-  private async refreshContext() {
-    await this.reloadContextFiles()
-    const updatedSystemPrompt = generateCodegenPrompt(this.contextFiles)
-    this.chatHistory[0] = { role: 'user', content: updatedSystemPrompt }
-    this.chatHistory[1] = { role: 'assistant', content: 'What would you like to do?' }
-  }
-
-  private async reloadContextFiles() {
-    for (const filePath in this.contextFiles) {
-      try {
-        const content = await fs.promises.readFile(path.resolve(filePath), 'utf8')
-        this.contextFiles[filePath] = content
-      } catch (error) {
-        console.error(`Error reading file ${filePath}:`, error)
-      }
-    }
-  }
-
   private isRemoveCommand(command: string): boolean {
     return command.startsWith('rm ')
   }
@@ -620,12 +508,10 @@ class ChatManager {
     }
 
     this.isProcessing = true
-    this.chunkManager = new ChunkManager()
 
     try {
       await this.refreshContext()
-      this.prompt = this.generatePrompt(input)
-      this.addChatHistory(this.prompt)
+      this.addUserPrompt(this.generatePrompt(input))
 
       if (!this.isSilent) {
         const fullPrompt = this.chatHistory
@@ -694,130 +580,19 @@ class ChatManager {
         prompt: this.prompt,
         messages: this.chatHistory,
       })
-      let accumulatedContent = ''
 
-      this.handleResponseStream(responseStream, accumulatedContent)
+      this.handleResponseStream(responseStream)
     } catch (err) {
       this.handleError(err)
     }
   }
 
-  private addChatHistory(input: string) {
-    this.chatHistory.push({ role: 'user', content: input })
-  }
-
-  /**
-   * Handles the streaming response from the AI model.
-   * This method processes the incoming data chunks, converts them to readable output,
-   * and manages the accumulated content.
-   *
-   * @param responseStream - The stream of response data from the AI model.
-   * @param accumulatedContent - A string to accumulate the complete response content.
-   */
-  private handleResponseStream(responseStream: any, accumulatedContent: string) {
-    let animationInterval: NodeJS.Timeout
-    this.blockManager = new BlockManager()
-    this.chunkManager = new ChunkManager()
-
-    this.blockManager.on('startGeneratingCode', () => {
-      process.stdout.write(colors.gray.bold('\nGenerating code...  '))
-      let animationIndex = 0
-      const animationChars = ['/', '|', '\\', '-']
-      animationInterval = setInterval(() => {
-        process.stdout.write('\b'.repeat(1))
-        process.stdout.write(colors.gray.bold(animationChars[animationIndex]))
-        animationIndex = (animationIndex + 1) % animationChars.length
-      }, 100)
-    })
-
-    this.blockManager.on('endGeneratingCode', () => {
-      clearInterval(animationInterval)
-      process.stdout.write('\b'.repeat(100))
-    })
-
-    this.blockManager.on('content', (content: string) => {
-      process.stdout.write(content)
-      accumulatedContent += content
-    })
-
-    this.blockManager.on(
-      'codeBlock',
-      (codeBlock: { currentNewBlock?: CurrentNewBlock; raw?: string }) => {
-        const { currentNewBlock } = codeBlock
-        if (currentNewBlock?.currentContent && currentNewBlock?.newContent) {
-          // Current/New format
-          process.stdout.write(
-            colors.gray.bold(
-              `\`\`\`${currentNewBlock.language}                                       \n`,
-            ),
-          )
-          process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
-          process.stdout.write(
-            highlight(currentNewBlock.currentContent, { language: currentNewBlock.language }),
-          )
-          process.stdout.write(colors.gray.bold('\n=======\n'))
-          process.stdout.write(
-            highlight(currentNewBlock.newContent, { language: currentNewBlock.language }),
-          )
-          process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
-        } else {
-          if (codeBlock.raw) {
-            // Raw format
-            process.stdout.write(`                                       \n`)
-            process.stdout.write(highlight(codeBlock.raw))
-          } else {
-            process.stdout.write(`                                       \n`)
-          }
-        }
-        accumulatedContent += codeBlock.raw
-      },
-    )
-
-    // Handle content chunks from the ChunkManager
-    this.chunkManager.on('content', (buffer: string) => {
-      let convertedStream = this.gpt.convertStream(buffer)
-      while (convertedStream !== null) {
-        const { output, lastChar } = convertedStream
-        // buffer the output to the BlockManager
-        this.blockManager.addContent(output)
-        // clear the buffer from the ChunkManager
-        this.chunkManager.clearBuffer(lastChar)
-        // Try to convert the rest of the buffer to a string
-        buffer = buffer.slice(lastChar)
-        convertedStream = this.gpt.convertStream(buffer)
-      }
-    })
-
-    // Handle incoming data chunks from the response stream
-    responseStream.data.on('data', (chunk: Buffer | undefined) => {
-      // Convert the chunk to a string and add it to the ChunkManager
-      if (!chunk) return
-      // a chunk is a JSON object with different keys depending on the AI service provider
-      const chunkString = chunk.toString()
-      this.chunkManager.addChunk(chunkString)
-    })
-
-    // Handle the end of the response stream
-    responseStream.data.on('end', () => {
-      // Finalize the response when the stream ends
-      this.finalizeResponse(accumulatedContent)
-    })
-
-    // Handle any errors in the response stream
-    responseStream.data.on('error', (error: Error) => {
-      console.error('Error streaming response:', error)
-      this.isProcessing = false
-      process.stdout.write('\n')
-      this.rl.prompt()
-    })
-  }
-
-  private async finalizeResponse(accumulatedContent: string) {
-    this.chatHistory.push({ role: 'assistant', content: accumulatedContent.trim() })
+  protected async finalizeResponse(): Promise<void> {
+    this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
-    if (accumulatedContent) {
-      const currentNewBlocks = extractCurrentNewBlocks(accumulatedContent)
+    if (this.responseString !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
         if (this.retryCount < this.maxRetries) {
@@ -826,11 +601,7 @@ class ChatManager {
           )
 
           this.retryCount++
-          this.processUserInput(`Some of the provided code blocks could not be applied,
-please match the existing code with a few more lines of context and make sure it is a character for character exact match.
-Never use "rest of the existing code" or "rest of the code" in your response, instead break the code block into smaller blocks.
-
-${summary}`)
+          this.processUserInput(`${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
 
           return
         } else {
@@ -880,7 +651,6 @@ You can follow up with another request or:
         break
     }
 
-    const promptTokens = Math.ceil(this.prompt.length / 4).toLocaleString()
     const statusMessage = (error.response?.data as any)?.statusMessage
     console.error(
       colors.red(
@@ -921,7 +691,8 @@ ${prompt}
 
 ### Note
 
-Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.`
+Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.
+Do not allow empty CURRENT blocks and if you add content to the CURRENT block, you also have to add the same content to the NEW block.`
   }
 
   private handleClose() {
