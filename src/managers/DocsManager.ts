@@ -58,11 +58,27 @@ class DocsManager extends StreamManager {
    * @protected
    */
   protected async finalizeResponse(): Promise<void> {
+    console.log('\n')
+    this.fullResponse += `${this.responseString}\n\n`
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
-    if (this.responseString !== '') {
-      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
+    if (!this.responseString.includes('======= DONE =======')) {
+      console.log(colors.yellow('Checking if there is more...'))
+      this.addUserPrompt(
+        "If there is more, continue, otherwise print the string '======= DONE ======='.",
+      )
+      const responseStream = await this.gpt.streamText({
+        prompt: this.prompt,
+        messages: this.chatHistory,
+      })
+
+      this.handleResponseStream(responseStream)
+      return
+    }
+
+    if (this.fullResponse !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullResponse)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (canApply && currentNewBlocks.length > 0) {
         const shouldSave = await confirm({

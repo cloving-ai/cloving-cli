@@ -24,6 +24,7 @@ class StreamManager extends EventEmitter {
   protected gpt: ClovingGPT
   protected prompt: string = ''
   protected responseString: string = ''
+  protected fullResponse: string = ''
   protected contextFiles: Record<string, string> = {}
   protected chatHistory: ChatMessage[] = []
   protected chunkManager: ChunkManager

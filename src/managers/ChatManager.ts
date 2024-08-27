@@ -455,13 +455,8 @@ class ChatManager extends StreamManager {
   }
 
   private async handleSave() {
-    const lastResponse = this.chatHistory
-      .slice()
-      .reverse()
-      .find((msg) => msg.role === 'assistant')
-
-    if (lastResponse) {
-      const currentNewBlocks = extractCurrentNewBlocks(lastResponse.content)
+    if (this.fullResponse) {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullResponse)
       if (Object.keys(currentNewBlocks).length > 0) {
         await applyAndSaveCurrentNewBlocks(currentNewBlocks)
         console.info(`\n${colors.bold('save')} has finished\n`)
@@ -510,6 +505,7 @@ class ChatManager extends StreamManager {
     this.isProcessing = true
 
     try {
+      this.fullResponse = ''
       await this.refreshContext()
       this.addUserPrompt(this.generatePrompt(input))
 
@@ -588,11 +584,26 @@ class ChatManager extends StreamManager {
   }
 
   protected async finalizeResponse(): Promise<void> {
+    console.log('\n')
+    this.fullResponse += `${this.responseString}\n\n`
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
-    if (this.responseString !== '') {
-      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
+    if (!this.responseString.includes('======= DONE =======')) {
+      this.addUserPrompt(
+        "If there is more, continue, otherwise print the string '======= DONE ======='.",
+      )
+      const responseStream = await this.gpt.streamText({
+        prompt: this.prompt,
+        messages: this.chatHistory,
+      })
+
+      this.handleResponseStream(responseStream)
+      return
+    }
+
+    if (this.fullResponse !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullResponse)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
         if (this.retryCount < this.maxRetries) {

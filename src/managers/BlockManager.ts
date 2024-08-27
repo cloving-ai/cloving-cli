@@ -2,15 +2,27 @@ import { EventEmitter } from 'events'
 import { extractCurrentNewBlocks } from '../utils/string_utils'
 import type { CurrentNewBlock } from '../utils/types'
 
-// Passes through string chunks, looking for code blocks, when it finds one, it starts buffering until it finds the end of the block
-// Then it emits the code block and clears the buffer and continues
+/**
+ * BlockManager class
+ *
+ * This class extends EventEmitter and manages the processing of code blocks within a stream of content.
+ * It passes through string chunks, looking for code blocks. When it finds one, it starts buffering
+ * until it finds the end of the block. Then it emits the code block, clears the buffer, and continues.
+ */
 class BlockManager extends EventEmitter {
+  /** Stores non-code content */
   private buffer: string = ''
+  /** Stores code block content */
   private codeBuffer: string = ''
+  /** Indicates whether currently buffering a code block */
   private isBufferingCode: boolean = false
+  /** Indicates whether waiting for more content to complete a block */
   private isWaitingForContent: boolean = false
 
-  // add content to the buffer, watching for code blocks along the way
+  /**
+   * Adds content to the buffer, watching for code blocks along the way.
+   * @param {string} content - The content to be added and processed.
+   */
   addContent(content: string) {
     if (content.includes('`') || content.includes('\n')) {
       this.isWaitingForContent = true
@@ -36,6 +48,11 @@ class BlockManager extends EventEmitter {
     }
   }
 
+  /**
+   * Processes the content for code blocks.
+   * @param {string} content - The content to be processed for code blocks.
+   * @private
+   */
   private processCodeBlocks(content: string) {
     const codeBlockMarker = '\n```'
     let markerIndex = content.indexOf(codeBlockMarker)
@@ -66,6 +83,11 @@ class BlockManager extends EventEmitter {
     }
   }
 
+  /**
+   * Emits the buffered content as an event.
+   * @param {string} additionalContent - Additional content to be emitted with the buffer.
+   * @private
+   */
   private emitBuffer(additionalContent: string = '') {
     const contentToEmit = this.buffer + additionalContent
     if (contentToEmit) {
@@ -74,6 +96,10 @@ class BlockManager extends EventEmitter {
     }
   }
 
+  /**
+   * Emits the buffered code block as an event.
+   * @private
+   */
   private emitCodeBlock() {
     if (this.codeBuffer.length > 0) {
       const currentNewBlock = this.parseCodeBuffer()
@@ -93,8 +119,8 @@ class BlockManager extends EventEmitter {
    * current start index, divider index, and new end index. It then extracts the current code and new code
    * from the buffer based on these indices.
    *
-   * @return {CurrentNewBlock | null}
-   *   An object containing the language, current start, new end, current code, and new code.
+   * @return {CurrentNewBlock | null} An object containing the language, current start, new end, current code, and new code.
+   * @private
    */
   private parseCodeBuffer(): CurrentNewBlock | null {
     const results = extractCurrentNewBlocks(this.codeBuffer)
@@ -102,6 +128,9 @@ class BlockManager extends EventEmitter {
     return results[0]
   }
 
+  /**
+   * Clears all buffers and resets state flags.
+   */
   clearBuffer() {
     this.buffer = ''
     this.codeBuffer = ''
