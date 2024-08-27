@@ -190,11 +190,27 @@ Please briefly explain how the code works in this.`
    * @protected
    */
   protected async finalizeResponse(): Promise<void> {
+    console.log('\n')
+    this.fullResponse += `${this.responseString}\n\n`
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
-    if (this.responseString !== '') {
-      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
+    if (!this.responseString.includes('======= DONE =======')) {
+      console.log(colors.yellow('Checking if there is more...'))
+      this.addUserPrompt(
+        "If there is more, continue, otherwise print the string '======= DONE ======='.",
+      )
+      const responseStream = await this.gpt.streamText({
+        prompt: this.prompt,
+        messages: this.chatHistory,
+      })
+
+      this.handleResponseStream(responseStream)
+      return
+    }
+
+    if (this.fullResponse !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullResponse)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
         if (this.retryCount < this.maxRetries) {
@@ -216,8 +232,10 @@ Please briefly explain how the code works in this.`
         this.retryCount = 0 // Reset the retry count on successful application
       }
     }
+    const extraResponse = this.fullResponse
+    this.fullResponse = '' // Reset the full response
 
-    this.handleUserAction(this.responseString)
+    this.handleUserAction(extraResponse)
   }
 }
 

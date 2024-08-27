@@ -17,8 +17,6 @@ import StreamManager from './StreamManager'
  * Manages the generation of documentation for specified files.
  */
 class DocsManager extends StreamManager {
-  private fullDocs = ''
-
   /**
    * Creates a new DocumentationManager instance.
    * @param {ClovingGPTOptions} options - Configuration options for the DocumentationManager.
@@ -60,7 +58,8 @@ class DocsManager extends StreamManager {
    * @protected
    */
   protected async finalizeResponse(): Promise<void> {
-    this.fullDocs += `${this.responseString}\n\n`
+    console.log('\n')
+    this.fullResponse += `${this.responseString}\n\n`
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
@@ -78,8 +77,8 @@ class DocsManager extends StreamManager {
       return
     }
 
-    if (this.fullDocs !== '') {
-      const currentNewBlocks = extractCurrentNewBlocks(this.fullDocs)
+    if (this.fullResponse !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullResponse)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (canApply && currentNewBlocks.length > 0) {
         const shouldSave = await confirm({
