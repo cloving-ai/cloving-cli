@@ -17,6 +17,8 @@ import StreamManager from './StreamManager'
  * Manages the generation of documentation for specified files.
  */
 class DocsManager extends StreamManager {
+  private fullDocs = ''
+
   /**
    * Creates a new DocumentationManager instance.
    * @param {ClovingGPTOptions} options - Configuration options for the DocumentationManager.
@@ -58,11 +60,26 @@ class DocsManager extends StreamManager {
    * @protected
    */
   protected async finalizeResponse(): Promise<void> {
+    this.fullDocs += `${this.responseString}\n\n`
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
 
-    if (this.responseString !== '') {
-      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
+    if (!this.responseString.includes('======= DONE =======')) {
+      console.log(colors.yellow('Checking if there is more...'))
+      this.addUserPrompt(
+        "If there is more, continue, otherwise print the string '======= DONE ======='.",
+      )
+      const responseStream = await this.gpt.streamText({
+        prompt: this.prompt,
+        messages: this.chatHistory,
+      })
+
+      this.handleResponseStream(responseStream)
+      return
+    }
+
+    if (this.fullDocs !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.fullDocs)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (canApply && currentNewBlocks.length > 0) {
         const shouldSave = await confirm({
