@@ -19,11 +19,12 @@
 
 ## *CURRENT/NEW* Block Format
 
-1. **Start a block with three backticks and the language name.**
+1. **Start a block with a one line description of change**
+1. **Then provide three backticks and the language name.**
    ```typescript
 2. **Next line: seven <, CURRENT, and the file path.**
    <<<<<<< CURRENT path/to/file.ts
-3. **Include the exact existing code to be changed, this section should never be just spaces or tabs unless it is a new file.**
+3. **Include the exact existing code to be changed, this section should always have some code characters in it, not just spaces or tabs. The only exception is when creating a brand new file.**
 4. **Divide with seven =.**
    =======
 5. **Add the new code.**

@@ -3,7 +3,7 @@ import type { ClovingGPTOptions } from '../../utils/types'
 
 const review = async (options: ClovingGPTOptions) => {
   const reviewManager = new ReviewManager(options)
-  await reviewManager.review()
+  await reviewManager.generateReview()
 }
 
 export default review

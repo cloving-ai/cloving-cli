@@ -1,3 +1,8 @@
+/**
+ * @module prompt_utils
+ * @description Provides utility functions for generating prompts, handling files, and running commands.
+ */
+
 import fs from 'fs'
 import path from 'path'
 import { execSync, spawn } from 'child_process'
@@ -6,14 +11,32 @@ import colors from 'colors'
 import { join } from 'path'
 
 import { getClovingConfig } from './config_utils'
-import { CODEGEN_INSTRUCTIONS, SPECIAL_FILES } from './prompts'
+import {
+  REVIEW_INSTRUCTIONS,
+  DOCS_INSTRUCTIONS,
+  CODEGEN_INSTRUCTIONS,
+  SPECIAL_FILES,
+  SHELL_INSTRUCTIONS,
+  CODEGEN_EXAMPLES,
+} from './prompts'
 
+import type { ChatMessage, ClovingGPTOptions } from './types'
+
+/**
+ * Retrieves the package version from package.json.
+ * @returns {string} The version of the package.
+ */
 export const getPackageVersion = () => {
   const packagePath = join(__dirname, '..', 'package.json')
   const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
   return packageJson.version
 }
 
+/**
+ * Renders a context file as a string.
+ * @param {Record<string, unknown> | string} contextFile - The context file to render.
+ * @returns {string} The rendered string representation of the context file.
+ */
 const renderAsString = (contextFile: Record<string, unknown> | string): string => {
   if (typeof contextFile === 'string') {
     return contextFile
@@ -21,6 +44,11 @@ const renderAsString = (contextFile: Record<string, unknown> | string): string =
   return JSON.stringify(contextFile, null, 2)
 }
 
+/**
+ * Generates a prompt for code generation based on context files and special files.
+ * @param {Record<string, string>} contextFilesContent - The content of context files.
+ * @returns {string} The generated prompt for code generation.
+ */
 export const generateCodegenPrompt = (contextFilesContent: Record<string, string>): string => {
   const specialFileContents = collectSpecialFileContents()
   // detect if specialFileContents[file] is a string or an object
@@ -58,107 +86,105 @@ ${Object.keys(contextFilesContent).join('\n')}
 
 ${CODEGEN_INSTRUCTIONS}
 
-### Example 1: Changing a Variable
-
-\`\`\`typescript
-<<<<<<< CURRENT path/to/file.ts
-const myVariable = 'exact'
-const oldVariable = 1
-=======
-const myVariable = 'exact'
-const newVariable = 2
->>>>>>> NEW
-\`\`\`
-
-### Example 2: Create a New File
-
-\`\`\`ruby
-<<<<<<< CURRENT path/to/newfile.rb
-=======
-def new_function
-  puts 'Hello, world!'
-end
->>>>>>> NEW
-\`\`\`
-
-### Example 3: Moving a Function
-
-Removing it from path/to/file.py
-
-\`\`\`python
-<<<<<<< CURRENT path/to/file.py
-def old_function():
-  return 'Old function'
-=======
->>>>>>> NEW
-\`\`\`
-
-Adding it to path/to/newfile.py
-
-\`\`\`python
-<<<<<<< CURRENT path/to/newfile.py
-def existing_function():
-  return 'Existing function'
-
-=======
-def existing_function():
-  return 'Existing function'
-
-def old_function():
-  return 'Old function'
->>>>>>> NEW
-\`\`\`
-
-### Example 4: Removing a Function
-
-\`\`\`java
-<<<<<<< CURRENT path/to/file.java
-public void oldFunction() {
-  System.out.println("Old function")
-}
-=======
->>>>>>> NEW
-\`\`\`
-
-### Example 5: Replace a file
-
-This will replace the entire contents of **path/to/file.rb** with the new content:
-
-\`\`\`ruby
-<<<<<<< CURRENT path/to/file.rb
-=======
-def new_function
-  puts 'Hello, world!'
-end
->>>>>>> NEW
-\`\`\`
-
-## Don't Invent Code That Isn't Provided in Context
-
-A file might be referenced by just the file name without the full path, but the code must be provided in the *Context Files* section.
-
-Unless you believe you are creating a whole new file, never ever under any circumstances make up code in the CURRENT block that was not provided to you in the *Context Files* section.
-
-If a required file hasn't been provided in the *Context Files* section, stop everything and ask the user to provide it in the context by adding -f path/to/file to the command or add path/to/file in the interactive chat.`
+${CODEGEN_EXAMPLES}`
   return prompt
 }
 
+/**
+ * Generates a prompt for documentation generation based on context files and special files.
+ * @param {Record<string, string>} contextFilesContent - The content of context files.
+ * @returns {string} The generated prompt for documentation generation.
+ */
+export const generateDocsPrompt = (contextFilesContent: Record<string, string>): string => {
+  const specialFileContents = collectSpecialFileContents()
+  const specialFiles = Object.keys(specialFileContents)
+    .map(
+      (file) =>
+        `### Contents of **${file}**\n\n\`\`\`\n${renderAsString(specialFileContents[file])}\n\`\`\`\n\n`,
+    )
+    .join('\n')
+  const contextFileContents = Object.keys(contextFilesContent)
+    .map(
+      (file) => `### Contents of **${file}**\n\n\`\`\`\n${contextFilesContent[file]}\n\`\`\`\n\n`,
+    )
+    .join('\n')
+
+  const prompt = `${DOCS_INSTRUCTIONS}
+
+${CODEGEN_INSTRUCTIONS}
+
+${CODEGEN_EXAMPLES}
+
+## Description of App
+
+\`\`\`json
+${JSON.stringify(getClovingConfig(), null, 2)}
+\`\`\`
+
+## Special Files
+
+${specialFiles.length > 0 ? specialFiles : 'No special files provided.'}
+
+## Context Files
+
+${contextFileContents.length > 0 ? contextFileContents : 'No context files provided.'}
+
+## Directory structure
+
+${Object.keys(contextFilesContent).join('\n')}
+
+${DOCS_INSTRUCTIONS}`
+
+  return prompt
+}
+
+/**
+ * Generates a prompt for shell commands based on the current shell and OS.
+ * @returns {string} The generated prompt for shell commands.
+ */
 export const generateShellPrompt = (): string => {
   const shell = execSync('echo $SHELL').toString().trim()
   const os = execSync('echo $OSTYPE').toString().trim()
-  return `Generate an executable ${shell} script that works on ${os}. Try to make it a single line if possible and as simple and straightforward as possible.
-
-Do not add any commentary or context to the message other than the commit message itself.
-
-An example of the output for this should look like the following:
-
-\`\`\`sh
-find . -type f -name "*.ts" -exec sed -i '' 's/old/new/g' {} +
-\`\`\`
-
-Don't use that script, it is only an example.`
+  return `${SHELL_INSTRUCTIONS}\n\n## Context\n\nShell: ${shell}\n\nOS: ${os}`
 }
 
+export const generateReviewPrompt = (
+  options: ClovingGPTOptions,
+  contextFiles: Record<string, string>,
+): string => {
+  let prompt = `${REVIEW_INSTRUCTIONS}`
+  if (options.files) {
+    const contextFileContents = Object.keys(contextFiles)
+      .map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`)
+      .join('\n')
+
+    prompt += `### Description of App
+
+${JSON.stringify(getClovingConfig(), null, 2)}
+
+${contextFileContents}
+
+### Request
+
+I would like you to explain the code and document a description of it.
+List any bugs in the new code as well as recommended fixes for those bugs with code examples.
+Format the output of this code review in Markdown format.`
+  } else {
+    prompt += `### Request
+
+Do not use any data from the example response structure, only use the structure.
+I would like you to explain why these change are being made and document a description of these changes.
+Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
+Format the output of this code review in Markdown format.`
+  }
+
+  return prompt
+}
+
+/**
+ * Collects the contents of special files.
+ * @returns {Record<string, string | Record<string, unknown>>} An object containing the contents of special files.
+ */
 export const collectSpecialFileContents = (): Record<string, string | Record<string, unknown>> => {
   const specialFileContents: Record<string, string | Record<string, unknown>> = {}
   for (const file of SPECIAL_FILES) {
@@ -174,8 +200,17 @@ export const collectSpecialFileContents = (): Record<string, string | Record<str
   return specialFileContents
 }
 
+/**
+ * Checks if any special files exist in the current directory.
+ * @returns {boolean} True if any special files exist, false otherwise.
+ */
 export const checkForSpecialFiles = (): boolean => SPECIAL_FILES.some((file) => fs.existsSync(file))
 
+/**
+ * Recursively gets all non-binary files in a directory.
+ * @param {string} dir - The directory to search.
+ * @returns {Promise<string[]>} A promise that resolves with an array of file paths.
+ */
 export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => {
   const subdirs = await fs.promises.readdir(dir)
   const files = await Promise.all(
@@ -196,6 +231,10 @@ export const getAllFilesInDirectory = async (dir: string): Promise<string[]> => 
   return files.flat()
 }
 
+/**
+ * Generates a list of files in the current directory and its subdirectories.
+ * @returns {Promise<string[]>} A promise that resolves with an array of file paths.
+ */
 export const generateFileList = async (): Promise<string[]> => {
   try {
     const lsOutput = await runCommand('ls', [])
@@ -215,6 +254,12 @@ export const generateFileList = async (): Promise<string[]> => {
   }
 }
 
+/**
+ * Runs a shell command and returns its output.
+ * @param {string} command - The command to run.
+ * @param {string[]} args - The arguments for the command.
+ * @returns {Promise<string[]>} A promise that resolves with an array of output lines.
+ */
 export const runCommand = (command: string, args: string[]): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const process = spawn(command, args)
@@ -238,6 +283,10 @@ export const runCommand = (command: string, args: string[]): Promise<string[]> =
   })
 }
 
+/**
+ * Fetches available models using the 'cloving models' command.
+ * @returns {Promise<string[]>} A promise that resolves with an array of available models.
+ */
 export const fetchModels = async (): Promise<string[]> => {
   try {
     const modelsOutput = await runCommand('cloving', ['models'])
@@ -248,6 +297,11 @@ export const fetchModels = async (): Promise<string[]> => {
   }
 }
 
+/**
+ * Reads the content of a file.
+ * @param {string} file - The path to the file.
+ * @returns {string} The content of the file.
+ */
 export const readFileContent = (file: string): string => {
   try {
     return fs.readFileSync(file, 'utf-8')
@@ -288,6 +342,13 @@ const addDirectoryToContext = async (
   }
 }
 
+/**
+ * Adds a file or directory to the context.
+ * @param {string} contextFile - The path to the file or directory to add.
+ * @param {Record<string, string>} contextFiles - The current context files.
+ * @param {Record<string, any>} options - Additional options.
+ * @returns {Promise<Record<string, string>>} A promise that resolves with the updated context files.
+ */
 export const addFileOrDirectoryToContext = async (
   contextFile: string,
   contextFiles: Record<string, string>,

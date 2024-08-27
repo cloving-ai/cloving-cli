@@ -16,7 +16,7 @@ class CommitManager {
     this.gpt = new ClovingGPT(options)
   }
 
-  public async commit(): Promise<void> {
+  public async generateCommit(): Promise<void> {
     try {
       // Get the git diff
       const diff = execSync('git diff HEAD').toString().trim()

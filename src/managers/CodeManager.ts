@@ -1,25 +1,26 @@
 import { select, input, confirm } from '@inquirer/prompts'
 import { AxiosError } from 'axios'
 import highlight from 'cli-highlight'
+import colors from 'colors'
 
 import ClovingGPT from '../cloving_gpt'
 
+import { getConfig } from '../utils/config_utils'
 import { generateCodegenPrompt, addFileOrDirectoryToContext } from '../utils/prompt_utils'
 import {
   checkBlocksApplicability,
-  parseMarkdownInstructions,
   extractCurrentNewBlocks,
   applyAndSaveCurrentNewBlocks,
 } from '../utils/string_utils'
+import { CODEGEN_COULDNT_APPLY } from '../utils/prompts'
+import type { ClovingGPTOptions } from '../utils/types'
+import StreamManager from './StreamManager'
 
-import type { ClovingGPTOptions, ChatMessage } from '../utils/types'
-
-class CodeManager {
-  private gpt: ClovingGPT
-  private contextFiles: Record<string, string> = {}
-  private chatHistory: ChatMessage[] = []
-
-  constructor(private options: ClovingGPTOptions) {
+class CodeManager extends StreamManager {
+  constructor(options: ClovingGPTOptions) {
+    super(options)
+    options.silent = getConfig(options).globalSilent || false
+    options.stream = true
     this.gpt = new ClovingGPT(options)
   }
 
@@ -38,7 +39,7 @@ class CodeManager {
 
         while (includeMoreFiles) {
           const contextFile = await input({
-            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue):`,
+            message: `Enter the relative path of a file or directory you would like to include as context (or press enter to continue): `,
           })
 
           if (contextFile) {
@@ -60,66 +61,38 @@ class CodeManager {
         this.options.prompt = userPrompt
       }
 
-      let response = await this.generateCode(this.options.prompt)
-
-      const currentNewBlocks = extractCurrentNewBlocks(response)
-      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
-      if (!canApply) {
-        console.log(
-          'The generated code could not be automatically applied. It will try again asking for more details.',
-        )
-        console.log(`Some of the provided code blocks could not be applied,
-please match the existing code with a few more lines of context and make sure it is a character for character exact match.
-
-${summary}`)
-        response = await this.generateCode(this.options.prompt)
-        this.displayGeneratedCode(response)
-      }
-
-      this.displayGeneratedCode(response)
-
-      if (this.options.save) {
-        const currentNewBlocks = extractCurrentNewBlocks(response)
-        await applyAndSaveCurrentNewBlocks(currentNewBlocks)
-      } else {
-        await this.handleUserAction(response, this.options.prompt)
-      }
+      await this.generateCode(this.options.prompt)
     } catch (err) {
       const error = err as AxiosError
       console.error('Could not generate code', error.message)
     }
   }
 
-  public async generateCode(userPrompt: string): Promise<string> {
+  public async generateCode(userPrompt: string): Promise<void> {
+    await this.checkForLatestVersion()
+    await this.loadContextFiles()
+
     if (this.chatHistory.length === 0) {
-      const systemPrompt = generateCodegenPrompt(this.contextFiles)
-      this.chatHistory.push({ role: 'user', content: systemPrompt })
-      this.chatHistory.push({ role: 'assistant', content: 'What would you like to do?' })
+      this.addUserPrompt(generateCodegenPrompt(this.contextFiles))
+      this.addAssistantResponse('What would you like to do?')
     }
-    this.chatHistory.push({ role: 'user', content: userPrompt })
-    return await this.gpt.generateText({ prompt: userPrompt, messages: this.chatHistory })
+
+    this.addUserPrompt(userPrompt)
+
+    try {
+      const responseStream = await this.gpt.streamText({
+        prompt: userPrompt,
+        messages: this.chatHistory,
+      })
+
+      this.handleResponseStream(responseStream)
+    } catch (err) {
+      const error = err as AxiosError
+      console.error('Error streaming response:', error.message)
+    }
   }
 
-  private displayGeneratedCode(rawCodeCommand: string) {
-    parseMarkdownInstructions(rawCodeCommand).map((code) => {
-      if (code.trim().startsWith('```')) {
-        const lines = code.split('\n')
-        const language = code.match(/```(\w+)/)?.[1] || 'plaintext'
-        console.log(lines[0])
-        try {
-          console.log(highlight(lines.slice(1, -1).join('\n'), { language }))
-        } catch (error) {
-          // don't highlight if it fails
-          console.log(lines.slice(1, -1).join('\n'))
-        }
-        console.log(lines.slice(-1)[0])
-      } else {
-        console.log(highlight(code, { language: 'markdown' }))
-      }
-    })
-  }
-
-  private async handleUserAction(response: string, prompt: string): Promise<void> {
+  private async handleUserAction(response: string): Promise<void> {
     const currentNewBlocks = extractCurrentNewBlocks(response)
     const files = Array.from(new Set(currentNewBlocks.map((block) => block.filePath)))
 
@@ -163,9 +136,7 @@ ${summary}`)
             includeMoreFiles = false
           }
         }
-        const newResponse = await this.generateCode(newPrompt)
-        this.displayGeneratedCode(newResponse)
-        await this.handleUserAction(newResponse, newPrompt)
+        await this.generateCode(newPrompt)
         break
       case 'explain':
         const explainPrompt = this.generateExplainCodePrompt(response)
@@ -198,7 +169,7 @@ ${summary}`)
         break
       case 'saveAll':
         await applyAndSaveCurrentNewBlocks(currentNewBlocks)
-        console.log('All files have been saved.')
+        console.log(colors.green('\nAll files have been saved.'))
         break
       case 'done':
         break
@@ -211,6 +182,42 @@ ${summary}`)
 # Task
 
 Please briefly explain how the code works in this.`
+  }
+
+  /**
+   * Finalizes the response processing.
+   * This method should be overridden to provide specific finalization behavior.
+   * @protected
+   */
+  protected async finalizeResponse(): Promise<void> {
+    this.addAssistantResponse(this.responseString)
+    this.isProcessing = false
+
+    if (this.responseString !== '') {
+      const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
+      const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
+      if (!canApply) {
+        if (this.retryCount < this.maxRetries) {
+          console.log(
+            `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied. Retrying (Attempt ${this.retryCount + 1}/${this.maxRetries})...\n`,
+          )
+
+          this.retryCount++
+          this.generateCode(`${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
+
+          return
+        } else {
+          console.log(
+            `\n\n${colors.red.bold('ERROR')} Failed to generate a diff that could be cleanly applied after ${this.maxRetries} attempts. Please review the changes manually and try again.\n`,
+          )
+          this.retryCount = 0 // Reset the retry count for future attempts
+        }
+      } else {
+        this.retryCount = 0 // Reset the retry count on successful application
+      }
+    }
+
+    this.handleUserAction(this.responseString)
   }
 }
 
