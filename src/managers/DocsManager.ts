@@ -23,7 +23,7 @@ class DocsManager extends StreamManager {
    */
   constructor(options: ClovingGPTOptions) {
     super(options)
-    this.options.silent = getConfig(options).globalSilent || false
+    options.silent = getConfig(options).globalSilent || false
     options.stream = true
     this.gpt = new ClovingGPT(options)
   }
