@@ -82,8 +82,8 @@ class StreamManager extends EventEmitter {
    */
   protected handleResponseStream(responseStream: any) {
     this.responseString = ''
-    this.setupBlockManagerEvents()
     this.setupChunkManagerEvents()
+    this.setupBlockManagerEvents()
     this.setupResponseStreamEvents(responseStream)
   }
 
@@ -214,6 +214,7 @@ class StreamManager extends EventEmitter {
    */
   private processChunkManagerContent(buffer: string): void {
     let convertedStream = this.gpt.convertStream(buffer)
+
     while (convertedStream !== null) {
       const { output, lastChar } = convertedStream
       this.blockManager.addContent(output)

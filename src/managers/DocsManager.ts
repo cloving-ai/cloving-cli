@@ -32,7 +32,7 @@ class DocsManager extends StreamManager {
    * Generates documentation for the specified files.
    * @returns {Promise<void>}
    */
-  public async generateDocumentation(extraPrompt?: string): Promise<void> {
+  public async generateDocs(extraPrompt?: string): Promise<void> {
     try {
       this.isProcessing = true
       if (this.retryCount === 0) {
@@ -81,7 +81,7 @@ class DocsManager extends StreamManager {
           )
 
           this.retryCount++
-          this.generateDocumentation(`\n\n${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
+          this.generateDocs(`\n\n${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
 
           return
         } else {

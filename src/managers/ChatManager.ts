@@ -441,7 +441,7 @@ class ChatManager extends StreamManager {
   private async handleReview() {
     this.options.stream = false
     const reviewManager = new ReviewManager(this.options)
-    await reviewManager.review()
+    await reviewManager.generateReview()
     this.options.stream = true
     this.rl.prompt()
   }
@@ -449,7 +449,7 @@ class ChatManager extends StreamManager {
   private async handleCommit() {
     this.options.stream = false
     const commitManager = new CommitManager(this.options)
-    await commitManager.commit()
+    await commitManager.generateCommit()
     this.options.stream = true
     this.rl.prompt()
   }
@@ -583,7 +583,7 @@ class ChatManager extends StreamManager {
 
       this.handleResponseStream(responseStream)
     } catch (err) {
-      this.handleError(err)
+      this.handleError(err as AxiosError)
     }
   }
 
@@ -631,8 +631,7 @@ You can follow up with another request or:
     this.rl.prompt()
   }
 
-  private handleError(err: unknown) {
-    const error = err as AxiosError
+  private handleError(error: AxiosError) {
     let errorMessage = error.message || 'An error occurred.'
     const errorNumber = error.response?.status || 'unknown'
 

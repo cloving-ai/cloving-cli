@@ -14,6 +14,10 @@ const SHELL_INSTRUCTIONS = fs.readFileSync(
   path.resolve(__dirname, 'SHELL_INSTRUCTIONS.md'),
   'utf-8',
 )
+const REVIEW_INSTRUCTIONS = fs.readFileSync(
+  path.resolve(__dirname, 'REVIEW_INSTRUCTIONS.md'),
+  'utf-8',
+)
 const DOCS_INSTRUCTIONS = fs.readFileSync(path.resolve(__dirname, 'DOCS_INSTRUCTIONS.md'), 'utf-8')
 const INIT_INSTRUCTIONS = fs.readFileSync(path.resolve(__dirname, 'INIT_INSTRUCTIONS.md'), 'utf-8')
 const SPECIAL_FILES_PATH = fs.readFileSync(path.resolve(__dirname, 'SPECIAL_FILES.md'), 'utf-8')
@@ -29,4 +33,5 @@ export {
   INIT_INSTRUCTIONS,
   SPECIAL_FILES,
   CODEGEN_EXAMPLES,
+  REVIEW_INSTRUCTIONS,
 }

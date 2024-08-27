@@ -12,12 +12,15 @@ import { join } from 'path'
 
 import { getClovingConfig } from './config_utils'
 import {
+  REVIEW_INSTRUCTIONS,
   DOCS_INSTRUCTIONS,
   CODEGEN_INSTRUCTIONS,
   SPECIAL_FILES,
   SHELL_INSTRUCTIONS,
   CODEGEN_EXAMPLES,
 } from './prompts'
+
+import type { ChatMessage, ClovingGPTOptions } from './types'
 
 /**
  * Retrieves the package version from package.json.
@@ -143,6 +146,39 @@ export const generateShellPrompt = (): string => {
   const shell = execSync('echo $SHELL').toString().trim()
   const os = execSync('echo $OSTYPE').toString().trim()
   return `${SHELL_INSTRUCTIONS}\n\n## Context\n\nShell: ${shell}\n\nOS: ${os}`
+}
+
+export const generateReviewPrompt = (
+  options: ClovingGPTOptions,
+  contextFiles: Record<string, string>,
+): string => {
+  let prompt = `${REVIEW_INSTRUCTIONS}`
+  if (options.files) {
+    const contextFileContents = Object.keys(contextFiles)
+      .map((file) => `### Contents of ${file}\n\n${contextFiles[file]}\n\n`)
+      .join('\n')
+
+    prompt += `### Description of App
+
+${JSON.stringify(getClovingConfig(), null, 2)}
+
+${contextFileContents}
+
+### Request
+
+I would like you to explain the code and document a description of it.
+List any bugs in the new code as well as recommended fixes for those bugs with code examples.
+Format the output of this code review in Markdown format.`
+  } else {
+    prompt += `### Request
+
+Do not use any data from the example response structure, only use the structure.
+I would like you to explain why these change are being made and document a description of these changes.
+Also list any bugs in the new code as well as recommended fixes for those bugs with code examples.
+Format the output of this code review in Markdown format.`
+  }
+
+  return prompt
 }
 
 /**

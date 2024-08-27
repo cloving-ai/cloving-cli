@@ -3,7 +3,7 @@ import type { ClovingGPTOptions } from '../../utils/types'
 
 const docs = async (options: ClovingGPTOptions) => {
   const docsManager = new DocsManager(options)
-  await docsManager.generateDocumentation()
+  await docsManager.generateDocs()
 }
 
 export default docs
