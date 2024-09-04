@@ -122,6 +122,86 @@ const newContent = 'This is new'
       console.log('New content with indentation')
     }`)
     })
+
+    test('should handle new file creation', () => {
+      const input = `
+\`\`\`typescript
+<<<<<<< CURRENT foo/bar/baz.ts
+=======
+console.log('hello world')
+>>>>>>> NEW
+\`\`\``
+
+      const result = extractCurrentNewBlocks(input)
+
+      expect(result).toEqual([
+        {
+          language: 'typescript',
+          filePath: 'foo/bar/baz.ts',
+          currentContent: '',
+          newContent: "console.log('hello world')",
+        },
+      ])
+    })
+
+    test('should handle multiple new file creations', () => {
+      const input = `
+\`\`\`typescript
+<<<<<<< CURRENT foo/bar/file1.ts
+=======
+console.log('file 1')
+>>>>>>> NEW
+\`\`\`
+
+Some text in between
+
+\`\`\`javascript
+<<<<<<< CURRENT foo/bar/file2.js
+=======
+console.log('file 2')
+>>>>>>> NEW
+\`\`\``
+
+      const result = extractCurrentNewBlocks(input)
+
+      expect(result).toEqual([
+        {
+          language: 'typescript',
+          filePath: 'foo/bar/file1.ts',
+          currentContent: '',
+          newContent: "console.log('file 1')",
+        },
+        {
+          language: 'javascript',
+          filePath: 'foo/bar/file2.js',
+          currentContent: '',
+          newContent: "console.log('file 2')",
+        },
+      ])
+    })
+
+    test('should handle new file creation when file already exists', () => {
+      const input = `
+\`\`\`typescript
+<<<<<<< CURRENT foo/bar/existing.ts
+=======
+// New content
+const newVar = 'new';
+>>>>>>> NEW
+\`\`\``
+
+      const result = extractCurrentNewBlocks(input)
+
+      expect(result).toEqual([
+        {
+          language: 'typescript',
+          filePath: 'foo/bar/existing.ts',
+          currentContent: '',
+          newContent: `// New content
+const newVar = 'new';`,
+        },
+      ])
+    })
   })
 
   describe('extractMarkdown', () => {
@@ -246,6 +326,34 @@ const newContent = 'This is new'
     console.log('Old content')
   }`)
     })
+
+    test('should handle new file creation', () => {
+      const currentContent = ''
+      const block = {
+        language: 'typescript',
+        filePath: 'foo/bar/baz.ts',
+        currentContent: '',
+        newContent: "console.log('hello world')",
+      }
+      const updatedContent = searchReplaceString(currentContent, block)
+      expect(updatedContent).toBe("console.log('hello world')")
+    })
+
+    test('should replace content when file already exists', () => {
+      const currentContent = `// Existing content
+const existingVar = 'old';`
+      const block = {
+        language: 'typescript',
+        filePath: 'foo/bar/existing.ts',
+        currentContent: `// Existing content
+const existingVar = 'old';`,
+        newContent: `// New content
+const newVar = 'new';`,
+      }
+      const updatedContent = searchReplaceString(currentContent, block)
+      expect(updatedContent).toBe(`// New content
+const newVar = 'new';`)
+    })
   })
 
   describe('extractCurrentNewBlocks and searchReplaceString integration', () => {
@@ -349,6 +457,93 @@ constructor(private options: ClovingGPTOptions) {
     options.exec = options.exec || false
     this.gpt = new ClovingGPT(options)
   }
+}`
+
+      expect(updatedContent).toBe(expectedContent)
+    })
+
+    test('should extract blocks and replace content correctly for new files', () => {
+      const diffString = `Here is a new file:\n\n\`\`\`typescript
+<<<<<<< CURRENT src/newfile.ts
+=======
+export function newFunction() {
+  console.log('This is a new file')
+}
+>>>>>>> NEW
+\`\`\``
+
+      const existingContent = ''
+
+      // Extract blocks
+      const blocks = extractCurrentNewBlocks(diffString)
+
+      // Check if blocks are extracted correctly
+      expect(blocks).toHaveLength(1)
+      expect(blocks[0]).toEqual({
+        language: 'typescript',
+        filePath: 'src/newfile.ts',
+        currentContent: '',
+        newContent: `export function newFunction() {
+  console.log('This is a new file')
+}`,
+      })
+
+      // Apply the change using searchReplaceString
+      const updatedContent = searchReplaceString(existingContent, blocks[0])
+
+      // Check if the content is updated correctly
+      const expectedContent = `export function newFunction() {
+  console.log('This is a new file')
+}`
+
+      expect(updatedContent).toBe(expectedContent)
+    })
+
+    test('should extract blocks and replace content correctly for existing files', () => {
+      const diffString = `Here's an update to an existing file:\n\n\`\`\`typescript
+<<<<<<< CURRENT src/existingfile.ts
+// Existing content
+export function existingFunction() {
+  console.log('This is an existing file')
+}
+=======
+// Updated content
+export function updatedFunction() {
+  console.log('This file has been updated')
+}
+>>>>>>> NEW
+\`\`\``
+
+      const existingContent = `// Existing content
+export function existingFunction() {
+  console.log('This is an existing file')
+}`
+
+      // Extract blocks
+      const blocks = extractCurrentNewBlocks(diffString)
+
+      // Check if blocks are extracted correctly
+      expect(blocks).toHaveLength(1)
+      expect(blocks[0]).toEqual({
+        language: 'typescript',
+        filePath: 'src/existingfile.ts',
+        currentContent: `// Existing content
+export function existingFunction() {
+  console.log('This is an existing file')
+}`,
+        newContent: `// Updated content
+export function updatedFunction() {
+  console.log('This file has been updated')
+}`,
+      })
+
+      // Apply the change using searchReplaceString
+      const updatedContent = searchReplaceString(existingContent, blocks[0])
+
+      // Check if the content is updated correctly
+      const expectedContent = `// Updated content
+export function updatedFunction() {
+  console.log('This file has been updated')
 }`
 
       expect(updatedContent).toBe(expectedContent)

@@ -513,11 +513,21 @@ export const checkBlocksApplicability = async (
     const filePath = path.resolve(block.filePath)
     let fileContent = await readFileContent(filePath)
 
-    if (fileContent === '') {
+    if (block.newContent.trim() === '') {
+      allApplicable = false
+      summary.push(
+        `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold('cannot be applied: New content is empty')}`,
+      )
+    } else if (fileContent === '') {
       summary.push(
         `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.green.bold('created')}`,
       )
-    } else if (block.currentContent.trim() !== '') {
+    } else if (block.currentContent.trim() === '') {
+      allApplicable = false
+      summary.push(
+        `[${index + 1}] ${colors.red.bold(block.filePath)} ${colors.red.bold(`cannot be applied: File '${block.filePath}' already exists`)}`,
+      )
+    } else {
       const { matchingLines } = await analyzeBlockContent(block, fileContent)
 
       if (matchingLines.length === 0) {
@@ -535,10 +545,6 @@ export const checkBlocksApplicability = async (
           `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,
         )
       }
-    } else {
-      summary.push(
-        `[${index + 1}] ${colors.green.bold(block.filePath)} can be ${colors.yellow.bold('updated')}`,
-      )
     }
   }
 

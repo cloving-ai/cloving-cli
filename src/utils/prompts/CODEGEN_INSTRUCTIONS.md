@@ -19,18 +19,19 @@
 
 ## *CURRENT/NEW* Block Format
 
-1. **Start a block with a one line description of change**
-1. **Then provide three backticks and the language name.**
+1. **Start a block with a one line description of change followed by three backticks and the language name like this:**
+   About to add documentation to the `UserService` class.
+
    ```typescript
-2. **Next line: seven <, CURRENT, and the file path.**
+2. **Next line: seven <, CURRENT, and the file path like this:**
    <<<<<<< CURRENT path/to/file.ts
-3. **Include the exact existing code to be changed, this section should always have some code characters in it, not just spaces or tabs. The only exception is when creating a brand new file.**
-4. **Divide with seven =.**
+3. **Include the exact existing code to be changed, this section should always have some code characters in it, not just spaces or tabs.**
+4. **Divide with seven = like this:**
    =======
 5. **Add the new code.**
-6. **End with seven > and NEW.**
+6. **End with seven > and NEW like this:**
    >>>>>>> NEW
-7. **Close the block with three backticks.**
+7. **Close the block with three backticks like this:**
    ```
 
 ## Don't Invent Code That Isn't Provided in Context
