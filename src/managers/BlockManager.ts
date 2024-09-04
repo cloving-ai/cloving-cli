@@ -22,16 +22,19 @@ class BlockManager extends EventEmitter {
     }
 
     // if content has multiple \n``` in the string, then we need to split it up
+    const codeBlockRegex = /\n```[\s\S]*?\n```/g
+    const codeBlocks = content.match(codeBlockRegex)
 
-    if (content.includes('\n```')) {
-      while (content.includes('\n```')) {
-        const index = content.indexOf('\n```')
-        this.processCodeBlocks(content.slice(0, index + 4))
-        content = content.slice(index + 4)
+    if (codeBlocks) {
+      let lastIndex = 0
+      for (const block of codeBlocks) {
+        const index = content.indexOf(block, lastIndex)
+        this.processCodeBlocks(content.slice(lastIndex, index))
+        this.processCodeBlocks(block)
+        lastIndex = index + block.length
       }
-    }
-
-    if (content !== '') {
+      this.processCodeBlocks(content.slice(lastIndex))
+    } else {
       this.processCodeBlocks(content)
     }
   }

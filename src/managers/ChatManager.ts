@@ -559,33 +559,13 @@ class ChatManager extends StreamManager {
           `${colors.yellow.bold('INFORMATION')} The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
         )
 
-        const reviewPrompt = await new Promise<string>((resolve) => {
-          this.rl.question(colors.green.bold('cloving> '), (answer) => {
-            resolve(answer.trim().toLowerCase())
-          })
-        })
+        const reviewPrompt = await this.askQuestion('cloving> ')
 
         if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
-          console.log(
-            colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
-          )
-          const promptParts = fullPrompt.split('\n```')
-          const highlightedPrompt = promptParts
-            .map((part, index) =>
-              index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part,
-            )
-            .join('\n```')
-          console.log(highlightedPrompt)
-          console.log(
-            colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'),
-          )
+          this.reviewPrompt(fullPrompt)
           console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`)
 
-          const confirmPrompt = await new Promise<string>((resolve) => {
-            this.rl.question(colors.green.bold('cloving> '), (answer) => {
-              resolve(answer.trim().toLowerCase())
-            })
-          })
+          const confirmPrompt = await this.askQuestion('cloving> ')
 
           if (!confirmPrompt.startsWith('y') && confirmPrompt !== '') {
             console.log('Operation cancelled by user.')
@@ -607,9 +587,28 @@ class ChatManager extends StreamManager {
     }
   }
 
+  private askQuestion(prompt: string): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.rl.question(colors.green.bold(prompt), (answer) => {
+        resolve(answer.trim().toLowerCase())
+      })
+    })
+  }
+
+  private reviewPrompt(fullPrompt: string) {
+    console.log(colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'))
+    const promptParts = fullPrompt.split('\n```')
+    const highlightedPrompt = promptParts
+      .map((part, index) => (index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part))
+      .join('\n```')
+    console.log(highlightedPrompt)
+    console.log(colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'))
+  }
+
   protected async finalizeResponse(): Promise<void> {
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
+    process.stdout.write('\b'.repeat(100))
 
     if (this.responseString !== '') {
       const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
