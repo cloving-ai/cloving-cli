@@ -49,9 +49,14 @@ class BlockManager extends EventEmitter {
         const rest = content.slice(markerIndex + codeBlockMarker.length)
         this.emit('endGeneratingCode')
         this.emitCodeBlock()
-        this.emit('content', rest)
+        if (rest.trim() !== '') {
+          this.emit('content', rest)
+        }
       } else {
-        this.emitBuffer(content.slice(0, markerIndex))
+        const beforeMarker = content.slice(0, markerIndex)
+        if (beforeMarker.trim() !== '') {
+          this.emitBuffer(beforeMarker)
+        }
         this.codeBuffer = content.slice(markerIndex)
         this.emit('startGeneratingCode')
         this.isBufferingCode = true
@@ -64,13 +69,13 @@ class BlockManager extends EventEmitter {
       }
     }
 
-    if (!this.isBufferingCode && this.buffer) {
+    if (!this.isBufferingCode && this.buffer.trim() !== '') {
       this.emitBuffer()
     }
   }
 
   private emitBuffer(additionalContent: string = '') {
-    const contentToEmit = this.buffer + additionalContent
+    const contentToEmit = (this.buffer + additionalContent).trim()
     if (contentToEmit) {
       this.emit('content', contentToEmit)
       this.clearBuffer()
@@ -84,7 +89,9 @@ class BlockManager extends EventEmitter {
         currentNewBlock,
         raw: this.codeBuffer,
       })
-      this.emit('content', this.buffer)
+      if (this.buffer.trim() !== '') {
+        this.emit('content', this.buffer)
+      }
       this.clearBuffer()
     }
   }

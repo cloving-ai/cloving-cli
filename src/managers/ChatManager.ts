@@ -128,7 +128,6 @@ class ChatManager extends StreamManager {
     const trimmedLine = line.trim()
 
     if (this.isPastedCode(trimmedLine)) {
-      console.log('Detected pasted code. Processing as multiline input...')
       this.multilineInput = trimmedLine
       this.isMultilineMode = true
       await this.handleCommand(this.multilineInput)
