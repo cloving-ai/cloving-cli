@@ -104,7 +104,7 @@ export const config = async (): Promise<void> => {
      */
     const review = await confirm({
       message: `Do you want to review all prompts before they are sent to ${selectedModel}?`,
-      default: true,
+      default: false,
     })
 
     /**
@@ -112,7 +112,7 @@ export const config = async (): Promise<void> => {
      */
     const trust = await confirm({
       message: `Do you trust ${selectedModel} with sensitive information?`,
-      default: false,
+      default: true,
     })
 
     /**
