@@ -197,27 +197,29 @@ Please briefly explain how the code works in this.`
       const currentNewBlocks = extractCurrentNewBlocks(this.responseString)
       const [canApply, summary] = await checkBlocksApplicability(currentNewBlocks)
       if (!canApply) {
-        if (this.retryCount < this.maxRetries) {
-          console.log(
-            `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied. Retrying (Attempt ${this.retryCount + 1}/${this.maxRetries})...\n`,
-          )
-
-          this.retryCount++
-          this.generateCode(`${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
-
-          return
-        } else {
-          console.log(
-            `\n\n${colors.red.bold('ERROR')} Failed to generate a diff that could be cleanly applied after ${this.maxRetries} attempts. Please review the changes manually and try again.\n`,
-          )
-          this.retryCount = 0 // Reset the retry count for future attempts
-        }
+        await this.handleUnapplicableBlocks(summary)
       } else {
         this.retryCount = 0 // Reset the retry count on successful application
       }
     }
 
-    this.handleUserAction(this.responseString)
+    await this.handleUserAction(this.responseString)
+  }
+
+  private async handleUnapplicableBlocks(summary: string): Promise<void> {
+    if (this.retryCount < this.maxRetries) {
+      console.log(
+        `\n\n${summary}\n\n${colors.yellow.bold('WARNING')} Some of the provided code blocks could not be automatically applied. Retrying (Attempt ${this.retryCount + 1}/${this.maxRetries})...\n`,
+      )
+
+      this.retryCount++
+      await this.generateCode(`${CODEGEN_COULDNT_APPLY}\n\n${summary}`)
+    } else {
+      console.log(
+        `\n\n${colors.red.bold('ERROR')} Failed to generate a diff that could be cleanly applied after ${this.maxRetries} attempts. Please review the changes manually and try again.\n`,
+      )
+      this.retryCount = 0 // Reset the retry count for future attempts
+    }
   }
 }
 

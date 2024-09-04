@@ -208,17 +208,32 @@ ${JSON.stringify(projectDetails, null, 2)}`
     const clovingJson = JSON.parse(cleanAiChatResponse)
 
     const directoriesToCheck = [
-      ...clovingJson.languages.map((language: any) => language.directory),
-      ...clovingJson.frameworks.map((framework: any) => framework.directory),
-      ...clovingJson.testingFrameworks.map((testingFramework: any) => testingFramework.directory),
+      ...clovingJson.languages.map((language: any) => ({
+        type: 'Language',
+        name: language.name,
+        directory: language.directory,
+      })),
+      ...clovingJson.frameworks.map((framework: any) => ({
+        type: 'Framework',
+        name: framework.name,
+        directory: framework.directory,
+      })),
+      ...clovingJson.testingFrameworks.map((testingFramework: any) => ({
+        type: 'Testing Framework',
+        name: testingFramework.name,
+        directory: testingFramework.directory,
+      })),
     ]
 
-    const missingDirectories = directoriesToCheck.filter((directory) => !fs.existsSync(directory))
+    const missingDirectories = directoriesToCheck.filter((item) => !fs.existsSync(item.directory))
 
     if (missingDirectories.length > 0) {
+      const missingDirMessages = missingDirectories.map(
+        (item) => `${item.type} ${colors.bold(item.name)}: ${colors.red.bold(item.directory)}`,
+      )
       return [
         false,
-        `${colors.red.bold('ERROR:')} The following directories were not found: ${colors.red.bold(missingDirectories.join(', '))}`,
+        `${colors.red.bold('ERROR:')} The following directories were not found:\n${missingDirMessages.join('\n')}`,
       ]
     }
 

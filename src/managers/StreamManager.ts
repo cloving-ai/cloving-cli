@@ -166,24 +166,23 @@ class StreamManager extends EventEmitter {
    * @param {CurrentNewBlock} currentNewBlock - The current and new content of the code block.
    */
   private displayCurrentNewBlock(currentNewBlock: CurrentNewBlock): void {
+    const language = currentNewBlock.language.split('\n')[0]
+    process.stdout.write(
+      colors.gray.bold(`\`\`\`${language}                                       \n`),
+    )
+    process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
     try {
-      process.stdout.write(
-        colors.gray.bold(
-          `\`\`\`${currentNewBlock.language}                                       \n`,
-        ),
-      )
-      process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
-      process.stdout.write(
-        highlight(currentNewBlock.currentContent, { language: currentNewBlock.language }),
-      )
-      process.stdout.write(colors.gray.bold('\n=======\n'))
-      process.stdout.write(
-        highlight(currentNewBlock.newContent, { language: currentNewBlock.language }),
-      )
-      process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+      process.stdout.write(highlight(currentNewBlock.currentContent, { language }))
     } catch (error) {
-      console.error(colors.red('Error displaying the code block:'), error)
+      process.stdout.write(currentNewBlock.currentContent)
     }
+    process.stdout.write(colors.gray.bold('\n=======\n'))
+    try {
+      process.stdout.write(highlight(currentNewBlock.newContent, { language }))
+    } catch (error) {
+      process.stdout.write(currentNewBlock.newContent)
+    }
+    process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
   }
 
   /**
@@ -274,31 +273,46 @@ class StreamManager extends EventEmitter {
    * @returns {Promise<void>}
    */
   protected async loadContextFiles(): Promise<void> {
-    const config = getClovingConfig()
-    const primaryLanguage = config.languages.find((lang) => lang.primary)
-    const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
-    const testingDirectories =
-      config.testingFrameworks?.map((framework) => framework.directory) || []
-    const testingDirectory = testingDirectories[0]
+    try {
+      const config = getClovingConfig()
+      const primaryLanguage = config.languages.find((lang) => lang.primary)
+      const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
+      const testingDirectories =
+        config.testingFrameworks?.map((framework) => framework.directory) || []
+      const testingDirectory = testingDirectories[0]
 
-    let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
-    if (files.length > 0) {
-      console.log(`\nBuilding AI prompt context...\n`)
-    }
-    for (const file of files) {
-      // Skip if the file is not a string
-      if (!file) continue
+      let files = this.options.files || [defaultDirectory, testingDirectory].filter(Boolean)
+      if (files.length > 0) {
+        console.log(`\nBuilding AI prompt context...\n`)
+      }
+      for (const file of files) {
+        // Skip if the file is not a string
+        if (!file) continue
 
-      const previousCount = Object.keys(this.contextFiles).length
-      this.contextFiles = await addFileOrDirectoryToContext(file, this.contextFiles, this.options)
-      const newCount = Object.keys(this.contextFiles).length
-      const addedCount = newCount - previousCount
+        try {
+          const previousCount = Object.keys(this.contextFiles).length
+          this.contextFiles = await addFileOrDirectoryToContext(
+            file,
+            this.contextFiles,
+            this.options,
+          )
+          const newCount = Object.keys(this.contextFiles).length
+          const addedCount = newCount - previousCount
 
-      const totalTokens = this.calculateTotalTokens()
+          const totalTokens = this.calculateTotalTokens()
 
-      console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`))
-      console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`))
-      console.log(colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`))
+          console.log(colors.cyan(`📁 Loaded context from: ${colors.bold(file)}`))
+          console.log(colors.green(`   ✅ Added ${addedCount} file(s) to context`))
+          console.log(
+            colors.yellow(`   📊 Total tokens in context: ${totalTokens.toLocaleString()}\n`),
+          )
+        } catch (fileError) {
+          console.error(colors.red(`Error loading context from ${file}:`), fileError)
+        }
+      }
+    } catch (error) {
+      console.error(colors.red('Error loading context files:'), error)
+      throw new Error('Failed to load context files')
     }
   }
 

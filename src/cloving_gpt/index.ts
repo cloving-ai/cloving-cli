@@ -47,7 +47,7 @@ class ClovingGPT {
     const { provider, model, config: modelConfig } = primaryModel
     this.apiKey = modelConfig.apiKey
     this.temperature = options.temperature || modelConfig.temperature || 0.2
-    this.silent = options.silent || modelConfig.silent
+    this.silent = options.silent || modelConfig.silent || false
     this.stream = options.stream || false
     this.timeout = options.timeout || 60000 // Default timeout of 60 seconds
 

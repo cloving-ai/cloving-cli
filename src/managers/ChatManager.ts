@@ -12,6 +12,7 @@ import {
   applyAndSaveCurrentNewBlocks,
   checkBlocksApplicability,
 } from '../utils/string_utils'
+import { getConfig } from '../utils/config_utils'
 import { addFileOrDirectoryToContext } from '../utils/prompt_utils'
 import { CODEGEN_COULDNT_APPLY } from '../utils/prompts'
 import type { ClovingGPTOptions } from '../utils/types'
@@ -45,7 +46,7 @@ class ChatManager extends StreamManager {
    */
   constructor(options: ClovingGPTOptions) {
     super(options)
-    this.isSilent = options.silent || false
+    this.isSilent = options.silent || getConfig(options).globalSilent || false
     options.stream = true
     options.silent = true
     this.rl = readline.createInterface({
@@ -126,6 +127,16 @@ class ChatManager extends StreamManager {
 
     const trimmedLine = line.trim()
 
+    if (this.isPastedCode(trimmedLine)) {
+      console.log('Detected pasted code. Processing as multiline input...')
+      this.multilineInput = trimmedLine
+      this.isMultilineMode = true
+      await this.handleCommand(this.multilineInput)
+      this.multilineInput = ''
+      this.isMultilineMode = false
+      return
+    }
+
     if (this.handleMultilineInput(trimmedLine)) {
       return
     }
@@ -163,6 +174,11 @@ class ChatManager extends StreamManager {
       return true
     }
     return false
+  }
+
+  private isPastedCode(line: string): boolean {
+    // Check if the line contains multiple lines (indicating a paste)
+    return line.includes('\n') || line.length > 100
   }
 
   private handleExitCommand(command: string): boolean {
@@ -211,6 +227,10 @@ class ChatManager extends StreamManager {
       const matchingCommand = specialCommands.find((cmd) => cmd.startsWith(command))
       if (matchingCommand) {
         command = matchingCommand.split(' ')[0] // Use only the command part without arguments
+      } else {
+        console.log(`No matching command found for '${command}'. Processing as user input.`)
+        await this.processUserInput(command)
+        return
       }
     }
 
@@ -513,7 +533,7 @@ class ChatManager extends StreamManager {
       await this.refreshContext()
       this.addUserPrompt(this.generatePrompt(input))
 
-      if (!this.isSilent) {
+      if (!this.gpt.silent) {
         const fullPrompt = this.chatHistory
           .map((m) => {
             const content = m.content
@@ -539,33 +559,13 @@ class ChatManager extends StreamManager {
           `${colors.yellow.bold('INFORMATION')} The generated prompt is approximately ${tokenCount} tokens long. Would you like to review the prompt before sending it? ${colors.gray('(Y/n)')}`,
         )
 
-        const reviewPrompt = await new Promise<string>((resolve) => {
-          this.rl.question(colors.green.bold('cloving> '), (answer) => {
-            resolve(answer.trim().toLowerCase())
-          })
-        })
+        const reviewPrompt = await this.askQuestion('cloving> ')
 
         if (reviewPrompt.startsWith('y') || reviewPrompt === '') {
-          console.log(
-            colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'),
-          )
-          const promptParts = fullPrompt.split('\n```')
-          const highlightedPrompt = promptParts
-            .map((part, index) =>
-              index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part,
-            )
-            .join('\n```')
-          console.log(highlightedPrompt)
-          console.log(
-            colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'),
-          )
+          this.reviewPrompt(fullPrompt)
           console.log(`Do you want to proceed with this prompt? ${colors.gray('(Y/n)')}`)
 
-          const confirmPrompt = await new Promise<string>((resolve) => {
-            this.rl.question(colors.green.bold('cloving> '), (answer) => {
-              resolve(answer.trim().toLowerCase())
-            })
-          })
+          const confirmPrompt = await this.askQuestion('cloving> ')
 
           if (!confirmPrompt.startsWith('y') && confirmPrompt !== '') {
             console.log('Operation cancelled by user.')
@@ -587,9 +587,28 @@ class ChatManager extends StreamManager {
     }
   }
 
+  private askQuestion(prompt: string): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.rl.question(colors.green.bold(prompt), (answer) => {
+        resolve(answer.trim().toLowerCase())
+      })
+    })
+  }
+
+  private reviewPrompt(fullPrompt: string) {
+    console.log(colors.gray.bold('\n---------------------- PROMPT START ----------------------\n'))
+    const promptParts = fullPrompt.split('\n```')
+    const highlightedPrompt = promptParts
+      .map((part, index) => (index % 2 === 1 ? highlight(part, { language: 'typescript' }) : part))
+      .join('\n```')
+    console.log(highlightedPrompt)
+    console.log(colors.gray.bold('\n---------------------- PROMPT END ----------------------\n'))
+  }
+
   protected async finalizeResponse(): Promise<void> {
     this.addAssistantResponse(this.responseString)
     this.isProcessing = false
+    process.stdout.write('\b'.repeat(100))
 
     if (this.responseString !== '') {
       const currentNewBlocks = extractCurrentNewBlocks(this.responseString)

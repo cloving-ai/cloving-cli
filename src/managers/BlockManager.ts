@@ -22,16 +22,19 @@ class BlockManager extends EventEmitter {
     }
 
     // if content has multiple \n``` in the string, then we need to split it up
+    const codeBlockRegex = /\n```[\s\S]*?\n```/g
+    const codeBlocks = content.match(codeBlockRegex)
 
-    if (content.includes('\n```')) {
-      while (content.includes('\n```')) {
-        const index = content.indexOf('\n```')
-        this.processCodeBlocks(content.slice(0, index + 4))
-        content = content.slice(index + 4)
+    if (codeBlocks) {
+      let lastIndex = 0
+      for (const block of codeBlocks) {
+        const index = content.indexOf(block, lastIndex)
+        this.processCodeBlocks(content.slice(lastIndex, index))
+        this.processCodeBlocks(block)
+        lastIndex = index + block.length
       }
-    }
-
-    if (content !== '') {
+      this.processCodeBlocks(content.slice(lastIndex))
+    } else {
       this.processCodeBlocks(content)
     }
   }
@@ -99,7 +102,17 @@ class BlockManager extends EventEmitter {
   private parseCodeBuffer(): CurrentNewBlock | null {
     const results = extractCurrentNewBlocks(this.codeBuffer)
 
-    return results[0]
+    if (results.length === 0) {
+      return null
+    }
+
+    const block = results[0]
+    if (!block.currentContent || !block.newContent) {
+      console.warn('Incomplete code block detected. Skipping.')
+      return null
+    }
+
+    return block
   }
 
   clearBuffer() {

@@ -92,6 +92,9 @@ class DocsManager extends StreamManager {
         }
       }
     }
+
+    // Reset responseString after processing
+    this.responseString = ''
   }
 }
 

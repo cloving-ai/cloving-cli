@@ -84,7 +84,19 @@ class ProxyManager {
   private async handleChatCompletions(req: Request, res: Response) {
     try {
       const { messages, stream } = req.body
-      const content = messages.map((message: any) => message.content).join('\n\n')
+
+      if (!Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Invalid request body: messages must be an array' })
+      }
+
+      const content = messages
+        .map((message: any) => {
+          if (typeof message !== 'object' || typeof message.content !== 'string') {
+            throw new Error('Invalid message format')
+          }
+          return message.content
+        })
+        .join('\n\n')
 
       const contextFileContents = Object.keys(this.contextFiles)
         .map((file) => `### Contents of ${file}\n\n${this.contextFiles[file]}\n\n`)
@@ -110,7 +122,13 @@ ${content}`
       }
     } catch (error) {
       console.error('Error processing request:', error)
-      res.status(500).json({ error: 'Internal server error' })
+      if (error instanceof Error && error.message === 'Invalid message format') {
+        res.status(400).json({
+          error: 'Invalid request body: each message must have a content property of type string',
+        })
+      } else {
+        res.status(500).json({ error: 'Internal server error' })
+      }
     }
   }
 
