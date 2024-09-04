@@ -12,6 +12,7 @@ import {
   applyAndSaveCurrentNewBlocks,
   checkBlocksApplicability,
 } from '../utils/string_utils'
+import { getConfig } from '../utils/config_utils'
 import { addFileOrDirectoryToContext } from '../utils/prompt_utils'
 import { CODEGEN_COULDNT_APPLY } from '../utils/prompts'
 import type { ClovingGPTOptions } from '../utils/types'
@@ -45,7 +46,7 @@ class ChatManager extends StreamManager {
    */
   constructor(options: ClovingGPTOptions) {
     super(options)
-    this.isSilent = options.silent || false
+    this.isSilent = getConfig(options).globalSilent || options.silent || false
     options.stream = true
     options.silent = true
     this.rl = readline.createInterface({
@@ -126,6 +127,16 @@ class ChatManager extends StreamManager {
 
     const trimmedLine = line.trim()
 
+    if (this.isPastedCode(trimmedLine)) {
+      console.log('Detected pasted code. Processing as multiline input...')
+      this.multilineInput = trimmedLine
+      this.isMultilineMode = true
+      await this.handleCommand(this.multilineInput)
+      this.multilineInput = ''
+      this.isMultilineMode = false
+      return
+    }
+
     if (this.handleMultilineInput(trimmedLine)) {
       return
     }
@@ -163,6 +174,11 @@ class ChatManager extends StreamManager {
       return true
     }
     return false
+  }
+
+  private isPastedCode(line: string): boolean {
+    // Check if the line contains multiple lines (indicating a paste)
+    return line.includes('\n') || line.length > 100
   }
 
   private handleExitCommand(command: string): boolean {
@@ -513,7 +529,7 @@ class ChatManager extends StreamManager {
       await this.refreshContext()
       this.addUserPrompt(this.generatePrompt(input))
 
-      if (!this.isSilent) {
+      if (!this.gpt.silent) {
         const fullPrompt = this.chatHistory
           .map((m) => {
             const content = m.content
