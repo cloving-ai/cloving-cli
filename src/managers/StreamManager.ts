@@ -171,9 +171,17 @@ class StreamManager extends EventEmitter {
       colors.gray.bold(`\`\`\`${language}                                       \n`),
     )
     process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
-    process.stdout.write(highlight(currentNewBlock.currentContent))
+    try {
+      process.stdout.write(highlight(currentNewBlock.currentContent))
+    } catch (error) {
+      process.stdout.write(currentNewBlock.currentContent)
+    }
     process.stdout.write(colors.gray.bold('\n=======\n'))
-    process.stdout.write(highlight(currentNewBlock.newContent))
+    try {
+      process.stdout.write(highlight(currentNewBlock.newContent))
+    } catch (error) {
+      process.stdout.write(currentNewBlock.newContent)
+    }
     process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
   }
 
@@ -184,8 +192,6 @@ class StreamManager extends EventEmitter {
    */
   private displayRawCodeBlock(raw: string): void {
     process.stdout.write(`                                       \n`)
-    const languageMatch = raw.match(/^```(\w+)/)
-    const language = languageMatch ? languageMatch[1] : ''
     process.stdout.write(highlight(raw))
   }
 
