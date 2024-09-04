@@ -7,7 +7,15 @@ import highlight from 'cli-highlight'
 
 const isSupportedLanguage = (language: string): boolean => {
   try {
+    // Redirect console.log to a no-op function temporarily
+    const originalConsoleLog = console.log
+    console.log = () => {}
+
     highlight('', { language })
+
+    // Restore original console.log
+    console.log = originalConsoleLog
+
     return true
   } catch (error) {
     return false
