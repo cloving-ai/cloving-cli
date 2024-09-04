@@ -123,11 +123,9 @@ ${content}`
     } catch (error) {
       console.error('Error processing request:', error)
       if (error instanceof Error && error.message === 'Invalid message format') {
-        res
-          .status(400)
-          .json({
-            error: 'Invalid request body: each message must have a content property of type string',
-          })
+        res.status(400).json({
+          error: 'Invalid request body: each message must have a content property of type string',
+        })
       } else {
         res.status(500).json({ error: 'Internal server error' })
       }
