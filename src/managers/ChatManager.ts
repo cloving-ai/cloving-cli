@@ -46,7 +46,7 @@ class ChatManager extends StreamManager {
    */
   constructor(options: ClovingGPTOptions) {
     super(options)
-    this.isSilent = getConfig(options).globalSilent || options.silent || false
+    this.isSilent = options.silent || getConfig(options).globalSilent || false
     options.stream = true
     options.silent = true
     this.rl = readline.createInterface({
