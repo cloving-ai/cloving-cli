@@ -166,24 +166,23 @@ class StreamManager extends EventEmitter {
    * @param {CurrentNewBlock} currentNewBlock - The current and new content of the code block.
    */
   private displayCurrentNewBlock(currentNewBlock: CurrentNewBlock): void {
+    const language = currentNewBlock.language.split('\n')[0]
+    process.stdout.write(
+      colors.gray.bold(`\`\`\`${language}                                       \n`),
+    )
+    process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
     try {
-      process.stdout.write(
-        colors.gray.bold(
-          `\`\`\`${currentNewBlock.language}                                       \n`,
-        ),
-      )
-      process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
-      process.stdout.write(
-        highlight(currentNewBlock.currentContent, { language: currentNewBlock.language }),
-      )
-      process.stdout.write(colors.gray.bold('\n=======\n'))
-      process.stdout.write(
-        highlight(currentNewBlock.newContent, { language: currentNewBlock.language }),
-      )
-      process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
+      process.stdout.write(highlight(currentNewBlock.currentContent, { language }))
     } catch (error) {
-      console.error(colors.red('Error displaying the code block:'), error)
+      process.stdout.write(currentNewBlock.currentContent)
     }
+    process.stdout.write(colors.gray.bold('\n=======\n'))
+    try {
+      process.stdout.write(highlight(currentNewBlock.newContent, { language }))
+    } catch (error) {
+      process.stdout.write(currentNewBlock.newContent)
+    }
+    process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
   }
 
   /**

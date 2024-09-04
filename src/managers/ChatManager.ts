@@ -227,6 +227,10 @@ class ChatManager extends StreamManager {
       const matchingCommand = specialCommands.find((cmd) => cmd.startsWith(command))
       if (matchingCommand) {
         command = matchingCommand.split(' ')[0] // Use only the command part without arguments
+      } else {
+        console.log(`No matching command found for '${command}'. Processing as user input.`)
+        await this.processUserInput(command)
+        return
       }
     }
 

@@ -99,7 +99,17 @@ class BlockManager extends EventEmitter {
   private parseCodeBuffer(): CurrentNewBlock | null {
     const results = extractCurrentNewBlocks(this.codeBuffer)
 
-    return results[0]
+    if (results.length === 0) {
+      return null
+    }
+
+    const block = results[0]
+    if (!block.currentContent || !block.newContent) {
+      console.warn('Incomplete code block detected. Skipping.')
+      return null
+    }
+
+    return block
   }
 
   clearBuffer() {
