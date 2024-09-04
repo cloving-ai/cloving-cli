@@ -708,8 +708,8 @@ ${prompt}
 
 ### Note
 
-Whenever possible, break up the changes into pieces and make sure every change is in its own CURRENT / NEW block.
-Do not allow empty CURRENT blocks and if you add content to the CURRENT block, you also have to add the same content to the NEW block.`
+Whenever possible, break up the changes into pieces and make sure every change is in its own *CURRENT/NEW* Blocks.
+Do not allow empty CURRENT blocks in *CURRENT/NEW* Blocks and if you add content to the CURRENT block, you also have to add the same content to the NEW block.`
   }
 
   private handleClose() {
