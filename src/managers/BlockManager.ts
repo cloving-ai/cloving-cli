@@ -69,13 +69,13 @@ class BlockManager extends EventEmitter {
       }
     }
 
-    if (!this.isBufferingCode && this.buffer.trim() !== '') {
+    if (!this.isBufferingCode) {
       this.emitBuffer()
     }
   }
 
   private emitBuffer(additionalContent: string = '') {
-    const contentToEmit = (this.buffer + additionalContent).trim()
+    const contentToEmit = this.buffer + additionalContent
     if (contentToEmit) {
       this.emit('content', contentToEmit)
       this.clearBuffer()
