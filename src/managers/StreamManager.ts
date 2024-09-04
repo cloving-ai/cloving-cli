@@ -5,6 +5,15 @@ import { EventEmitter } from 'events'
 import colors from 'colors'
 import highlight from 'cli-highlight'
 
+const isSupportedLanguage = (language: string): boolean => {
+  try {
+    highlight('', { language })
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
 import ClovingGPT from '../cloving_gpt'
 import ChunkManager from './ChunkManager'
 import BlockManager from './BlockManager'
@@ -171,15 +180,15 @@ class StreamManager extends EventEmitter {
       colors.gray.bold(`\`\`\`${language}                                       \n`),
     )
     process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
-    try {
+    if (isSupportedLanguage(language)) {
       process.stdout.write(highlight(currentNewBlock.currentContent, { language }))
-    } catch (error) {
+    } else {
       process.stdout.write(currentNewBlock.currentContent)
     }
     process.stdout.write(colors.gray.bold('\n=======\n'))
-    try {
+    if (isSupportedLanguage(language)) {
       process.stdout.write(highlight(currentNewBlock.newContent, { language }))
-    } catch (error) {
+    } else {
       process.stdout.write(currentNewBlock.newContent)
     }
     process.stdout.write(colors.gray.bold('\n>>>>>>> NEW\n```'))
@@ -192,7 +201,13 @@ class StreamManager extends EventEmitter {
    */
   private displayRawCodeBlock(raw: string): void {
     process.stdout.write(`                                       \n`)
-    process.stdout.write(highlight(raw))
+    const languageMatch = raw.match(/^```(\w+)/)
+    const language = languageMatch ? languageMatch[1] : ''
+    if (language && isSupportedLanguage(language)) {
+      process.stdout.write(highlight(raw, { language }))
+    } else {
+      process.stdout.write(raw)
+    }
   }
 
   /**
