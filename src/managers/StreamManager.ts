@@ -172,13 +172,13 @@ class StreamManager extends EventEmitter {
     )
     process.stdout.write(colors.gray.bold(`<<<<<<< CURRENT ${currentNewBlock.filePath}\n`))
     try {
-      process.stdout.write(highlight(currentNewBlock.currentContent, { language }))
+      process.stdout.write(highlight(currentNewBlock.currentContent))
     } catch (error) {
       process.stdout.write(currentNewBlock.currentContent)
     }
     process.stdout.write(colors.gray.bold('\n=======\n'))
     try {
-      process.stdout.write(highlight(currentNewBlock.newContent, { language }))
+      process.stdout.write(highlight(currentNewBlock.newContent))
     } catch (error) {
       process.stdout.write(currentNewBlock.newContent)
     }
