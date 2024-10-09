@@ -7,6 +7,8 @@ export class OpenAIAdapter implements Adapter {
 
   // List of supported models
   static supportedModels: string[] = [
+    'openai:gpt:o1-preview',
+    'openai:gpt:o1-mini',
     'openai:gpt:4o-2024-08-06',
     'openai:gpt:4o',
     'openai:gpt:4o-mini',
