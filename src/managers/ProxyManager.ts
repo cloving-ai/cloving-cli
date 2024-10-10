@@ -44,7 +44,13 @@ class ProxyManager {
       res.json({ message: 'ClovingGPT proxy server running' })
     })
 
-    this.app.post('/v1/chat/completions', this.handleChatCompletions.bind(this))
+    this.app.post('/v1/chat/completions', async (req, res, next) => {
+      try {
+        await this.handleChatCompletions(req, res)
+      } catch (error) {
+        next(error)
+      }
+    })
   }
 
   private async loadContextFiles() {

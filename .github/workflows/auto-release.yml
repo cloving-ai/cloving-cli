@@ -1,0 +1,83 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ['20.x', '22.x']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run TypeScript checks
+        run: yarn run check
+
+      - name: Run tests
+        run: yarn run test
+
+  check-version-and-release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: package-version
+        run: echo "::set-output name=version::$(node -p "require('./package.json').version")"
+
+      - name: Get latest release version
+        id: latest-release
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "::set-output name=version::${latest_tag#v}"
+
+      - name: Compare versions
+        id: compare-versions
+        run: |
+          if [ "${{ steps.package-version.outputs.version }}" != "${{ steps.latest-release.outputs.version }}" ]; then
+            echo "::set-output name=changed::true"
+          else
+            echo "::set-output name=changed::false"
+          fi
+
+      - name: Generate changelog
+        if: steps.compare-versions.outputs.changed == 'true'
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.3.1
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+          head-ref: v${{ steps.package-version.outputs.version }}
+          base-ref: v${{ steps.latest-release.outputs.version }}
+
+      - name: Create Release
+        if: steps.compare-versions.outputs.changed == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.package-version.outputs.version }}
+          release_name: Release v${{ steps.package-version.outputs.version }}
+          body: |
+            Changes in this Release:
+            ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
