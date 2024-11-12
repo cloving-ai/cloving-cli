@@ -5,7 +5,7 @@ import path from 'path'
 import { input, confirm } from '@inquirer/prompts'
 
 import { collectSpecialFileContents, addFileOrDirectoryToContext } from '../../utils/prompt_utils'
-import { getConfig, getClovingConfig, getAllFiles } from '../../utils/config_utils'
+import { getConfig, getNearestClovingConfig, getAllFiles } from '../../utils/config_utils'
 import type { ClovingGPTOptions } from '../../utils/types'
 
 const generateContextPrompt = (files: string[], contextFiles: Record<string, string>): string => {
@@ -22,7 +22,7 @@ const generateContextPrompt = (files: string[], contextFiles: Record<string, str
 
   return `### Description of App
 
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 
 ${specialFiles}
 

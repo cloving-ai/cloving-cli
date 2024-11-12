@@ -10,7 +10,7 @@ import ChunkManager from './ChunkManager'
 import BlockManager from './BlockManager'
 
 import { getPackageVersion } from '../utils/prompt_utils'
-import { getClovingConfig } from '../utils/config_utils'
+import { getNearestClovingConfig } from '../utils/config_utils'
 import { addFileOrDirectoryToContext, generateCodegenPrompt } from '../utils/prompt_utils'
 import type { CurrentNewBlock, ChatMessage } from '../utils/types'
 
@@ -274,7 +274,7 @@ class StreamManager extends EventEmitter {
    */
   protected async loadContextFiles(): Promise<void> {
     try {
-      const config = getClovingConfig()
+      const config = getNearestClovingConfig().config
       const primaryLanguage = config.languages.find((lang) => lang.primary)
       const defaultDirectory = primaryLanguage ? primaryLanguage.directory : '.'
       const testingDirectories =

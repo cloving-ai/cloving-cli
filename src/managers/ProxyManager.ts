@@ -5,7 +5,7 @@ import path from 'path'
 
 import ClovingGPT from '../cloving_gpt'
 import ChunkManager from './ChunkManager'
-import { getClovingConfig } from '../utils/config_utils'
+import { getNearestClovingConfig } from '../utils/config_utils'
 import { getAllFilesInDirectory } from '../utils/prompt_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
@@ -113,7 +113,7 @@ ${content}
 
 ### Description of App
 
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 
 ${contextFileContents}
 

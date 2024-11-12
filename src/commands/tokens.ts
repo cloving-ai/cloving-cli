@@ -6,7 +6,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import { getClovingConfig } from '../utils/config_utils'
+import { getNearestClovingConfig } from '../utils/config_utils'
 import { getAllFilesInDirectory } from '../utils/prompt_utils'
 import type { ClovingGPTOptions } from '../utils/types'
 
@@ -67,7 +67,7 @@ const tokens = async (options: ClovingGPTOptions): Promise<void> => {
   prompt += `
 ### Description of App
 
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 
 ${contextFileContents}`
 
