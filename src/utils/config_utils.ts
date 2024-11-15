@@ -92,13 +92,31 @@ export const getClovingConfig = (): ClovingfileConfig => {
   if (clovingConfig) {
     return clovingConfig
   } else if (fs.existsSync(CLOVINGFILE_PATH)) {
-    const configFile = fs.readFileSync(CLOVINGFILE_PATH, 'utf-8')
-    clovingConfig = JSON.parse(configFile) as ClovingfileConfig
+    clovingConfig = getClovingConfigAtPath(CLOVINGFILE_PATH)
     return clovingConfig
   } else {
     console.log(`${CLOVINGFILE_PATH} file not found, please run: cloving init`)
     process.exit(1)
   }
+}
+
+const getClovingConfigAtPath = (fullPath: string): ClovingfileConfig => {
+  const configFile = fs.readFileSync(fullPath, 'utf-8')
+  return JSON.parse(configFile) as ClovingfileConfig
+}
+
+export const getNearestClovingConfig = (): { config: ClovingfileConfig; path: string } => {
+  let runPath = process.cwd()
+  const parts = runPath.split(path.sep)
+  while (parts.length > 0) {
+    const configPath = path.join(parts.join(path.sep), CLOVINGFILE_PATH)
+    if (fs.existsSync(configPath)) {
+      clovingConfig = getClovingConfigAtPath(configPath)
+      return { config: clovingConfig, path: configPath }
+    }
+    parts.pop()
+  }
+  throw new Error(`No ${CLOVINGFILE_PATH} file found in ${runPath} or any parent directory`)
 }
 
 /**
@@ -217,7 +235,7 @@ export const getAllFiles = async (
   const gpt = new ClovingGPT(options)
 
   // Read the cloving.json file
-  const config = getClovingConfig()
+  const { config } = getNearestClovingConfig()
   const testingDirectory = getTestingDirectory()
 
   let allSrcFiles: string[] = []

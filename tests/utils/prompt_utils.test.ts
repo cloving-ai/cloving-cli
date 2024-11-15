@@ -3,6 +3,7 @@ import { CODEGEN_INSTRUCTIONS } from '../../src/utils/prompts'
 
 jest.mock('../../src/utils/config_utils', () => ({
   getClovingConfig: jest.fn().mockReturnValue({}),
+  getNearestClovingConfig: jest.fn().mockReturnValue({ config: {}, path: '' }),
 }))
 
 describe('prompt_utils', () => {

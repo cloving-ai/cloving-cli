@@ -10,7 +10,7 @@ import { isBinaryFile } from 'isbinaryfile'
 import colors from 'colors'
 import { join } from 'path'
 
-import { getClovingConfig } from './config_utils'
+import { getNearestClovingConfig } from './config_utils'
 import {
   REVIEW_INSTRUCTIONS,
   DOCS_INSTRUCTIONS,
@@ -20,7 +20,7 @@ import {
   CODEGEN_EXAMPLES,
 } from './prompts'
 
-import type { ChatMessage, ClovingGPTOptions } from './types'
+import type { ClovingGPTOptions } from './types'
 
 /**
  * Retrieves the package version from package.json.
@@ -69,7 +69,7 @@ export const generateCodegenPrompt = (contextFilesContent: Record<string, string
 ## Description of App
 
 \`\`\`json
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 \`\`\`
 
 ## Special Files
@@ -118,7 +118,7 @@ ${CODEGEN_EXAMPLES}
 ## Description of App
 
 \`\`\`json
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 \`\`\`
 
 ## Special Files
@@ -160,7 +160,7 @@ export const generateReviewPrompt = (
 
     prompt += `### Description of App
 
-${JSON.stringify(getClovingConfig(), null, 2)}
+${JSON.stringify(getNearestClovingConfig().config, null, 2)}
 
 ${contextFileContents}
 
