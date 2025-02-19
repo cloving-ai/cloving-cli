@@ -5,6 +5,25 @@
 
 import { execSync } from 'child_process'
 import readline from 'readline'
+import fs from 'fs'
+import path from 'path'
+
+const COMMITLINT_CONFIG_FILES = [
+  '.commitlintrc',
+  '.commitlintrc.json',
+  '.commitlintrc.yaml',
+  '.commitlintrc.yml',
+  '.commitlintrc.js',
+  '.commitlintrc.cjs',
+  '.commitlintrc.mjs',
+  '.commitlintrc.ts',
+  '.commitlintrc.cts',
+  'commitlint.config.js',
+  'commitlint.config.cjs',
+  'commitlint.config.mjs',
+  'commitlint.config.ts',
+  'commitlint.config.cts',
+]
 
 /**
  * Prompts the user with a question and returns their answer.
@@ -96,23 +115,113 @@ export const getCurrentBranchName = (): string => {
 }
 
 /**
+ * Checks if a commitlint configuration file exists in the project.
+ * @returns {string | null} The path to the commitlint config file if found, null otherwise.
+ */
+export const findCommitlintConfig = (): string | null => {
+  for (const configFile of COMMITLINT_CONFIG_FILES) {
+    if (fs.existsSync(configFile)) {
+      return configFile
+    }
+  }
+  return null
+}
+
+/**
+ * Reads and parses the commitlint configuration file.
+ * @param {string} configPath - Path to the commitlint config file.
+ * @returns {object | null} The parsed configuration object or null if unable to parse.
+ */
+export const readCommitlintConfig = (configPath: string): object | null => {
+  try {
+    const ext = path.extname(configPath)
+
+    if (['.js', '.cjs', '.mjs', '.ts', '.cts'].includes(ext)) {
+      // For JavaScript/TypeScript config files, we can't safely require them
+      // as they might have dependencies or complex configurations
+      return null
+    }
+
+    if (['.json', '', '.yaml', '.yml'].includes(ext)) {
+      const content = fs.readFileSync(configPath, 'utf-8')
+
+      if (ext === '.json' || ext === '') {
+        return JSON.parse(content)
+      }
+
+      // For YAML files, we'll just return the raw content as a string
+      return { config: content }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error reading commitlint config:', (error as Error).message)
+    return null
+  }
+}
+
+/**
  * Generates a prompt for creating a commit message based on a Git diff.
  * @param {string} diff - The Git diff to base the commit message on.
  * @returns {string} A prompt string for generating a commit message.
  */
 export const generateCommitMessagePrompt = (diff: string): string => {
-  return `Generate a concise and meaningful commit message based on a diff.
+  // Check if commitlint is configured
+  const commitlintConfig = findCommitlintConfig()
+  let configInfo = ''
+
+  if (commitlintConfig) {
+    const config = readCommitlintConfig(commitlintConfig)
+    if (config) {
+      configInfo = `\nFound commitlint configuration at ${commitlintConfig}:
+\`\`\`json
+${JSON.stringify(config, null, 2)}
+\`\`\`
+Please ensure the commit message follows any additional rules specified in this configuration.
+`
+    }
+  }
+
+  return `Generate a conventional commit message following the Conventional Commits specification (www.conventionalcommits.org).${configInfo}
+
+The commit message should follow this format:
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+
+Types must be one of:
+1. revert: Reverts a previous commit
+2. feat: A new feature
+3. fix: A bug fix
+4. refactor: A code change that neither fixes a bug nor adds a feature
+5. perf: A code change that improves performance
+6. build: Changes that affect the build system or external dependencies
+7. test: Adding missing tests or correcting existing tests
+8. docs: Documentation only changes
+9. style: Changes that do not affect the meaning of the code
+10. ci: Changes to our CI configuration files and scripts
+11. chore: Other changes that don't modify src or test files
+
+Use the order of types as an order of precedence for the commit message if there are multiple types in one commit.
+
+The scope should be the part of the codebase affected.
+The description should be imperative, present tense, and not capitalized.
+Breaking changes should be indicated by "!" before the ":" or by "BREAKING CHANGE:" in the footer.
 
 Do not add any commentary or context to the message other than the commit message itself.
 
-An example of the output for this should look like the following:
+Here is an example of a valid conventional commit message:
 
 \`\`\`plaintext
-Update dependencies and package versions
+feat(api): add new endpoint for user authentication
 
-- Upgrade Ruby gems including aws-sdk, honeybadger, irb, and rubocop
-- Update Node.js packages including esbuild, tinymce, and trix
-- Bump TypeScript and ESLint related packages to latest versions
+- Implement JWT token generation
+- Add password hashing with bcrypt
+- Create user validation middleware
+
+BREAKING CHANGE: 'auth' endpoint now requires API key in headers
 \`\`\`
 
 Here is the diff to help you write the commit message:
