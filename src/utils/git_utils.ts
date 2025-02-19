@@ -197,7 +197,7 @@ Types must be one of:
 3. fix: A bug fix
 4. refactor: A code change that neither fixes a bug nor adds a feature
 5. perf: A code change that improves performance
-6. build: Changes that affect the build system or external dependencies
+6. build: Changes that affect the build system or external dependencies or updates to versions of dependencies or version bumps
 7. test: Adding missing tests or correcting existing tests
 8. docs: Documentation only changes
 9. style: Changes that do not affect the meaning of the code
