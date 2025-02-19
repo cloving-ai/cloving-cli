@@ -169,16 +169,16 @@ export const generateCommitMessagePrompt = (diff: string): string => {
   // Check if commitlint is configured
   const commitlintConfig = findCommitlintConfig()
   let configInfo = ''
+
   if (commitlintConfig) {
     const config = readCommitlintConfig(commitlintConfig)
-
     if (config) {
       configInfo = `\nFound commitlint configuration at ${commitlintConfig}:
-  \`\`\`json
-  ${JSON.stringify(config, null, 2)}
-  \`\`\`
-  Please ensure the commit message follows any additional rules specified in this configuration.
-  `
+\`\`\`json
+${JSON.stringify(config, null, 2)}
+\`\`\`
+Please ensure the commit message follows any additional rules specified in this configuration.
+`
     }
   }
 

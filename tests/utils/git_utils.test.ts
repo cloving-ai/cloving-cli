@@ -79,32 +79,38 @@ rules:
       expect(result).toBeNull()
     })
 
-    test('generateCommitMessagePrompt should include config when commitlint config exists', () => {
-      const mockConfig = {
-        extends: ['@commitlint/config-conventional'],
-        rules: {
-          'type-enum': [2, 'always', ['feat', 'fix']],
-        },
-      }
-      ;(fs.existsSync as jest.Mock).mockImplementation(
-        (path: string) => path === '.commitlintrc.json',
-      )
-      ;(fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockConfig))
+    describe('generateCommitMessagePrompt', () => {
+      test('should always include conventional commit format instructions', () => {
+        ;(fs.existsSync as jest.Mock).mockReturnValue(false)
+        const diff = 'sample diff'
+        const result = generateCommitMessagePrompt(diff)
 
-      const diff = 'sample diff'
-      const result = generateCommitMessagePrompt(diff)
+        expect(result).toContain('<type>[optional scope]: <description>')
+        expect(result).toContain('Types must be one of:')
+        expect(result).toContain('feat: A new feature')
+        expect(result).toContain('fix: A bug fix')
+      })
 
-      expect(result).toContain('Found commitlint configuration at .commitlintrc.json')
-      expect(result).toContain('"extends":')
-      expect(result).toContain('"rules":')
-    })
+      test('should include commitlint config when available', () => {
+        const mockConfig = {
+          extends: ['@commitlint/config-conventional'],
+          rules: {
+            'type-enum': [2, 'always', ['feat', 'fix']],
+          },
+        }
+        ;(fs.existsSync as jest.Mock).mockImplementation(
+          (path: string) => path === '.commitlintrc.json',
+        )
+        ;(fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockConfig))
 
-    test('generateCommitMessagePrompt should use regular format when no commitlint config exists', () => {
-      ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-      const diff = 'sample diff'
-      const result = generateCommitMessagePrompt(diff)
-      expect(result).not.toContain('conventional commit message')
-      expect(result).toContain('concise and meaningful commit message')
+        const diff = 'sample diff'
+        const result = generateCommitMessagePrompt(diff)
+
+        expect(result).toContain('Found commitlint configuration at .commitlintrc.json')
+        expect(result).toContain('"extends":')
+        expect(result).toContain('"rules":')
+        expect(result).toContain('<type>[optional scope]: <description>')
+      })
     })
   })
 })
