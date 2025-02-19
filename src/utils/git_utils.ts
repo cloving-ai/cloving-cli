@@ -192,17 +192,19 @@ The commit message should follow this format:
 [optional footer(s)]
 
 Types must be one of:
-- feat: A new feature
-- fix: A bug fix
-- docs: Documentation only changes
-- style: Changes that do not affect the meaning of the code
-- refactor: A code change that neither fixes a bug nor adds a feature
-- perf: A code change that improves performance
-- test: Adding missing tests or correcting existing tests
-- build: Changes that affect the build system or external dependencies
-- ci: Changes to our CI configuration files and scripts
-- chore: Other changes that don't modify src or test files
-- revert: Reverts a previous commit
+1. revert: Reverts a previous commit
+2. feat: A new feature
+3. fix: A bug fix
+4. refactor: A code change that neither fixes a bug nor adds a feature
+5. perf: A code change that improves performance
+6. build: Changes that affect the build system or external dependencies
+7. test: Adding missing tests or correcting existing tests
+8. docs: Documentation only changes
+9. style: Changes that do not affect the meaning of the code
+10. ci: Changes to our CI configuration files and scripts
+11. chore: Other changes that don't modify src or test files
+
+Use the order of types as an order of precedence for the commit message if there are multiple types in one commit.
 
 The scope should be the part of the codebase affected.
 The description should be imperative, present tense, and not capitalized.
