@@ -16,6 +16,13 @@ class CommitManager {
     this.gpt = new ClovingGPT(options)
   }
 
+  private cleanCommitMessage(message: string): string {
+    // Remove markdown code block formatting if present, including any text before and after
+    const codeBlockRegex = /.*?```.*\n(.*?)\n```.*/m
+    const match = message.match(codeBlockRegex)
+    return match ? match[1].trim() : message.trim()
+  }
+
   public async generateCommit(): Promise<void> {
     try {
       // Get the git diff
@@ -33,8 +40,8 @@ class CommitManager {
       // Instantiate ClovingGPT and get the commit message
       const rawCommitMessage = await this.gpt.generateText({ prompt })
 
-      // Clean the commit message using extractMarkdown
-      const commitMessage = extractMarkdown(rawCommitMessage)
+      // Clean the commit message using extractMarkdown and remove code blocks
+      const commitMessage = this.cleanCommitMessage(extractMarkdown(rawCommitMessage))
 
       // Write the commit message to a temporary file
       const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
