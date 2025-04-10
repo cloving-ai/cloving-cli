@@ -10,9 +10,11 @@ import type { AxiosError } from 'axios'
 
 class CommitManager {
   private gpt: ClovingGPT
+  private autoAccept: boolean
 
   constructor(options: ClovingGPTOptions) {
     options.silent = getConfig(options).globalSilent || false
+    this.autoAccept = options.autoAccept || false
     this.gpt = new ClovingGPT(options)
   }
 
@@ -43,24 +45,35 @@ class CommitManager {
       // Clean the commit message using extractMarkdown and remove code blocks
       const commitMessage = this.cleanCommitMessage(extractMarkdown(rawCommitMessage))
 
-      // Write the commit message to a temporary file
-      const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
-      fs.writeFileSync(tempCommitFilePath, commitMessage)
+      if (this.autoAccept) {
+        // Directly commit with the generated message without opening an editor
+        try {
+          execFileSync('git', ['commit', '-a', '-m', commitMessage], {
+            stdio: 'inherit',
+          })
+        } catch (commitError) {
+          console.log('Commit failed:', (commitError as Error).message)
+        }
+      } else {
+        // Write the commit message to a temporary file
+        const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
+        fs.writeFileSync(tempCommitFilePath, commitMessage)
 
-      // Commit the changes using the generated commit message
-      try {
-        execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], {
-          stdio: 'inherit',
+        // Commit the changes using the generated commit message
+        try {
+          execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], {
+            stdio: 'inherit',
+          })
+        } catch (commitError) {
+          // If commit is canceled (non-zero exit), handle it here
+          console.log('Commit was canceled or failed.')
+        }
+
+        // Remove the temporary file using fs
+        fs.unlink(tempCommitFilePath, (err) => {
+          if (err) throw err
         })
-      } catch (commitError) {
-        // If commit is canceled (non-zero exit), handle it here
-        console.log('Commit was canceled or failed.')
       }
-
-      // Remove the temporary file using fs
-      fs.unlink(tempCommitFilePath, (err) => {
-        if (err) throw err
-      })
     } catch (err) {
       const error = err as AxiosError
       console.error('Could not generate commit message:', error.message)
