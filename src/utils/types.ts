@@ -45,6 +45,7 @@ export interface ClovingGPTOptions {
   port?: number
   stream?: boolean
   timeout?: number
+  autoAccept?: boolean
 }
 
 export interface ClovingModelConfig {

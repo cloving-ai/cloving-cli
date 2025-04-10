@@ -90,6 +90,7 @@ program
     '-m, --model <model>',
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
+  .option('-a, --autoAccept', 'Automatically accept the generated commit message without editing')
   .action(commit)
 
 // Generate commands
@@ -143,6 +144,7 @@ generate
     '-m, --model <model>',
     'Select the model to use (e.g., openai, claude, ollama, ollama:llama3, claude:claude-3-5-sonnet-20240620)',
   )
+  .option('-a, --autoAccept', 'Automatically accept the generated commit message without editing')
   .action(commit)
 
 generate
