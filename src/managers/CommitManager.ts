@@ -18,9 +18,68 @@ class CommitManager {
     this.gpt = new ClovingGPT(options)
   }
 
+  private async generateCommitWithSimplifiedDiff(): Promise<void> {
+    // Get a simplified diff (just the file names and basic stats)
+    const diffStat = execSync('git diff HEAD --stat').toString().trim()
+    const diffNameOnly = execSync('git diff HEAD --name-only').toString().trim()
+
+    const simplifiedPrompt = `Generate a conventional commit message following the Conventional Commits specification.
+
+Files changed:
+${diffNameOnly}
+
+Change summary:
+${diffStat}
+
+Generate a concise conventional commit message in the format:
+<type>[optional scope]: <description>
+
+Do not add any commentary or context to the message other than the commit message itself.`
+
+    // Get the commit message with simplified context
+    const rawCommitMessage = await this.gpt.generateText({ prompt: simplifiedPrompt })
+    const commitMessage = this.cleanCommitMessage(extractMarkdown(rawCommitMessage))
+
+    if (this.autoAccept) {
+      try {
+        execFileSync('git', ['commit', '-a', '-m', commitMessage], {
+          stdio: 'inherit',
+        })
+      } catch (commitError) {
+        console.log('Commit failed:', (commitError as Error).message)
+      }
+    } else {
+      // Write the commit message to a temporary file
+      const tempCommitFilePath = path.join('.git', 'SUGGESTED_COMMIT_EDITMSG')
+      fs.writeFileSync(tempCommitFilePath, commitMessage)
+
+      // Commit the changes using the generated commit message
+      try {
+        execFileSync('git', ['commit', '-a', '--edit', '--file', tempCommitFilePath], {
+          stdio: 'inherit',
+        })
+      } catch (commitError) {
+        console.log('Commit was canceled or failed.')
+      }
+
+      // Remove the temporary file
+      fs.unlink(tempCommitFilePath, (err) => {
+        if (err) throw err
+      })
+    }
+  }
+
   private cleanCommitMessage(message: string): string {
+    // First check if there's a conventional commit message inside a code block
+    const conventionalCommitRegex = /```\n([a-z]+(?:\([^)]+\))?: [\s\S]*?)```/m
+    const conventionalMatch = message.match(conventionalCommitRegex)
+
+    if (conventionalMatch) {
+      return conventionalMatch[1].trim()
+    }
+
     // Remove markdown code block formatting if present, including any text before and after
-    const codeBlockRegex = /.*?```.*\n(.*?)\n```.*/m
+    const codeBlockRegex = /.*?```.*\n([\s\S]*?)\n```.*/m
     const match = message.match(codeBlockRegex)
     return match ? match[1].trim() : message.trim()
   }
@@ -75,7 +134,27 @@ class CommitManager {
         })
       }
     } catch (err) {
-      const error = err as AxiosError
+      const error = err as Error
+
+      // Check if error is due to token limit (prompt too long)
+      if (
+        error.message.includes('prompt is too long') ||
+        error.message.includes('too many tokens') ||
+        error.message.includes('maximum')
+      ) {
+        console.warn('Prompt too long, retrying with simplified diff...')
+        try {
+          await this.generateCommitWithSimplifiedDiff()
+          return
+        } catch (retryErr) {
+          console.error(
+            'Could not generate commit message even with simplified diff:',
+            (retryErr as Error).message,
+          )
+          return
+        }
+      }
+
       console.error('Could not generate commit message:', error.message)
     }
   }
