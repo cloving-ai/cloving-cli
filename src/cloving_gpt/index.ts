@@ -217,7 +217,11 @@ class ClovingGPT {
           `Details: ${colors.yellow(JSON.stringify(error.response?.data || {}, null, 2))}\n`,
       )
 
-      throw new Error(errorMessage)
+      // Include the API error message in the thrown error for better error handling
+      const responseData = error.response?.data as any
+      const apiErrorMessage = responseData?.error?.message
+      const detailedMessage = apiErrorMessage ? `${errorMessage}. ${apiErrorMessage}` : errorMessage
+      throw new Error(detailedMessage)
     }
   }
 
